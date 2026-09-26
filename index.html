@@ -310,36 +310,39 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Kendi Kendine Verdiği Puan (Öz Rating: 1-100)</label>
-                            <input type="number" id="player-self-rating" min="1" max="100" value="75" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-400 font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                        </div>
-
                         <div class="grid grid-cols-2 gap-3 pt-2">
                             <div>
                                 <label class="block text-[11px] text-slate-400 mb-1">Hız (Pace)</label>
-                                <input type="number" id="attr-pace" min="1" max="99" value="75" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                                <input type="number" id="attr-pace" min="1" max="99" value="75" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
                             </div>
                             <div>
                                 <label class="block text-[11px] text-slate-400 mb-1">Şut (Shooting)</label>
-                                <input type="number" id="attr-shooting" min="1" max="99" value="70" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                                <input type="number" id="attr-shooting" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
                             </div>
                             <div>
                                 <label class="block text-[11px] text-slate-400 mb-1">Pas (Passing)</label>
-                                <input type="number" id="attr-passing" min="1" max="99" value="75" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                                <input type="number" id="attr-passing" min="1" max="99" value="75" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
                             </div>
                             <div>
                                 <label class="block text-[11px] text-slate-400 mb-1">Dripling (Dribbling)</label>
-                                <input type="number" id="attr-dribbling" min="1" max="99" value="70" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                                <input type="number" id="attr-dribbling" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
                             </div>
                             <div>
                                 <label class="block text-[11px] text-slate-400 mb-1">Defans (Defending)</label>
-                                <input type="number" id="attr-defending" min="1" max="99" value="65" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                                <input type="number" id="attr-defending" min="1" max="99" value="65" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
                             </div>
                             <div>
                                 <label class="block text-[11px] text-slate-400 mb-1">Fizik (Physical)</label>
-                                <input type="number" id="attr-physical" min="1" max="99" value="70" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                                <input type="number" id="attr-physical" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
                             </div>
+                        </div>
+
+                        <div class="bg-slate-900/60 border border-emerald-500/30 rounded-xl px-3 py-2.5 flex items-center justify-between">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300">Öz Rating (Otomatik Hesaplanır)</label>
+                                <p class="text-[10px] text-slate-500">6 nitelik puanının ortalamasından üretilir</p>
+                            </div>
+                            <input type="number" id="player-self-rating" value="75" readonly tabindex="-1" class="w-16 bg-transparent text-amber-400 font-black text-xl text-right focus:outline-none cursor-default">
                         </div>
 
                         <div class="pt-3 flex gap-2">
@@ -399,7 +402,7 @@
                         <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
                             <i class="fa-solid fa-users-gear"></i> Akran Değerlendirme Listesi
                         </h3>
-                        <span class="text-xs text-slate-400">Puan Aralığı: 40 - 100</span>
+                        <span class="text-xs text-amber-400 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i>Tüm nitelikler zorunlu (1-99)</span>
                     </div>
 
                     <div id="peer-ratings-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
@@ -639,6 +642,48 @@
         </div>
     </footer>
 
+    <!-- Player Detail Modal (Radar Chart) -->
+    <div id="player-detail-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closePlayerDetail()"></div>
+        <div class="relative glass-panel w-full max-w-lg rounded-2xl border border-slate-700 p-6 max-h-[90vh] overflow-y-auto">
+            <button onclick="closePlayerDetail()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="flex items-center space-x-4 mb-5 pr-6">
+                <div id="detail-avatar" class="w-14 h-14 shrink-0 rounded-full bg-slate-800 text-emerald-400 font-black flex items-center justify-center text-xl border border-slate-700 shadow"></div>
+                <div class="min-w-0">
+                    <h3 id="detail-name" class="text-lg font-black text-white truncate"></h3>
+                    <p id="detail-position" class="text-xs text-emerald-400 font-semibold"></p>
+                </div>
+                <div class="ml-auto text-right shrink-0">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wider">Gerçek Rating</p>
+                    <p id="detail-true-rating" class="text-2xl font-black text-emerald-400"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mb-5 text-center">
+                <div class="bg-slate-900/60 rounded-xl p-2 border border-slate-800">
+                    <p class="text-[10px] text-slate-400">Maç</p>
+                    <p id="detail-matches" class="text-sm font-bold text-white"></p>
+                </div>
+                <div class="bg-slate-900/60 rounded-xl p-2 border border-slate-800">
+                    <p class="text-[10px] text-slate-400">Gol</p>
+                    <p id="detail-goals" class="text-sm font-bold text-amber-400"></p>
+                </div>
+                <div class="bg-slate-900/60 rounded-xl p-2 border border-slate-800">
+                    <p class="text-[10px] text-slate-400">Asist</p>
+                    <p id="detail-assists" class="text-sm font-bold text-blue-400"></p>
+                </div>
+            </div>
+
+            <div id="detail-radar-container" class="flex justify-center py-1"></div>
+            <p id="detail-radar-note" class="text-center text-[10px] text-slate-500 -mt-1 mb-2"></p>
+
+            <div id="detail-attr-list" class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2"></div>
+        </div>
+    </div>
+
     <!-- Notification Toast -->
     <div id="toast-msg" class="fixed bottom-16 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 border border-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50">
         <i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>
@@ -820,7 +865,6 @@
             const editId = document.getElementById('edit-player-id').value;
             const name = document.getElementById('player-name').value.trim();
             const position = document.getElementById('player-position').value;
-            const selfRating = parseInt(document.getElementById('player-self-rating').value) || 75;
 
             const pace = parseInt(document.getElementById('attr-pace').value) || 70;
             const shooting = parseInt(document.getElementById('attr-shooting').value) || 70;
@@ -828,6 +872,9 @@
             const dribbling = parseInt(document.getElementById('attr-dribbling').value) || 70;
             const defending = parseInt(document.getElementById('attr-defending').value) || 70;
             const physical = parseInt(document.getElementById('attr-physical').value) || 70;
+
+            // Öz Rating artık manuel girilmiyor; 6 niteliğin ortalamasından otomatik hesaplanır
+            const selfRating = Math.round((pace + shooting + passing + dribbling + defending + physical) / 6);
 
             if (editId) {
                 const player = players.find(p => p.id === parseInt(editId));
@@ -869,7 +916,6 @@
             document.getElementById('edit-player-id').value = player.id;
             document.getElementById('player-name').value = player.name;
             document.getElementById('player-position').value = player.position;
-            document.getElementById('player-self-rating').value = player.selfRating || 75;
 
             document.getElementById('attr-pace').value = player.attributes.pace;
             document.getElementById('attr-shooting').value = player.attributes.shooting;
@@ -877,6 +923,7 @@
             document.getElementById('attr-dribbling').value = player.attributes.dribbling;
             document.getElementById('attr-defending').value = player.attributes.defending;
             document.getElementById('attr-physical').value = player.attributes.physical;
+            updateSelfRatingPreview();
 
             document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-pen text-amber-400"></i> Oyuncu Düzenle`;
             document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Güncelle`;
@@ -895,16 +942,24 @@
             document.getElementById('edit-player-id').value = '';
             document.getElementById('player-name').value = '';
             document.getElementById('player-position').value = 'Orta Saha';
-            document.getElementById('player-self-rating').value = 75;
             document.getElementById('attr-pace').value = 75;
             document.getElementById('attr-shooting').value = 70;
             document.getElementById('attr-passing').value = 75;
             document.getElementById('attr-dribbling').value = 70;
             document.getElementById('attr-defending').value = 65;
             document.getElementById('attr-physical').value = 70;
+            updateSelfRatingPreview();
 
             document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Oyuncu Kaydı`;
             document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-check"></i> Kaydet`;
+        }
+
+        // Nitelik ortalamasından otomatik Öz Rating hesapla ve canlı göster
+        function updateSelfRatingPreview() {
+            const ids = ['attr-pace', 'attr-shooting', 'attr-passing', 'attr-dribbling', 'attr-defending', 'attr-physical'];
+            const values = ids.map(id => parseInt(document.getElementById(id).value) || 0);
+            const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+            document.getElementById('player-self-rating').value = avg;
         }
 
         function renderPlayerManagement() {
@@ -920,7 +975,8 @@
             players.forEach(p => {
                 const tr = calculateTrueRating(p);
                 const card = document.createElement('div');
-                card.className = 'bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between';
+                card.className = 'bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-colors';
+                card.onclick = () => openPlayerDetail(p.id);
                 card.innerHTML = `
                     <div class="flex items-center space-x-3">
                         <div class="w-10 h-10 rounded-full bg-slate-800 text-emerald-400 font-extrabold flex items-center justify-center text-xs border border-slate-700 shadow">
@@ -932,7 +988,10 @@
                             <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong></p>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-1">
+                    <div class="flex items-center space-x-1" onclick="event.stopPropagation()">
+                        <button onclick="openPlayerDetail(${p.id})" class="p-1.5 text-slate-400 hover:text-emerald-400 text-xs" title="Radar Grafiği">
+                            <i class="fa-solid fa-chart-simple"></i>
+                        </button>
                         <button onclick="editPlayer(${p.id})" class="p-1.5 text-slate-400 hover:text-amber-400 text-xs">
                             <i class="fa-solid fa-pen"></i>
                         </button>
@@ -943,6 +1002,131 @@
                 `;
                 grid.appendChild(card);
             });
+        }
+
+        // PLAYER DETAIL MODAL & RADAR CHART
+        const RADAR_ATTRS = [
+            { key: 'pace', label: 'HIZ' },
+            { key: 'shooting', label: 'ŞUT' },
+            { key: 'passing', label: 'PAS' },
+            { key: 'dribbling', label: 'DRİP' },
+            { key: 'defending', label: 'DEF' },
+            { key: 'physical', label: 'FİZ' }
+        ];
+
+        // Öz nitelikler (%30) + akranların o niteliğe verdiği ortalama puan (%70) harmanlanarak
+        // "Gerçek Nitelik" değerleri üretilir (henüz akran nitelik oyu yoksa öz değer kullanılır).
+        function getEffectiveAttributes(player) {
+            const self = player.attributes || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
+            const votes = player.peerAttributeVotes || [];
+            const effective = {};
+
+            RADAR_ATTRS.forEach(a => {
+                const peerVals = votes.map(v => v[a.key]).filter(v => typeof v === 'number' && !isNaN(v));
+                if (peerVals.length > 0) {
+                    const peerAvg = peerVals.reduce((x, y) => x + y, 0) / peerVals.length;
+                    effective[a.key] = Math.round((self[a.key] || 70) * 0.3 + peerAvg * 0.7);
+                } else {
+                    effective[a.key] = self[a.key] || 70;
+                }
+            });
+
+            return { values: effective, hasPeerVotes: votes.length > 0 };
+        }
+
+        function openPlayerDetail(id) {
+            const p = players.find(x => x.id === id);
+            if (!p) return;
+            const tr = calculateTrueRating(p);
+            const eff = getEffectiveAttributes(p);
+            const attrs = eff.values;
+
+            document.getElementById('detail-avatar').textContent = p.name.charAt(0);
+            document.getElementById('detail-name').textContent = p.name;
+            document.getElementById('detail-position').textContent = p.position;
+            document.getElementById('detail-true-rating').textContent = tr.trueRating;
+            document.getElementById('detail-matches').textContent = p.matches || 0;
+            document.getElementById('detail-goals').textContent = p.goals || 0;
+            document.getElementById('detail-assists').textContent = p.assists || 0;
+
+            document.getElementById('detail-radar-container').innerHTML = buildRadarSVG(attrs);
+
+            const noteEl = document.getElementById('detail-radar-note');
+            if (noteEl) {
+                noteEl.textContent = eff.hasPeerVotes
+                    ? 'Gerçek Nitelik: %30 Öz Değer + %70 Akran Nitelik Ortalaması'
+                    : 'Henüz akran nitelik oyu yok — öz değerler gösteriliyor';
+            }
+
+            document.getElementById('detail-attr-list').innerHTML = RADAR_ATTRS.map(a => `
+                <div class="flex items-center justify-between bg-slate-900/40 rounded-lg px-2.5 py-1.5 border border-slate-800 text-xs">
+                    <span class="text-slate-400 font-semibold">${a.label}</span>
+                    <span class="text-emerald-300 font-bold">${attrs[a.key] ?? '-'}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('player-detail-modal').classList.remove('hidden');
+        }
+
+        function closePlayerDetail() {
+            document.getElementById('player-detail-modal').classList.add('hidden');
+        }
+
+        function buildRadarSVG(attrs) {
+            const size = 280;
+            const center = size / 2;
+            const maxRadius = 90;
+            const labelRadius = 115;
+            const levels = [20, 40, 60, 80, 100];
+            const n = RADAR_ATTRS.length;
+            const angleStep = (Math.PI * 2) / n;
+
+            function pointAt(index, value, radius) {
+                const angle = -Math.PI / 2 + index * angleStep;
+                const r = (value / 100) * radius;
+                return {
+                    x: center + r * Math.cos(angle),
+                    y: center + r * Math.sin(angle)
+                };
+            }
+
+            let gridSVG = '';
+            levels.forEach(lvl => {
+                const pts = RADAR_ATTRS.map((_, i) => {
+                    const pt = pointAt(i, lvl, maxRadius);
+                    return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+                }).join(' ');
+                gridSVG += `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+            });
+
+            let axisSVG = '';
+            let labelSVG = '';
+            RADAR_ATTRS.forEach((a, i) => {
+                const outer = pointAt(i, 100, maxRadius);
+                axisSVG += `<line x1="${center}" y1="${center}" x2="${outer.x.toFixed(1)}" y2="${outer.y.toFixed(1)}" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>`;
+                const lp = pointAt(i, 100, labelRadius);
+                let anchor = 'middle';
+                if (lp.x < center - 8) anchor = 'end';
+                else if (lp.x > center + 8) anchor = 'start';
+                labelSVG += `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-size="11" font-weight="700" fill="#94a3b8">${a.label}</text>`;
+            });
+
+            const dataPts = RADAR_ATTRS.map((a, i) => {
+                const val = Math.max(1, Math.min(99, attrs[a.key] ?? 70));
+                return pointAt(i, val, maxRadius);
+            });
+            const dataPolygon = dataPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+            const dotsSVG = dataPts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#10b981" stroke="#0f172a" stroke-width="1.5"/>`).join('');
+
+            return `
+                <svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:300px">
+                    ${gridSVG}
+                    ${axisSVG}
+                    <polygon points="${dataPolygon}" fill="rgba(16,185,129,0.35)" stroke="#10b981" stroke-width="2"/>
+                    ${dotsSVG}
+                    ${labelSVG}
+                </svg>
+            `;
         }
 
         // DASHBOARD RENDER
@@ -1087,21 +1271,25 @@
 
             peers.forEach(peer => {
                 const card = document.createElement('div');
-                card.className = 'bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between';
+                card.dataset.peerCardId = peer.id;
+                card.className = 'bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2.5';
                 card.innerHTML = `
                     <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center text-xs border border-slate-700">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center text-xs border border-slate-700 shrink-0">
                             ${peer.name.charAt(0)}
                         </div>
                         <div>
                             <p class="text-xs font-bold text-white">${peer.name}</p>
-                            <p class="text-[10px] text-slate-400">${peer.position} • Öz Rating: ${peer.selfRating || 70}</p>
+                            <p class="text-[10px] text-slate-400">${peer.position}</p>
                         </div>
                     </div>
-                    
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xs text-slate-400">Puan:</span>
-                        <input type="number" min="40" max="100" value="80" data-peer-id="${peer.id}" class="peer-score-input w-16 bg-slate-800 border border-slate-700 text-emerald-400 text-xs font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                        ${RADAR_ATTRS.map(a => `
+                            <div>
+                                <label class="block text-[9px] text-slate-500 font-semibold mb-0.5 text-center">${a.label}</label>
+                                <input type="number" min="1" max="99" placeholder="—" data-peer-id="${peer.id}" data-attr-key="${a.key}" class="peer-attr-input w-full bg-slate-800 border border-slate-700 text-emerald-400 text-xs font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                        `).join('')}
                     </div>
                 `;
                 container.appendChild(card);
@@ -1109,19 +1297,60 @@
         }
 
         function submitEvaluation() {
-            const inputs = document.querySelectorAll('.peer-score-input');
-            inputs.forEach(input => {
-                const peerId = parseInt(input.getAttribute('data-peer-id'));
-                const score = parseInt(input.value) || 75;
-                const peer = players.find(p => p.id === peerId);
-                if (peer) {
-                    if (!peer.peerRatings) peer.peerRatings = [];
-                    peer.peerRatings.push(score);
+            const voterId = parseInt(document.getElementById('eval-current-user').value);
+            const cards = document.querySelectorAll('#peer-ratings-list > div');
+            const votesByPeer = {};
+            const incompletePeers = [];
+
+            cards.forEach(card => {
+                card.classList.remove('border-red-500');
+                const peerId = parseInt(card.dataset.peerCardId);
+                const inputs = card.querySelectorAll('.peer-attr-input');
+                const values = {};
+                let complete = true;
+
+                inputs.forEach(input => {
+                    const key = input.getAttribute('data-attr-key');
+                    const raw = input.value.trim();
+                    const num = parseInt(raw, 10);
+                    if (raw === '' || isNaN(num) || num < 1 || num > 99) {
+                        complete = false;
+                    } else {
+                        values[key] = num;
+                    }
+                });
+
+                if (!complete) {
+                    incompletePeers.push(card);
+                } else {
+                    votesByPeer[peerId] = values;
                 }
             });
 
+            if (incompletePeers.length > 0) {
+                incompletePeers.forEach(card => card.classList.add('border-red-500'));
+                showToast(`Lütfen tüm oyuncular için 6 niteliğin tamamını (1-99) girin. ${incompletePeers.length} oyuncu eksik.`);
+                return;
+            }
+
+            Object.keys(votesByPeer).forEach(peerIdStr => {
+                const peerId = parseInt(peerIdStr);
+                const peer = players.find(p => p.id === peerId);
+                if (!peer) return;
+                const vals = votesByPeer[peerId];
+
+                // Genel akran puanı: bu oyun için girilen 6 niteliğin ortalaması
+                const overallScore = Math.round(RADAR_ATTRS.reduce((sum, a) => sum + vals[a.key], 0) / RADAR_ATTRS.length);
+                if (!peer.peerRatings) peer.peerRatings = [];
+                peer.peerRatings.push(overallScore);
+
+                // Detaylı nitelik oylarını da sakla (Gerçek Nitelik / radar hesaplaması için)
+                if (!peer.peerAttributeVotes) peer.peerAttributeVotes = [];
+                peer.peerAttributeVotes.push({ voterId, ...vals });
+            });
+
             saveData();
-            showToast("Akran değerlendirmeleri kaydedildi.");
+            showToast("Akran değerlendirmeleri (nitelik bazlı) başarıyla kaydedildi.");
             goToEvalStep(1);
             switchTab('generator');
         }
