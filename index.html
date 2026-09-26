@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HalıSaha AI - Akıllı Kadro, Gerçek Rating & Canlı Yorumcu Sistemi</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pitch: {
+                            DEFAULT: '#10b981',
+                            dark: '#047857',
+                            lines: 'rgba(255, 255, 255, 0.4)'
+                        },
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b'
+                    },
+                    animation: {
+                        'ticker': 'ticker 35s linear infinite',
+                    },
+                    keyframes: {
+                        ticker: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-50%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .pitch-bg {
+            background: linear-gradient(to bottom, #065f46, #047857);
+            position: relative;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.6);
+        }
+        .pitch-lines {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            margin: 10px;
+            pointer-events: none;
+        }
+        .pitch-center-circle {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90px; height: 90px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+        }
+        .pitch-center-line {
+            position: absolute;
+            top: 50%; left: 10px; right: 10px;
+            height: 2px;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+        .pitch-box-top {
+            position: absolute;
+            top: 10px; left: 25%; right: 25%;
+            height: 55px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-top: none;
+        }
+        .pitch-box-bottom {
+            position: absolute;
+            bottom: 10px; left: 25%; right: 25%;
+            height: 55px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-bottom: none;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            animation: ticker 40s linear infinite;
+        }
+        .ticker-wrap:hover .ticker-move {
+            animation-play-state: paused;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-16 antialiased selection:bg-emerald-500 selection:text-white">
+
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-900 font-black text-xl shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-futbol"></i>
+                    </div>
+                    <div>
+                        <span class="font-black text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-200">HalıSaha AI</span>
+                        <span class="text-[10px] block text-slate-400 font-semibold tracking-wider uppercase">Gerçek Rating & Kadro Algoritması</span>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex items-center space-x-1">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-emerald-400 bg-slate-800">
+                        <i class="fa-solid fa-chart-pie"></i> Genel Bakış
+                    </button>
+                    <button onclick="switchTab('players')" id="nav-players" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-users-gear"></i> Oyuncular
+                    </button>
+                    <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-user-pen"></i> Form & Akran Oylaması
+                    </button>
+                    <button onclick="switchTab('generator')" id="nav-generator" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> AI Kadro
+                    </button>
+                    <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-award"></i> MVP Oylaması
+                    </button>
+                    <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-clipboard-list"></i> Maç Kaydı
+                    </button>
+                </nav>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="switchTab('players')" class="bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 hover:brightness-110">
+                        <i class="fa-solid fa-user-plus"></i> <span>Oyuncu Ekle</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Navigation -->
+        <div class="md:hidden flex justify-around border-t border-slate-800 bg-slate-900/95 py-2 px-1 text-[10px]">
+            <button onclick="switchTab('dashboard')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-chart-pie text-sm"></i> Genel
+            </button>
+            <button onclick="switchTab('players')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-users-gear text-sm"></i> Oyuncu
+            </button>
+            <button onclick="switchTab('evaluation')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-user-pen text-sm"></i> Oylama
+            </button>
+            <button onclick="switchTab('generator')" class="text-emerald-400 flex flex-col items-center gap-1 font-bold">
+                <i class="fa-solid fa-wand-magic-sparkles text-sm"></i> AI Kadro
+            </button>
+            <button onclick="switchTab('admin')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-clipboard-list text-sm"></i> Maç Gir
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: DASHBOARD -->
+        <section id="tab-dashboard" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="glass-panel p-5 rounded-2xl flex items-center space-x-4 border-l-4 border-emerald-500">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Kayıtlı Oyuncu</p>
+                        <h3 class="text-2xl font-black text-white" id="stat-total-players">0</h3>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex items-center space-x-4 border-l-4 border-blue-500">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Oynanan Maç</p>
+                        <h3 class="text-2xl font-black text-white" id="stat-total-matches">0</h3>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex items-center space-x-4 border-l-4 border-purple-500">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-soccer-ball"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Atılan Gol</p>
+                        <h3 class="text-2xl font-black text-white" id="stat-total-goals">0</h3>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex items-center space-x-4 border-l-4 border-amber-500">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-crown"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Son Maçın MVP'si</p>
+                        <h3 class="text-base font-bold text-amber-300 truncate" id="stat-mvp">Henüz Seçilmedi</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Leaderboard -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-ranking-star text-amber-400"></i> Oyuncu Liderlik ve Gerçek Rating Tablosu
+                                </h2>
+                                <p class="text-xs text-slate-400">Gerçek Rating: %30 Öz Rating + %70 Akran Ortalaması + Maç/Gol İstatistik Bonusu</p>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead>
+                                    <tr class="text-slate-400 border-b border-slate-700/60 text-xs font-semibold uppercase tracking-wider">
+                                        <th class="pb-3 px-2">#</th>
+                                        <th class="pb-3 px-2">Oyuncu</th>
+                                        <th class="pb-3 px-2">Pozisyon</th>
+                                        <th class="pb-3 px-2 text-center">Öz / Akran</th>
+                                        <th class="pb-3 px-2 text-center">Maç</th>
+                                        <th class="pb-3 px-2 text-center">Gol/Asist</th>
+                                        <th class="pb-3 px-2 text-center">MVP</th>
+                                        <th class="pb-3 px-2 text-right">Gerçek Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="player-leaderboard-body" class="divide-y divide-slate-800">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Match History -->
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> Oynanan Son Maçlar
+                        </h2>
+                        <div id="recent-matches-container" class="space-y-3">
+                            <!-- Dynamic Matches -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Stats -->
+                <div class="space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-fire text-orange-500"></i> Gol Krallığı
+                        </h2>
+                        <div id="top-scorers-list" class="space-y-2.5">
+                            <!-- Dynamic -->
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-hands-holding-circle text-blue-400"></i> Asist Krallığı
+                        </h2>
+                        <div id="top-assists-list" class="space-y-2.5">
+                            <!-- Dynamic -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: PLAYER MANAGEMENT -->
+        <section id="tab-players" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Add / Edit Form -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 h-fit">
+                    <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2" id="player-form-title">
+                        <i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Oyuncu Kaydı
+                    </h2>
+                    
+                    <form id="player-form" onsubmit="handlePlayerSubmit(event)" class="space-y-4">
+                        <input type="hidden" id="edit-player-id" value="">
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Adı Soyadı / Lakabı</label>
+                            <input type="text" id="player-name" required placeholder="Örn: Burak Özdemir" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tercih Ettiği Pozisyon</label>
+                            <select id="player-position" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <option value="Kaleci">Kaleci [GK]</option>
+                                <option value="Defans">Defans [DEF]</option>
+                                <option value="Orta Saha" selected>Orta Saha [MID]</option>
+                                <option value="Forvet">Forvet [FWD]</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Kendi Kendine Verdiği Puan (Öz Rating: 1-100)</label>
+                            <input type="number" id="player-self-rating" min="1" max="100" value="75" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-400 font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">Hız (Pace)</label>
+                                <input type="number" id="attr-pace" min="1" max="99" value="75" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">Şut (Shooting)</label>
+                                <input type="number" id="attr-shooting" min="1" max="99" value="70" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">Pas (Passing)</label>
+                                <input type="number" id="attr-passing" min="1" max="99" value="75" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">Dripling (Dribbling)</label>
+                                <input type="number" id="attr-dribbling" min="1" max="99" value="70" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">Defans (Defending)</label>
+                                <input type="number" id="attr-defending" min="1" max="99" value="65" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">Fizik (Physical)</label>
+                                <input type="number" id="attr-physical" min="1" max="99" value="70" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                        </div>
+
+                        <div class="pt-3 flex gap-2">
+                            <button type="submit" id="player-form-btn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2.5 rounded-xl transition-all text-xs flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-check"></i> Kaydet
+                            </button>
+                            <button type="button" onclick="resetPlayerForm()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2.5 rounded-xl text-xs">
+                                Temizle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Players List -->
+                <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users text-emerald-400"></i> Kayıtlı Oyuncular
+                        </h2>
+                        <span class="text-xs text-slate-400" id="player-list-count">0 Oyuncu</span>
+                    </div>
+
+                    <div id="players-card-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[520px] overflow-y-auto pr-1">
+                        <!-- Dynamic Cards -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: SELF AND PEER EVALUATION -->
+        <section id="tab-evaluation" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="mb-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-user-pen text-emerald-400"></i> Öz Değerlendirme & Akran Puanlaması
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">Girdiğiniz öz puanlar ile diğer oyuncuların size verdiği puanlar harmanlanarak sistemde 'Gerçek Rating' oluşur.</p>
+                </div>
+
+                <!-- Step 1: Select Evaluator -->
+                <div id="eval-step-1" class="space-y-4">
+                    <label class="block text-sm font-medium text-slate-300">Oy kullanan oyuncuyu seçiniz:</label>
+                    <select id="eval-current-user" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        <option value="">-- Oyuncu Seçiniz --</option>
+                    </select>
+
+                    <div class="pt-4 flex justify-end">
+                        <button onclick="goToEvalStep(2)" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs">
+                            Diğer Oyuncuları Puanla <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Peer Ratings -->
+                <div id="eval-step-2" class="hidden space-y-6">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
+                            <i class="fa-solid fa-users-gear"></i> Akran Değerlendirme Listesi
+                        </h3>
+                        <span class="text-xs text-slate-400">Puan Aralığı: 40 - 100</span>
+                    </div>
+
+                    <div id="peer-ratings-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                        <!-- Dynamic Peer Items -->
+                    </div>
+
+                    <div class="pt-4 flex justify-between border-t border-slate-800">
+                        <button onclick="goToEvalStep(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-2.5 rounded-xl text-xs font-semibold">
+                            <i class="fa-solid fa-arrow-left"></i> Geri
+                        </button>
+                        <button onclick="submitEvaluation()" class="bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                            <i class="fa-solid fa-check"></i> Değerlendirmeleri Kaydet
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: AI TEAM GENERATOR -->
+        <section id="tab-generator" class="tab-content hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl border border-slate-700">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI Dengeli Kadro Kurucu
+                        </h2>
+                        <p class="text-xs text-slate-400">Gerçek rating, pozisyon dağılımı ve performans puanlarını baz alarak mükemmel dengeli 2 takım kurar.</p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button onclick="generateAITeams()" class="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 text-slate-950 font-black px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-rotate-right"></i> Kadroları Otomatik Dengele
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Squad Selection Checkboxes -->
+                <div class="mt-6 pt-4 border-t border-slate-800">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bu Maçın Kadrosu (<span id="selected-player-count">0</span> Seçili)</span>
+                        <div class="space-x-2">
+                            <button onclick="toggleAllPlayers(true)" class="text-xs text-emerald-400 hover:underline">Tümünü Seç</button>
+                            <span class="text-slate-600">•</span>
+                            <button onclick="toggleAllPlayers(false)" class="text-xs text-slate-400 hover:underline">Temizle</button>
+                        </div>
+                    </div>
+                    <div id="player-checkbox-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        <!-- Dynamic Checkboxes -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pitch Visualizer -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 glass-panel p-4 sm:p-6 rounded-2xl flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                            <h3 class="font-bold text-sm text-red-400">A TAKIMI</h3>
+                        </div>
+                        <div class="text-center">
+                            <span id="pitch-match-balance" class="text-xs font-bold bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30">Denge Hesaplaması</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <h3 class="font-bold text-sm text-blue-400">B TAKIMI</h3>
+                            <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                        </div>
+                    </div>
+
+                    <!-- Tactical Pitch Graphic -->
+                    <div class="pitch-bg rounded-xl border-2 border-emerald-600/50 min-h-[440px] p-4 flex flex-col justify-between relative overflow-hidden">
+                        <div class="pitch-lines"></div>
+                        <div class="pitch-center-circle"></div>
+                        <div class="pitch-center-line"></div>
+                        <div class="pitch-box-top"></div>
+                        <div class="pitch-box-bottom"></div>
+
+                        <!-- Team A Side -->
+                        <div id="pitch-team-a" class="relative z-10 grid grid-cols-3 sm:grid-cols-4 gap-2 text-center my-2"></div>
+
+                        <div class="relative z-10 text-center my-1">
+                            <span class="bg-slate-900/80 text-emerald-400 text-[10px] uppercase tracking-widest px-3 py-0.5 rounded-full border border-emerald-500/30 font-bold">
+                                SANTRAL ÇİZGİSİ
+                            </span>
+                        </div>
+
+                        <!-- Team B Side -->
+                        <div id="pitch-team-b" class="relative z-10 grid grid-cols-3 sm:grid-cols-4 gap-2 text-center my-2"></div>
+                    </div>
+                </div>
+
+                <!-- Analysis Summary -->
+                <div class="space-y-6">
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-700 space-y-4">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-robot text-emerald-400"></i> Güç Dengesi ve Analiz
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-red-400 font-semibold">Takım A Ortalama Rating</span>
+                                    <span id="team-a-avg-score" class="font-bold text-white">0</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div id="team-a-score-bar" class="bg-red-500 h-full" style="width: 50%;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-blue-400 font-semibold">Takım B Ortalama Rating</span>
+                                    <span id="team-b-avg-score" class="font-bold text-white">0</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div id="team-b-score-bar" class="bg-blue-500 h-full" style="width: 50%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1">
+                            <p class="font-semibold text-emerald-400">Algoritma Değerlendirmesi:</p>
+                            <p id="ai-verdict-desc" class="leading-relaxed text-[11px] text-slate-300">
+                                Kadrodaki oyuncuların öz ve akran puanları dengelenerek oluşturulmuştur.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-700">
+                        <h3 class="font-bold text-white text-xs mb-3">Takım Listeleri</h3>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <h4 class="font-bold text-red-400 mb-2 border-b border-red-500/20 pb-1">Takım A</h4>
+                                <ul id="list-team-a-names" class="space-y-1 text-slate-300 text-[11px]"></ul>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-blue-400 mb-2 border-b border-blue-500/20 pb-1">Takım B</h4>
+                                <ul id="list-team-b-names" class="space-y-1 text-slate-300 text-[11px]"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: MVP VOTING -->
+        <section id="tab-mvp-vote" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="mb-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-award text-amber-400"></i> Maç Sonu MVP Oylaması
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">Bu haftanın en değerli oyuncusunu (MVP) seçmek için tüm oyuncular oy verebilir.</p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">Oy Kullanan Oyuncu:</label>
+                        <select id="mvp-voter-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                            <option value="">-- Adınızı Seçin --</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Hangi Oyuncuya Oy Veriyorsunuz?</h3>
+                        <div id="mvp-nominees-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+                            <!-- Dynamic Nominees -->
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-xs text-slate-400" id="total-votes-cast">Toplam Oy: 0</span>
+                        <button onclick="submitMVPVote()" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Oyu Gönder
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: ADMIN MATCH RECORD ENTRY -->
+        <section id="tab-admin" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="mb-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-check text-emerald-400"></i> Maç Kaydı ve Gol/Asist Girişi
+                    </h2>
+                    <p class="text-sm text-slate-400">Skorları, gol ve asistleri kaydederek liderlik tablosunu güncelleyin.</p>
+                </div>
+
+                <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 mb-6">
+                    <div class="text-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">MAÇ SKORU</div>
+                    <div class="flex items-center justify-center space-x-6">
+                        <div class="text-center">
+                            <span class="block text-xs font-bold text-red-400 mb-2">Takım A</span>
+                            <input type="number" id="admin-score-a" value="0" min="0" class="w-16 sm:w-20 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+                        </div>
+
+                        <span class="text-2xl font-black text-slate-600">-</span>
+
+                        <div class="text-center">
+                            <span class="block text-xs font-bold text-blue-400 mb-2">Takım B</span>
+                            <input type="number" id="admin-score-b" value="0" min="0" class="w-16 sm:w-20 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-6">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Gol ve Asist Girişi</h3>
+                    <div id="admin-player-stats-rows" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                        <!-- Dynamic Player Rows -->
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex justify-end">
+                    <button onclick="saveMatchResult()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-8 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Maç Kaydını İşle
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 border-t border-emerald-500/30 py-2.5 px-3 backdrop-blur-md">
+        <div class="flex items-center space-x-3 max-w-7xl mx-auto overflow-hidden">
+            <div class="flex items-center space-x-2 bg-gradient-to-r from-red-600 to-amber-600 text-white font-black text-[11px] px-3 py-1 rounded-lg shrink-0 shadow">
+                <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                <span>TELEGOL AI CANLI YORUM</span>
+            </div>
+
+            <div class="ticker-wrap flex-grow text-xs font-medium text-slate-200">
+                <div class="ticker-move flex items-center space-x-8" id="commentators-ticker-content">
+                    <!-- Dynamic Commentator Quotes will render here -->
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification Toast -->
+    <div id="toast-msg" class="fixed bottom-16 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 border border-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>
+        <span id="toast-text" class="text-sm font-medium">İşlem yapıldı.</span>
+    </div>
+
+    <script>
+        // Default initial players if localStorage is completely empty
+        const initialDefaultPlayers = [
+            { id: 101, name: "Ahmet Yılmaz", position: "Forvet", selfRating: 88, peerRatings: [82, 85, 80], rating: 85, matches: 6, goals: 12, assists: 4, mvpCount: 2, attributes: { pace: 85, shooting: 88, passing: 75, dribbling: 82, defending: 50, physical: 78 }, selected: true },
+            { id: 102, name: "Mehmet Demir", position: "Orta Saha", selfRating: 92, peerRatings: [68, 70, 72], rating: 73, matches: 6, goals: 3, assists: 9, mvpCount: 1, attributes: { pace: 70, shooting: 65, passing: 85, dribbling: 78, defending: 65, physical: 70 }, selected: true },
+            { id: 103, name: "Ali Kaya", position: "Defans", selfRating: 75, peerRatings: [88, 86, 90], rating: 86, matches: 5, goals: 1, assists: 5, mvpCount: 1, attributes: { pace: 72, shooting: 55, passing: 78, dribbling: 65, defending: 89, physical: 88 }, selected: true },
+            { id: 104, name: "Can Öztürk", position: "Kaleci", selfRating: 80, peerRatings: [84, 86, 82], rating: 83, matches: 6, goals: 0, assists: 2, mvpCount: 1, attributes: { pace: 60, shooting: 40, passing: 70, dribbling: 50, defending: 88, physical: 80 }, selected: true }
+        ];
+
+        let players = JSON.parse(localStorage.getItem('hs_players_v3')) || initialDefaultPlayers;
+        let matches = JSON.parse(localStorage.getItem('hs_matches_v3')) || [];
+        let mvpVotes = JSON.parse(localStorage.getItem('hs_mvp_votes_v3')) || [];
+
+        let currentTeamA = [];
+        let currentTeamB = [];
+        let selectedMVPPlayerId = null;
+
+        function saveData() {
+            localStorage.setItem('hs_players_v3', JSON.stringify(players));
+            localStorage.setItem('hs_matches_v3', JSON.stringify(matches));
+            localStorage.setItem('hs_mvp_votes_v3', JSON.stringify(mvpVotes));
+            updateCommentatorTicker();
+        }
+
+        // Calculate True Rating Formula: 30% Self Rating + 70% Peer Average + Bonus
+        function calculateTrueRating(player) {
+            const self = player.selfRating || 70;
+            const peers = player.peerRatings || [];
+            
+            let peerAvg = self;
+            if (peers.length > 0) {
+                peerAvg = peers.reduce((a, b) => a + b, 0) / peers.length;
+            }
+
+            // Stat Bonuses
+            const goalBonus = Math.min((player.goals || 0) * 0.5, 5);
+            const assistBonus = Math.min((player.assists || 0) * 0.3, 3);
+            const mvpBonus = (player.mvpCount || 0) * 1.5;
+
+            const baseRating = (self * 0.30) + (peerAvg * 0.70);
+            const finalRating = Math.min(Math.round(baseRating + goalBonus + assistBonus + mvpBonus), 99);
+            
+            return {
+                trueRating: finalRating,
+                peerAvg: Math.round(peerAvg),
+                selfRating: self
+            };
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-emerald-400', 'bg-slate-800');
+                btn.classList.add('text-slate-300');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('text-emerald-400', 'bg-slate-800');
+                activeBtn.classList.remove('text-slate-300');
+            }
+
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'players') renderPlayerManagement();
+            if (tabId === 'evaluation') populateUserDropdown();
+            if (tabId === 'generator') renderGeneratorControls();
+            if (tabId === 'mvp-vote') renderMVPVoteTab();
+            if (tabId === 'admin') renderAdminRows();
+        }
+
+        function updateCommentatorTicker() {
+            const container = document.getElementById('commentators-ticker-content');
+            if (!container) return;
+
+            if (players.length === 0) {
+                container.innerHTML = `<span class="text-slate-400 italic">Sistemde henüz yorumlanacak oyuncu verisi bulunmuyor. Sol üstten oyuncu ekleyebilirsiniz.</span>`;
+                return;
+            }
+
+            let quotes = [];
+
+            // Find key stats
+            const sortedByRating = [...players].sort((a,b) => calculateTrueRating(b).trueRating - calculateTrueRating(a).trueRating);
+            const sortedByGoals = [...players].sort((a,b) => b.goals - a.goals);
+            const sortedByAssists = [...players].sort((a,b) => b.assists - a.assists);
+            
+            // Find player with biggest self vs peer gap
+            let maxGapPlayer = null;
+            let maxGap = -1;
+            players.forEach(p => {
+                const tr = calculateTrueRating(p);
+                const gap = p.selfRating - tr.peerAvg;
+                if (gap > maxGap) {
+                    maxGap = gap;
+                    maxGapPlayer = p;
+                }
+            });
+
+            // 1. Rıdvan Dilmen Quote
+            const topRatingPlayer = sortedByRating[0];
+            if (topRatingPlayer) {
+                const tr = calculateTrueRating(topRatingPlayer).trueRating;
+                quotes.push(`
+                    <span class="flex items-center gap-2">
+                        <span class="font-extrabold text-amber-400">Rıdvan Dilmen:</span>
+                        <span>"Bakın kardeşim, <strong class="text-emerald-400">${topRatingPlayer.name}</strong>'nin genel ${tr}'lik rating'i tesadüf değil! ${topRatingPlayer.goals} gol, ${topRatingPlayer.assists} asistlik istatistiğiyle sahada şeytan gibi aralara kaçıyor!"</span>
+                    </span>
+                `);
+            }
+
+            // 2. Erman Toroğlu Quote (Self vs Peer Rating Gap)
+            if (maxGapPlayer && maxGap > 10) {
+                const tr = calculateTrueRating(maxGapPlayer);
+                quotes.push(`
+                    <span class="flex items-center gap-2">
+                        <span class="font-extrabold text-red-400">Erman Toroğlu:</span>
+                        <span>"Arkadaş bu <strong class="text-yellow-300">${maxGapPlayer.name}</strong> kendine ${maxGapPlayer.selfRating} basmış ama millete sorduk ortalama ${tr.peerAvg} vermiş! Oynadığın topa bak, kendine verdiğin karta bak! Telegolde anlatayım ben sana..."</span>
+                    </span>
+                `);
+            }
+
+            // 3. Ahmet Çakar Quote
+            const topAssister = sortedByAssists[0];
+            if (topAssister && topAssister.assists > 0) {
+                quotes.push(`
+                    <span class="flex items-center gap-2">
+                        <span class="font-extrabold text-purple-400">Ahmet Çakar:</span>
+                        <span>"Bakın, bakın! <strong class="text-emerald-400">${topAssister.name}</strong>'in ${topAssister.assists} asistlik genel performansına bakın! Eğer bu adam önümüzdeki hafta da AI kadrosunda ilk 8'e giremezse ben bu mesleği bırakırım!"</span>
+                    </span>
+                `);
+            }
+
+            // 4. Mehmet Demirkol Quote
+            const topScorer = sortedByGoals[0];
+            if (topScorer) {
+                quotes.push(`
+                    <span class="flex items-center gap-2">
+                        <span class="font-extrabold text-blue-400">Mehmet Demirkol:</span>
+                        <span>"Sistem verilerini inceliyorum... <strong class="text-white">${topScorer.name}</strong> toplam ${topScorer.goals} gole ulaşmış. Akran reytingi ile istatistik ortalaması arasındaki korelasyon halı saha standartlarının çok üzerinde."</span>
+                    </span>
+                `);
+            }
+
+            // 5. Sinan Engin Quote
+            const randomPlayer = players[Math.floor(Math.random() * players.length)];
+            if (randomPlayer) {
+                quotes.push(`
+                    <span class="flex items-center gap-2">
+                        <span class="font-extrabold text-emerald-400">Sinan Engin:</span>
+                        <span>"Oğlum <strong class="text-amber-300">${randomPlayer.name}</strong>'e bak, ${randomPlayer.matches} maçta taş gibi top oynamış! Aslanım benim, haftaya forvet başlarsa yakarım bu ligi!"</span>
+                    </span>
+                `);
+            }
+
+            // 6. Sergen Yalçın Quote
+            quotes.push(`
+                <span class="flex items-center gap-2">
+                    <span class="font-extrabold text-teal-400">Sergen Yalçın:</span>
+                    <span>"Şimdi kardeşlerim, antrenman yapmadan gelip kendini 90'lık topçu sananlar var. İstatistik yalan söylemez, çıkacaksın topunu oynayacaksın."</span>
+                </span>
+            `);
+
+            // Duplicate for smooth infinite loop
+            const fullContent = quotes.join('<span class="text-slate-600 px-4">•</span>') + '<span class="text-slate-600 px-4">•</span>' + quotes.join('<span class="text-slate-600 px-4">•</span>');
+            container.innerHTML = fullContent;
+        }
+
+        // PLAYER MANAGEMENT FUNCTIONS
+        function handlePlayerSubmit(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-player-id').value;
+            const name = document.getElementById('player-name').value.trim();
+            const position = document.getElementById('player-position').value;
+            const selfRating = parseInt(document.getElementById('player-self-rating').value) || 75;
+
+            const pace = parseInt(document.getElementById('attr-pace').value) || 70;
+            const shooting = parseInt(document.getElementById('attr-shooting').value) || 70;
+            const passing = parseInt(document.getElementById('attr-passing').value) || 70;
+            const dribbling = parseInt(document.getElementById('attr-dribbling').value) || 70;
+            const defending = parseInt(document.getElementById('attr-defending').value) || 70;
+            const physical = parseInt(document.getElementById('attr-physical').value) || 70;
+
+            if (editId) {
+                const player = players.find(p => p.id === parseInt(editId));
+                if (player) {
+                    player.name = name;
+                    player.position = position;
+                    player.selfRating = selfRating;
+                    player.attributes = { pace, shooting, passing, dribbling, defending, physical };
+                    showToast("Oyuncu verileri güncellendi.");
+                }
+            } else {
+                const newPlayer = {
+                    id: Date.now(),
+                    name: name,
+                    position: position,
+                    selfRating: selfRating,
+                    peerRatings: [],
+                    rating: selfRating,
+                    matches: 0,
+                    goals: 0,
+                    assists: 0,
+                    mvpCount: 0,
+                    attributes: { pace, shooting, passing, dribbling, defending, physical },
+                    selected: true
+                };
+                players.push(newPlayer);
+                showToast("Yeni oyuncu başarıyla eklendi.");
+            }
+
+            saveData();
+            resetPlayerForm();
+            renderPlayerManagement();
+        }
+
+        function editPlayer(id) {
+            const player = players.find(p => p.id === id);
+            if (!player) return;
+
+            document.getElementById('edit-player-id').value = player.id;
+            document.getElementById('player-name').value = player.name;
+            document.getElementById('player-position').value = player.position;
+            document.getElementById('player-self-rating').value = player.selfRating || 75;
+
+            document.getElementById('attr-pace').value = player.attributes.pace;
+            document.getElementById('attr-shooting').value = player.attributes.shooting;
+            document.getElementById('attr-passing').value = player.attributes.passing;
+            document.getElementById('attr-dribbling').value = player.attributes.dribbling;
+            document.getElementById('attr-defending').value = player.attributes.defending;
+            document.getElementById('attr-physical').value = player.attributes.physical;
+
+            document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-pen text-amber-400"></i> Oyuncu Düzenle`;
+            document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Güncelle`;
+        }
+
+        function deletePlayer(id) {
+            if (confirm("Bu oyuncuyu silmek istediğinize emin misiniz?")) {
+                players = players.filter(p => p.id !== id);
+                saveData();
+                renderPlayerManagement();
+                showToast("Oyuncu silindi.");
+            }
+        }
+
+        function resetPlayerForm() {
+            document.getElementById('edit-player-id').value = '';
+            document.getElementById('player-name').value = '';
+            document.getElementById('player-position').value = 'Orta Saha';
+            document.getElementById('player-self-rating').value = 75;
+            document.getElementById('attr-pace').value = 75;
+            document.getElementById('attr-shooting').value = 70;
+            document.getElementById('attr-passing').value = 75;
+            document.getElementById('attr-dribbling').value = 70;
+            document.getElementById('attr-defending').value = 65;
+            document.getElementById('attr-physical').value = 70;
+
+            document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Oyuncu Kaydı`;
+            document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-check"></i> Kaydet`;
+        }
+
+        function renderPlayerManagement() {
+            document.getElementById('player-list-count').textContent = `${players.length} Oyuncu`;
+            const grid = document.getElementById('players-card-grid');
+            grid.innerHTML = '';
+
+            if (players.length === 0) {
+                grid.innerHTML = `<p class="text-xs text-slate-500 italic col-span-2 text-center py-6">Kayıtlı oyuncu yok. Sol panelden yeni oyuncu ekleyebilirsiniz.</p>`;
+                return;
+            }
+
+            players.forEach(p => {
+                const tr = calculateTrueRating(p);
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-800 text-emerald-400 font-extrabold flex items-center justify-center text-xs border border-slate-700 shadow">
+                            ${p.name.charAt(0)}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">${p.name}</p>
+                            <p class="text-[10px] text-emerald-400 font-semibold">${p.position} • Öz: <span class="text-amber-400">${p.selfRating || 70}</span> | Akran: <span class="text-blue-400">${tr.peerAvg}</span></p>
+                            <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <button onclick="editPlayer(${p.id})" class="p-1.5 text-slate-400 hover:text-amber-400 text-xs">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="deletePlayer(${p.id})" class="p-1.5 text-slate-400 hover:text-red-400 text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // DASHBOARD RENDER
+        function renderDashboard() {
+            document.getElementById('stat-total-players').textContent = players.length;
+            document.getElementById('stat-total-matches').textContent = matches.length;
+            
+            const totalGoals = players.reduce((sum, p) => sum + p.goals, 0);
+            document.getElementById('stat-total-goals').textContent = totalGoals;
+
+            const lastMatch = matches[0];
+            document.getElementById('stat-mvp').textContent = lastMatch ? lastMatch.mvp : 'Henüz Seçilmedi';
+
+            // Leaderboard
+            const tbody = document.getElementById('player-leaderboard-body');
+            tbody.innerHTML = '';
+
+            const sorted = [...players].sort((a, b) => calculateTrueRating(b).trueRating - calculateTrueRating(a).trueRating);
+
+            if (sorted.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-xs text-slate-500">Oyuncu verisi bulunmuyor.</td></tr>`;
+            } else {
+                sorted.forEach((player, index) => {
+                    const trStats = calculateTrueRating(player);
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-800/50 transition-colors';
+                    tr.innerHTML = `
+                        <td class="py-3 px-2 font-bold text-slate-500 text-xs">${index + 1}</td>
+                        <td class="py-3 px-2 font-bold text-white text-xs flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center text-[10px] border border-slate-700">
+                                ${player.name.charAt(0)}
+                            </div>
+                            ${player.name}
+                        </td>
+                        <td class="py-3 px-2"><span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700">${player.position}</span></td>
+                        <td class="py-3 px-2 text-center text-xs">
+                            <span class="text-amber-400 font-bold">${player.selfRating || 70}</span> / <span class="text-blue-400 font-bold">${trStats.peerAvg}</span>
+                        </td>
+                        <td class="py-3 px-2 text-center text-slate-300 text-xs">${player.matches}</td>
+                        <td class="py-3 px-2 text-center text-xs"><span class="text-amber-400 font-bold">${player.goals}</span> / <span class="text-blue-400 font-bold">${player.assists}</span></td>
+                        <td class="py-3 px-2 text-center font-bold text-purple-400 text-xs">${player.mvpCount || 0}</td>
+                        <td class="py-3 px-2 text-right font-black text-emerald-400 text-sm">${trStats.trueRating}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Top Scorers
+            const scorersContainer = document.getElementById('top-scorers-list');
+            scorersContainer.innerHTML = '';
+            [...players].sort((a, b) => b.goals - a.goals).slice(0, 4).forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold text-amber-400">#${idx + 1}</span>
+                        <span class="font-bold text-slate-200">${p.name}</span>
+                    </div>
+                    <span class="font-black text-orange-400">${p.goals} Gol</span>
+                `;
+                scorersContainer.appendChild(div);
+            });
+
+            // Top Assists
+            const assistsContainer = document.getElementById('top-assists-list');
+            assistsContainer.innerHTML = '';
+            [...players].sort((a, b) => b.assists - a.assists).slice(0, 4).forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold text-blue-400">#${idx + 1}</span>
+                        <span class="font-bold text-slate-200">${p.name}</span>
+                    </div>
+                    <span class="font-black text-blue-400">${p.assists} Asist</span>
+                `;
+                assistsContainer.appendChild(div);
+            });
+
+            // Recent Matches
+            const matchContainer = document.getElementById('recent-matches-container');
+            matchContainer.innerHTML = '';
+            if (matches.length === 0) {
+                matchContainer.innerHTML = `<p class="text-xs text-slate-500 italic">Henüz kaydedilmiş maç bulunmuyor.</p>`;
+            } else {
+                matches.forEach(m => {
+                    const card = document.createElement('div');
+                    card.className = 'p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs';
+                    card.innerHTML = `
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-1">${m.date}</span>
+                            <div class="flex items-center space-x-2 font-bold">
+                                <span class="text-red-400">Takım A</span>
+                                <span class="bg-slate-800 px-2.5 py-0.5 rounded text-white font-black">${m.teamAScore} - ${m.teamBScore}</span>
+                                <span class="text-blue-400">Takım B</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-amber-400 font-bold block">MVP</span>
+                            <span class="font-bold text-slate-200">${m.mvp}</span>
+                        </div>
+                    `;
+                    matchContainer.appendChild(card);
+                });
+            }
+
+            updateCommentatorTicker();
+        }
+
+        // EVALUATION FUNCTIONS
+        function populateUserDropdown() {
+            const select = document.getElementById('eval-current-user');
+            select.innerHTML = '<option value="">-- Oyuncu Seçiniz --</option>';
+            players.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} (${p.position})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function goToEvalStep(step) {
+            const userSelect = document.getElementById('eval-current-user');
+            if (step === 2 && !userSelect.value) {
+                showToast("Lütfen önce oy kullanan kendi adınızı seçin!");
+                return;
+            }
+
+            document.getElementById('eval-step-1').classList.add('hidden');
+            document.getElementById('eval-step-2').classList.add('hidden');
+            document.getElementById(`eval-step-${step}`).classList.remove('hidden');
+
+            if (step === 2) renderPeerRatingFields();
+        }
+
+        function renderPeerRatingFields() {
+            const container = document.getElementById('peer-ratings-list');
+            container.innerHTML = '';
+
+            const selectedId = parseInt(document.getElementById('eval-current-user').value);
+            const peers = players.filter(p => p.id !== selectedId);
+
+            peers.forEach(peer => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center text-xs border border-slate-700">
+                            ${peer.name.charAt(0)}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">${peer.name}</p>
+                            <p class="text-[10px] text-slate-400">${peer.position} • Öz Rating: ${peer.selfRating || 70}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-slate-400">Puan:</span>
+                        <input type="number" min="40" max="100" value="80" data-peer-id="${peer.id}" class="peer-score-input w-16 bg-slate-800 border border-slate-700 text-emerald-400 text-xs font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function submitEvaluation() {
+            const inputs = document.querySelectorAll('.peer-score-input');
+            inputs.forEach(input => {
+                const peerId = parseInt(input.getAttribute('data-peer-id'));
+                const score = parseInt(input.value) || 75;
+                const peer = players.find(p => p.id === peerId);
+                if (peer) {
+                    if (!peer.peerRatings) peer.peerRatings = [];
+                    peer.peerRatings.push(score);
+                }
+            });
+
+            saveData();
+            showToast("Akran değerlendirmeleri kaydedildi.");
+            goToEvalStep(1);
+            switchTab('generator');
+        }
+
+        // AI TEAM GENERATOR
+        function renderGeneratorControls() {
+            const grid = document.getElementById('player-checkbox-grid');
+            grid.innerHTML = '';
+
+            players.forEach(p => {
+                const tr = calculateTrueRating(p).trueRating;
+                const label = document.createElement('label');
+                label.className = `flex items-center space-x-2 p-2 rounded-xl border cursor-pointer transition-all ${
+                    p.selected ? 'bg-emerald-500/10 border-emerald-500/40 text-white' : 'bg-slate-900/50 border-slate-800 text-slate-400'
+                }`;
+                label.innerHTML = `
+                    <input type="checkbox" ${p.selected ? 'checked' : ''} onchange="togglePlayerSelection(${p.id}, this.checked)" class="accent-emerald-500 rounded">
+                    <div class="truncate text-xs font-semibold">
+                        <span>${p.name}</span>
+                        <span class="text-[10px] text-emerald-400 block">${p.position} (${tr})</span>
+                    </div>
+                `;
+                grid.appendChild(label);
+            });
+
+            updateSelectedCount();
+            generateAITeams();
+        }
+
+        function togglePlayerSelection(id, checked) {
+            const p = players.find(x => x.id === id);
+            if (p) p.selected = checked;
+            updateSelectedCount();
+            generateAITeams();
+        }
+
+        function toggleAllPlayers(select) {
+            players.forEach(p => p.selected = select);
+            renderGeneratorControls();
+        }
+
+        function updateSelectedCount() {
+            const count = players.filter(p => p.selected).length;
+            document.getElementById('selected-player-count').textContent = count;
+        }
+
+        function generateAITeams() {
+            const activePlayers = players.filter(p => p.selected);
+
+            if (activePlayers.length < 2) {
+                currentTeamA = [];
+                currentTeamB = [];
+                renderPitchDisplay();
+                return;
+            }
+
+            // Sort by True Rating
+            const sorted = [...activePlayers].sort((a, b) => calculateTrueRating(b).trueRating - calculateTrueRating(a).trueRating);
+
+            let teamA = [];
+            let teamB = [];
+
+            sorted.forEach((p) => {
+                const sumA = teamA.reduce((s, x) => s + calculateTrueRating(x).trueRating, 0);
+                const sumB = teamB.reduce((s, x) => s + calculateTrueRating(x).trueRating, 0);
+
+                if (sumA <= sumB) teamA.push(p);
+                else teamB.push(p);
+            });
+
+            currentTeamA = teamA;
+            currentTeamB = teamB;
+
+            renderPitchDisplay();
+            renderAIAnalysis();
+        }
+
+        function renderPitchDisplay() {
+            const pitchA = document.getElementById('pitch-team-a');
+            const pitchB = document.getElementById('pitch-team-b');
+
+            pitchA.innerHTML = '';
+            pitchB.innerHTML = '';
+
+            currentTeamA.forEach(p => {
+                const tr = calculateTrueRating(p).trueRating;
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/90 border border-red-500/40 p-1.5 rounded-xl text-center shadow';
+                card.innerHTML = `
+                    <p class="text-xs font-bold text-white truncate">${p.name}</p>
+                    <p class="text-[10px] text-red-300 font-extrabold">${p.position} • ${tr}</p>
+                `;
+                pitchA.appendChild(card);
+            });
+
+            currentTeamB.forEach(p => {
+                const tr = calculateTrueRating(p).trueRating;
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/90 border border-blue-500/40 p-1.5 rounded-xl text-center shadow';
+                card.innerHTML = `
+                    <p class="text-xs font-bold text-white truncate">${p.name}</p>
+                    <p class="text-[10px] text-blue-300 font-extrabold">${p.position} • ${tr}</p>
+                `;
+                pitchB.appendChild(card);
+            });
+
+            document.getElementById('list-team-a-names').innerHTML = currentTeamA.map(p => `<li class="flex justify-between"><span>${p.name}</span><span class="font-bold text-red-400">${calculateTrueRating(p).trueRating}</span></li>`).join('');
+            document.getElementById('list-team-b-names').innerHTML = currentTeamB.map(p => `<li class="flex justify-between"><span>${p.name}</span><span class="font-bold text-blue-400">${calculateTrueRating(p).trueRating}</span></li>`).join('');
+        }
+
+        function renderAIAnalysis() {
+            const sumA = currentTeamA.reduce((s, x) => s + calculateTrueRating(x).trueRating, 0);
+            const sumB = currentTeamB.reduce((s, x) => s + calculateTrueRating(x).trueRating, 0);
+
+            const avgA = currentTeamA.length ? (sumA / currentTeamA.length).toFixed(1) : 0;
+            const avgB = currentTeamB.length ? (sumB / currentTeamB.length).toFixed(1) : 0;
+
+            document.getElementById('team-a-avg-score').textContent = avgA;
+            document.getElementById('team-b-avg-score').textContent = avgB;
+
+            const total = parseFloat(avgA) + parseFloat(avgB);
+            const pctA = total ? ((avgA / total) * 100).toFixed(1) : 50;
+            const pctB = total ? ((avgB / total) * 100).toFixed(1) : 50;
+
+            document.getElementById('team-a-score-bar').style.width = `${pctA}%`;
+            document.getElementById('team-b-score-bar').style.width = `${pctB}%`;
+            document.getElementById('pitch-match-balance').textContent = `Güç Dengesi: %${pctA} vs %${pctB}`;
+        }
+
+        // MVP VOTING SYSTEM
+        function renderMVPVoteTab() {
+            const select = document.getElementById('mvp-voter-select');
+            select.innerHTML = '<option value="">-- Adınızı Seçin --</option>';
+            players.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                select.appendChild(opt);
+            });
+
+            const grid = document.getElementById('mvp-nominees-grid');
+            grid.innerHTML = '';
+            selectedMVPPlayerId = null;
+
+            players.forEach(p => {
+                const card = document.createElement('div');
+                card.id = `mvp-card-${p.id}`;
+                card.onclick = () => selectMVPNominee(p.id);
+                card.className = 'cursor-pointer bg-slate-900/80 p-3 rounded-xl border border-slate-800 hover:border-amber-400 transition-all flex items-center justify-between';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-xs border border-slate-700">
+                            ${p.name.charAt(0)}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">${p.name}</p>
+                            <p class="text-[10px] text-slate-400">${p.position}</p>
+                        </div>
+                    </div>
+                    <span class="text-xs text-amber-400 font-extrabold" id="mvp-votes-${p.id}">
+                        ${mvpVotes.filter(v => v.nomineeId === p.id).length} Oy
+                    </span>
+                `;
+                grid.appendChild(card);
+            });
+
+            document.getElementById('total-votes-cast').textContent = `Toplam Oy: ${mvpVotes.length}`;
+        }
+
+        function selectMVPNominee(id) {
+            selectedMVPPlayerId = id;
+            players.forEach(p => {
+                const el = document.getElementById(`mvp-card-${p.id}`);
+                if (el) {
+                    if (p.id === id) {
+                        el.classList.add('border-amber-400', 'bg-amber-500/10');
+                    } else {
+                        el.classList.remove('border-amber-400', 'bg-amber-500/10');
+                    }
+                }
+            });
+        }
+
+        function submitMVPVote() {
+            const voterId = parseInt(document.getElementById('mvp-voter-select').value);
+            if (!voterId) {
+                showToast("Lütfen oy kullanan kişi olarak kendi adınızı seçin.");
+                return;
+            }
+            if (!selectedMVPPlayerId) {
+                showToast("Lütfen MVP seçmek istediğiniz oyuncuya tıklayın.");
+                return;
+            }
+
+            mvpVotes.push({ voterId, nomineeId: selectedMVPPlayerId });
+            
+            const nominee = players.find(p => p.id === selectedMVPPlayerId);
+            if (nominee) {
+                nominee.mvpCount = (nominee.mvpCount || 0) + 1;
+            }
+
+            saveData();
+            showToast("MVP oyunuz başarıyla gönderildi!");
+            renderMVPVoteTab();
+        }
+
+        // ADMIN MATCH SAVE
+        function renderAdminRows() {
+            const container = document.getElementById('admin-player-stats-rows');
+            container.innerHTML = '';
+
+            players.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs';
+                row.innerHTML = `
+                    <span class="font-bold text-white">${p.name} (${p.position})</span>
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-1">
+                            <span class="text-slate-400 text-[10px]">Gol:</span>
+                            <input type="number" min="0" value="0" data-player-id="${p.id}" class="admin-goal-input w-12 bg-slate-800 border border-slate-700 rounded-lg p-1 text-center font-bold text-amber-400">
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-slate-400 text-[10px]">Asist:</span>
+                            <input type="number" min="0" value="0" data-player-id="${p.id}" class="admin-assist-input w-12 bg-slate-800 border border-slate-700 rounded-lg p-1 text-center font-bold text-blue-400">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function saveMatchResult() {
+            const scoreA = parseInt(document.getElementById('admin-score-a').value) || 0;
+            const scoreB = parseInt(document.getElementById('admin-score-b').value) || 0;
+
+            const goalInputs = document.querySelectorAll('.admin-goal-input');
+            const assistInputs = document.querySelectorAll('.admin-assist-input');
+
+            let topScorer = 'Belirtilmedi';
+            let maxGoals = -1;
+
+            goalInputs.forEach(input => {
+                const pId = parseInt(input.getAttribute('data-player-id'));
+                const goals = parseInt(input.value) || 0;
+                if (goals > 0) {
+                    const p = players.find(x => x.id === pId);
+                    if (p) {
+                        p.goals = (p.goals || 0) + goals;
+                        p.matches = (p.matches || 0) + 1;
+                        if (goals > maxGoals) {
+                            maxGoals = goals;
+                            topScorer = p.name;
+                        }
+                    }
+                }
+            });
+
+            assistInputs.forEach(input => {
+                const pId = parseInt(input.getAttribute('data-player-id'));
+                const assists = parseInt(input.value) || 0;
+                if (assists > 0) {
+                    const p = players.find(x => x.id === pId);
+                    if (p) p.assists = (p.assists || 0) + assists;
+                }
+            });
+
+            const newMatch = {
+                id: Date.now(),
+                date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }),
+                teamAScore: scoreA,
+                teamBScore: scoreB,
+                mvp: topScorer
+            };
+
+            matches.unshift(newMatch);
+            saveData();
+            showToast("Maç kaydı başarıyla işlendi ve tüm istatistikler güncellendi!");
+            switchTab('dashboard');
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast-msg');
+            document.getElementById('toast-text').textContent = text;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        window.onload = function() {
+            renderDashboard();
+            updateCommentatorTicker();
+        };
+    </script>
+</body>
+</html>
