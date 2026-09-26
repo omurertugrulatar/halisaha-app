@@ -380,17 +380,20 @@
                         <i class="fa-solid fa-user-pen text-emerald-400"></i> Öz Değerlendirme & Akran Puanlaması
                     </h2>
                     <p class="text-sm text-slate-400 mt-1">Girdiğiniz öz puanlar ile diğer oyuncuların size verdiği puanlar harmanlanarak sistemde 'Gerçek Rating' oluşur.</p>
+                    <p class="text-xs text-amber-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Her oyuncu bir değerlendirme döneminde yalnızca 1 kez akran değerlendirmesi yapabilir ve kaydedildikten sonra güncellenemez. Dönemler her Perşembe 00:01'de sıfırlanır.</p>
                 </div>
 
                 <!-- Step 1: Select Evaluator -->
                 <div id="eval-step-1" class="space-y-4">
                     <label class="block text-sm font-medium text-slate-300">Oy kullanan oyuncuyu seçiniz:</label>
-                    <select id="eval-current-user" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <select id="eval-current-user" onchange="checkVoterEvalStatus()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                         <option value="">-- Oyuncu Seçiniz --</option>
                     </select>
 
+                    <p id="eval-voter-status" class="text-xs font-semibold min-h-[1rem]"></p>
+
                     <div class="pt-4 flex justify-end">
-                        <button onclick="goToEvalStep(2)" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs">
+                        <button id="eval-step2-btn" onclick="goToEvalStep(2)" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
                             Diğer Oyuncuları Puanla <i class="fa-solid fa-arrow-right"></i>
                         </button>
                     </div>
@@ -702,6 +705,8 @@
         let players = JSON.parse(localStorage.getItem('hs_players_v3')) || initialDefaultPlayers;
         let matches = JSON.parse(localStorage.getItem('hs_matches_v3')) || [];
         let mvpVotes = JSON.parse(localStorage.getItem('hs_mvp_votes_v3')) || [];
+        // Her oyuncunun akran değerlendirmesi yaptığı en son zaman damgası: { voterId: timestampMs }
+        let voterEvalLog = JSON.parse(localStorage.getItem('hs_voter_eval_log_v1')) || {};
 
         let currentTeamA = [];
         let currentTeamB = [];
@@ -711,7 +716,46 @@
             localStorage.setItem('hs_players_v3', JSON.stringify(players));
             localStorage.setItem('hs_matches_v3', JSON.stringify(matches));
             localStorage.setItem('hs_mvp_votes_v3', JSON.stringify(mvpVotes));
+            localStorage.setItem('hs_voter_eval_log_v1', JSON.stringify(voterEvalLog));
             updateCommentatorTicker();
+        }
+
+        // İçinde bulunulan değerlendirme döneminin başlangıcını hesaplar.
+        // Dönemler her Perşembe 00:01'de sıfırlanır (bir önceki Perşembe 00:01 - bir sonraki Perşembe 00:00:59 arası tek dönemdir).
+        function getCurrentPeriodStart(now = new Date()) {
+            const THURSDAY = 4; // JS: 0=Pazar, 1=Pazartesi ... 4=Perşembe
+            const daysSinceThursday = (now.getDay() - THURSDAY + 7) % 7;
+
+            const candidate = new Date(now);
+            candidate.setDate(now.getDate() - daysSinceThursday);
+            candidate.setHours(0, 1, 0, 0);
+
+            // Eğer bugün Perşembe ama saat henüz 00:01'i geçmediyse, dönem aslında bir önceki hafta başladı
+            if (candidate.getTime() > now.getTime()) {
+                candidate.setDate(candidate.getDate() - 7);
+            }
+            return candidate;
+        }
+
+        // Bir oyuncunun bu değerlendirme döneminde (Perşembe 00:01 - sonraki Perşembe 00:01) oy kullanıp kullanamayacağını hesaplar
+        function getVoterEvalStatus(voterId) {
+            const lastSubmittedAt = voterEvalLog[voterId];
+            const periodStart = getCurrentPeriodStart();
+
+            if (!lastSubmittedAt || lastSubmittedAt < periodStart.getTime()) {
+                return { canVote: true };
+            }
+
+            const nextPeriodStart = new Date(periodStart);
+            nextPeriodStart.setDate(nextPeriodStart.getDate() + 7);
+            const remainingMs = nextPeriodStart.getTime() - Date.now();
+            const remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+
+            return {
+                canVote: false,
+                remainingDays,
+                nextDateLabel: nextPeriodStart.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' 00:01'
+            };
         }
 
         // Calculate True Rating Formula: 30% Self Rating + 70% Peer Average + Bonus
@@ -1246,13 +1290,49 @@
                 opt.textContent = `${p.name} (${p.position})`;
                 select.appendChild(opt);
             });
+            checkVoterEvalStatus();
+        }
+
+        // Dropdown'da seçim değiştiğinde bu hafta oy kullanılıp kullanılamayacağını gösterir
+        function checkVoterEvalStatus() {
+            const select = document.getElementById('eval-current-user');
+            const statusEl = document.getElementById('eval-voter-status');
+            const btn = document.getElementById('eval-step2-btn');
+            const voterId = parseInt(select.value);
+
+            if (!voterId) {
+                statusEl.textContent = '';
+                btn.disabled = false;
+                return;
+            }
+
+            const status = getVoterEvalStatus(voterId);
+            if (status.canVote) {
+                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>Bu hafta için değerlendirme yapabilirsiniz.`;
+                btn.disabled = false;
+            } else {
+                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-red-400';
+                statusEl.innerHTML = `<i class="fa-solid fa-lock mr-1"></i>Bu hafta zaten değerlendirme yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel} (${status.remainingDays} gün sonra).`;
+                btn.disabled = true;
+            }
         }
 
         function goToEvalStep(step) {
             const userSelect = document.getElementById('eval-current-user');
-            if (step === 2 && !userSelect.value) {
-                showToast("Lütfen önce oy kullanan kendi adınızı seçin!");
-                return;
+            if (step === 2) {
+                if (!userSelect.value) {
+                    showToast("Lütfen önce oy kullanan kendi adınızı seçin!");
+                    return;
+                }
+
+                const voterId = parseInt(userSelect.value);
+                const status = getVoterEvalStatus(voterId);
+                if (!status.canVote) {
+                    showToast(`Bu hafta zaten akran değerlendirmesi yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel}.`);
+                    checkVoterEvalStatus();
+                    return;
+                }
             }
 
             document.getElementById('eval-step-1').classList.add('hidden');
@@ -1298,6 +1378,16 @@
 
         function submitEvaluation() {
             const voterId = parseInt(document.getElementById('eval-current-user').value);
+
+            // Güvenlik amaçlı ikinci kontrol: sekmeler arası geçişte durum değişmiş olabilir
+            const status = getVoterEvalStatus(voterId);
+            if (!status.canVote) {
+                showToast(`Bu hafta zaten akran değerlendirmesi yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel}.`);
+                goToEvalStep(1);
+                checkVoterEvalStatus();
+                return;
+            }
+
             const cards = document.querySelectorAll('#peer-ratings-list > div');
             const votesByPeer = {};
             const incompletePeers = [];
@@ -1349,8 +1439,12 @@
                 peer.peerAttributeVotes.push({ voterId, ...vals });
             });
 
+            // Bu oyuncunun bu haftaki değerlendirmesi kaydedildi; bir hafta boyunca tekrar oy kullanamaz
+            voterEvalLog[voterId] = Date.now();
+
             saveData();
-            showToast("Akran değerlendirmeleri (nitelik bazlı) başarıyla kaydedildi.");
+            showToast("Akran değerlendirmeleri (nitelik bazlı) başarıyla kaydedildi. Bir sonraki Perşembe 00:01'e kadar tekrar oy kullanamazsınız.");
+            checkVoterEvalStatus();
             goToEvalStep(1);
             switchTab('generator');
         }
