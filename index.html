@@ -58,7 +58,7 @@ button.x{background:transparent;color:var(--mu);padding:4px 8px}
 <main>
 <h1>⚽ Halı Saha Kadro Kurucu</h1>
 <p class="sub">Puanları gir, o haftaki 14 kişiyi seç, dengeli kadroyu kur.</p>
-<div class="row" style="margin-bottom:12px"><button class="sec" id="login">☁️ Yönetici girişi</button><span id="cs" class="note"></span></div>
+<div class="row" style="margin-bottom:12px"><button class="sec" id="login">☁️ Yönetici girişi</button><button class="sec" id="push">Buluta kaydet</button><span id="cs" class="note"></span></div>
 
 <div class="card">
 <h2>1. Oyuncular ve puanlar (1-10)</h2>
@@ -79,9 +79,10 @@ button.x{background:transparent;color:var(--mu);padding:4px 8px}
 <button class="sec" id="copy" hidden>WhatsApp için kopyala</button><button class="sec" id="img" hidden>Kadro görseli oluştur</button><button class="sec" id="pub" hidden>Kadroyu yayınla (oylama)</button></div>
 <div id="out" style="margin-top:12px"></div><div id="imgOut" style="margin-top:12px"></div>
 </div>
+<div class="card"><h2>3. Gelen oylar ve puanlar</h2><div class="row"><button id="view">Oyları ve puanları göster</button></div><div id="inbox" style="margin-top:10px"></div></div>
 <div class="card"><h2>Son maçlar</h2><div id="hist" class="note"></div>
 </div>
-<p class="note">Yönetici girişi yapınca veriler Firebase'e kaydedilir. Girişsiz kullanımda yalnızca bu tarayıcıda saklanır.</p>
+<p class="note">Yönetici girişi yapınca veriler Firebase'e kaydedilir. Giriş yapmayanlar bulut verisini görür ama değiştirip kaydedemez.</p>
 </main>
 <script>
 const CATS=[["sut","Şut"],["pas","Pas"],["kon","Kondisyon"],["sav","Savunma"],["kal","Kaleci"]];
@@ -204,16 +205,42 @@ load();render();
 <script src="config.js"></script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getAuth,GoogleAuthProvider,signInWithPopup} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,doc,getDoc,setDoc,collection,getDocs} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const app=initializeApp(window.FB),auth=getAuth(app),db=getFirestore(app),ref=doc(db,"grup","veri");
 let admin=false,aktif=null,t;window.clearAktif=()=>{aktif=null};
 const $c=id=>document.getElementById(id),msg=m=>$c("cs").textContent=m;
-$c("login").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());
-const sn=await getDoc(ref);if(sn.exists()){const d=sn.data();if(d.players){players=d.players;history=d.history||[];aktif=d.aktif||null;render()}}
-admin=true;msg("Bağlı: değişiklikler buluta kaydediliyor")}catch(e){msg("Giriş hatası: "+e.code)}};
-window.cloudSave=()=>{if(!admin)return;clearTimeout(t);t=setTimeout(()=>setDoc(ref,{players,history,aktif}).catch(e=>msg("Kayıt hatası: "+e.code)),1200)};
+const stamp=()=>new Date().toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"});
+async function pull(){const sn=await getDoc(ref);if(!sn.exists())return false;const d=sn.data();if(!d.players||!d.players.length)return false;
+players=d.players;history=d.history||[];aktif=d.aktif||null;players.forEach(p=>{p.age=p.age||30;p.adj=p.adj||0;p.pos=p.pos||"O"});
+try{localStorage.setItem(KEY,JSON.stringify({players,history}))}catch(e){}render();return true}
+async function push(){clearTimeout(t);await setDoc(ref,{players,history,aktif});msg("☁️ Buluta kaydedildi "+stamp())}
+pull().then(f=>msg(f?"Bulut verisi yüklendi. Değiştirmek için yönetici girişi yap.":"Bulutta kayıtlı kadro yok.")).catch(e=>msg("Bulut okunamadı: "+e.code));
+onAuthStateChanged(auth,u=>{if(u&&!u.isAnonymous){admin=true;msg("Yönetici bağlı: değişiklikler buluta kaydediliyor")}});
+$c("login").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());admin=true;
+if(!(await pull()))await push();else msg("Bağlı: bulut verisi yüklendi, değişiklikler kaydediliyor")}catch(e){msg("Giriş hatası: "+e.code)}};
+window.cloudSave=()=>{if(!admin)return;clearTimeout(t);t=setTimeout(()=>push().catch(e=>msg("Kayıt hatası: "+e.code)),1200)};
 document.addEventListener("click",async e=>{const id=e.target.id;
+if(id==="view"){if(!admin)return msg("Önce yönetici girişi yap");
+try{const [vs,ps]=await Promise.all([getDocs(collection(db,"oylar")),getDocs(collection(db,"puanlar"))]);
+const nm=i=>esc((players.find(p=>String(p.id)===String(i))||{name:"?"}).name),mid=(aktif&&aktif.id)||(last&&last.mid);
+let h="<h2>Maçın adamı oyları</h2>";
+if(!mid)h+='<p class="note">Aktif maç yok. Oyları görmek için kadroyu yayınla.</p>';
+else{const V=[],T={};vs.forEach(d=>{const v=d.data();if(v.mac===mid){V.push(v);T[v.oy]=(T[v.oy]||0)+1}});
+const ids=[...aktif.A,...aktif.B].map(String),no=ids.filter(i=>!V.some(v=>String(v.oyuncu)===i));
+h+=`<p><b>${V.length}/${ids.length}</b> kişi oy verdi.</p>`;
+h+=V.length?"<p><b>Sıralama:</b> "+Object.entries(T).sort((a,b)=>b[1]-a[1]).map(([k,n])=>nm(k)+" ("+n+")").join(", ")+"</p><p><b>Kim kime:</b><br>"+V.map(v=>nm(v.oyuncu)+" → "+nm(v.oy)).join("<br>")+"</p>":"";
+h+=no.length?`<p class="note">Henüz oy vermeyen: ${no.map(nm).join(", ")}</p>`:""}
+const acc={},rt=[];ps.forEach(d=>{const x=d.data();rt.push(String(x.rater));for(const[pid,r]of Object.entries(x.r||{})){if(pid===String(x.rater))continue;
+for(const[k]of CATS)if(r[k]>=1&&r[k]<=10){const a=acc[pid]=acc[pid]||{n:new Set()};(a[k]=a[k]||[]).push(+r[k]);a.n.add(String(x.rater))}}});
+const missing=players.filter(p=>!rt.includes(String(p.id)));
+h+=`<h2 style="margin-top:14px">Oyuncu puanları</h2><p><b>${rt.length}/${players.length}</b> kişi puan verdi: ${rt.map(nm).join(", ")||"-"}</p>`;
+h+=missing.length?`<p class="note">Henüz puan vermeyen: ${missing.map(p=>esc(p.name)).join(", ")}</p>`:"";
+const avg=a=>a?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):"-";
+h+=`<div class="scroll"><table style="min-width:520px"><thead><tr><th style="text-align:left">Oyuncu</th>${CATS.map(([,l])=>"<th>"+l+"</th>").join("")}<th>Puan veren</th></tr></thead><tbody>`+
+players.map(p=>{const a=acc[p.id]||{};return `<tr><td style="text-align:left">${esc(p.name)}${p.gk?" 🧤":""}</td>${CATS.map(([k])=>"<td>"+avg(a[k])+"</td>").join("")}<td>${a.n?a.n.size:0}</td></tr>`}).join("")+"</tbody></table></div><p class=\"note\">Ortalamalar oyuncunun kendine verdiği puanlar hariç hesaplanır. Paneldeki değerlere işlemek için \"Arkadaş puanlarını içe aktar\" düğmesini kullan.</p>";
+$c("inbox").innerHTML=h;msg("Oy ve puanlar yüklendi")}catch(x){msg("Okuma hatası: "+x.code)}}
+if(id==="push"){if(!admin)return msg("Önce yönetici girişi yap");try{await push()}catch(x){msg("Kayıt hatası: "+x.code)}}
 if(id==="pub"){if(!admin||!last)return msg("Önce yönetici girişi yapın");
 aktif={id:String(Date.now()),A:last.A.map(p=>p.id),B:last.B.map(p=>p.id)};last.mid=aktif.id;
 try{await setDoc(ref,{players,history,aktif});msg("Kadro yayınlandı, arkadaşlar oy verebilir")}catch(x){msg("Hata: "+x.code)}}
