@@ -79,7 +79,7 @@ button.x{background:transparent;color:var(--mu);padding:4px 8px}
 <button class="sec" id="copy" hidden>WhatsApp için kopyala</button><button class="sec" id="img" hidden>Kadro görseli oluştur</button><button class="sec" id="pub" hidden>Kadroyu yayınla (oylama)</button></div>
 <div id="out" style="margin-top:12px"></div><div id="imgOut" style="margin-top:12px"></div>
 </div>
-<div class="card"><h2>3. Gelen oylar ve puanlar</h2><div class="row"><button id="view">Oyları ve puanları göster</button></div><div id="inbox" style="margin-top:10px"></div></div>
+<div class="card"><h2>3. Gelen oylar ve puanlar</h2><div class="row"><button id="view">Oyları ve puanları göster</button><button class="sec" id="clrV">Maçın adamı oylarını temizle</button><button class="sec" id="clrP">Oyuncu puanlarını temizle</button></div><div id="inbox" style="margin-top:10px"></div></div>
 <div class="card"><h2>Son maçlar</h2><div id="hist" class="note"></div>
 </div>
 <p class="note">Yönetici girişi yapınca veriler Firebase'e kaydedilir. Giriş yapmayanlar bulut verisini görür ama değiştirip kaydedemez.</p>
@@ -206,7 +206,7 @@ load();render();
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {getFirestore,doc,getDoc,setDoc,collection,getDocs} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getFirestore,doc,getDoc,setDoc,collection,getDocs,deleteDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const app=initializeApp(window.FB),auth=getAuth(app),db=getFirestore(app),ref=doc(db,"grup","veri");
 let admin=false,aktif=null,t;window.clearAktif=()=>{aktif=null};
 const $c=id=>document.getElementById(id),msg=m=>$c("cs").textContent=m;
@@ -240,6 +240,9 @@ const avg=a=>a?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):"-";
 h+=`<div class="scroll"><table style="min-width:520px"><thead><tr><th style="text-align:left">Oyuncu</th>${CATS.map(([,l])=>"<th>"+l+"</th>").join("")}<th>Puan veren</th></tr></thead><tbody>`+
 players.map(p=>{const a=acc[p.id]||{};return `<tr><td style="text-align:left">${esc(p.name)}${p.gk?" 🧤":""}</td>${CATS.map(([k])=>"<td>"+avg(a[k])+"</td>").join("")}<td>${a.n?a.n.size:0}</td></tr>`}).join("")+"</tbody></table></div><p class=\"note\">Ortalamalar oyuncunun kendine verdiği puanlar hariç hesaplanır. Paneldeki değerlere işlemek için \"Arkadaş puanlarını içe aktar\" düğmesini kullan.</p>";
 $c("inbox").innerHTML=h;msg("Oy ve puanlar yüklendi")}catch(x){msg("Okuma hatası: "+x.code)}}
+if(id==="clrV"||id==="clrP"){if(!admin)return msg("Önce yönetici girişi yap");const col=id==="clrV"?"oylar":"puanlar",ad=id==="clrV"?"maçın adamı oylarının":"oyuncu puanlarının";
+if(!confirm("Gönderilmiş tüm "+ad+" silinecek. Oyuncular, değerler ve maç geçmişi silinmez. Devam edilsin mi?"))return;
+try{const qs=await getDocs(collection(db,col));await Promise.all(qs.docs.map(d=>deleteDoc(d.ref)));$c("inbox").innerHTML="";msg(qs.size+" kayıt silindi ("+col+")")}catch(x){msg("Silme hatası: "+x.code)}}
 if(id==="push"){if(!admin)return msg("Önce yönetici girişi yap");try{await push()}catch(x){msg("Kayıt hatası: "+x.code)}}
 if(id==="pub"){if(!admin||!last)return msg("Önce yönetici girişi yapın");
 aktif={id:String(Date.now()),A:last.A.map(p=>p.id),B:last.B.map(p=>p.id)};last.mid=aktif.id;
