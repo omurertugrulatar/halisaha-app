@@ -45,6 +45,7 @@ try{await signInAnonymously(auth);const d=(await getDoc(doc(db,"grup","veri"))).
 catch(e){$("rm").textContent="Bağlantı kurulamadı ("+(e.code||e.message)+"). İnternetini kontrol edip sayfayı yenile."}
 const K=["sut","pas","kon","sav","kal"],L={sut:"Şut",pas:"Pas",kon:"Kondisyon",sav:"Savunma",kal:"Kaleci"};
 const keys=p=>p.gk?["kal"]:K.slice(0,4),R={},get=(p,k)=>(R[p]||{})[k]||0,mq=matchMedia("(max-width:700px)");
+if(db_ok&&!P.length)$("rm").textContent="Oyuncu listesi bulutta yok. Yönetici, panelde Buluta kaydet düğmesine basmalı.";
 $("me").innerHTML='<option value="">Seç…</option>'+P.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
 $("me").value=localStorage.getItem("me")||"";
 if($("me").value!==(localStorage.getItem("me")||""))$("me").value="";
