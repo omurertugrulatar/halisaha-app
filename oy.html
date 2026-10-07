@@ -8,7 +8,7 @@
 main{max-width:720px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:14px}
 h1{font-size:22px}h2{font-size:17px;margin:0 0 8px}.note{color:var(--mu);font-size:13px}.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:460px}th{font-size:12px;color:var(--mu)}td{padding:3px;text-align:center;border-top:1px solid var(--bd)}td:first-child{text-align:left}
+table{border-collapse:collapse;width:100%;min-width:820px}th{font-size:12px;color:var(--mu)}td{padding:3px;text-align:center;border-top:1px solid var(--bd)}td:first-child{text-align:left}
 input[type=number],select{background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px;font:inherit}input[type=number]{width:52px;text-align:center}
 select{max-width:100%}
 button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--ac);color:#fff;font-weight:600;margin-top:10px;cursor:pointer}
@@ -30,7 +30,7 @@ label.c{display:block;padding:8px 0}
 <div class="card" id="voteBox" hidden><h2>Maçın adamı kim?</h2><div id="cands"></div><button id="vote">Oyumu gönder</button><p id="vm" class="note"></p></div>
 <div class="card"><h2>Arkadaşlarını puanla (1-10)</h2>
 <p class="note">Bildiğin oyuncuları puanla, tanımadıklarını boş bırak. 5 = grubun ortalama oyuncusu, 8 ve üstü = o kategoride grubun en iyileri. Kendini puanlama.</p>
-<p class="note" id="cnt"></p>
+<details class="note"><summary>Kategoriler ne demek?</summary><p><b>Hız:</b> sürat ve ilk adım. <b>Şut:</b> şut gücü ve isabeti. <b>Pas:</b> pas isabeti ve oyun görüşü. <b>Top sürme:</b> top kontrolü ve çalım. <b>Savunma:</b> top kapma, markaj, pozisyon. <b>Fizik:</b> dayanıklılık, güç, kondisyon.</p><p><b>Kaleciler:</b> Refleks (çizgi üstü kurtarışlar), Atılma (köşelere uzanma), Eller (topu tutma), Dağıtım (ayak veya elle oyun başlatma), Pozisyon (kale önünde yer tutma).</p></details><p class="note" id="cnt"></p>
 <div id="desk" class="scroll"><table id="rt"></table></div><div id="mob"></div>
 <div id="sendBar"><button id="rate">Puanlarımı gönder</button></div><p id="rm" class="note"></p></div>
 <script src="config.js"></script>
@@ -43,8 +43,8 @@ const app=initializeApp(window.FB),auth=getAuth(app),db=getFirestore(app);
 let P=[],akt=null,db_ok=false;
 try{await signInAnonymously(auth);const d=(await getDoc(doc(db,"grup","veri"))).data()||{};P=d.players||[];akt=d.aktif||null;db_ok=true}
 catch(e){$("rm").textContent="Bağlantı kurulamadı ("+(e.code||e.message)+"). İnternetini kontrol edip sayfayı yenile."}
-const K=["sut","pas","kon","sav","kal"],L={sut:"Şut",pas:"Pas",kon:"Kondisyon",sav:"Savunma",kal:"Kaleci"};
-const keys=p=>p.gk?["kal"]:K.slice(0,4),R={},get=(p,k)=>(R[p]||{})[k]||0,mq=matchMedia("(max-width:700px)");
+const OUT=[["hiz","Hız"],["sut","Şut"],["pas","Pas"],["dri","Top sürme"],["def","Savunma"],["fiz","Fizik"]],GKC=[["ref","Refleks"],["atl","Atılma"],["tut","Eller"],["dag","Dağıtım"],["poz","Pozisyon"]],L=Object.fromEntries([...OUT,...GKC]),K=[...OUT,...GKC].map(x=>x[0]);
+const keys=p=>(p.gk?GKC:OUT).map(x=>x[0]),R={},get=(p,k)=>(R[p]||{})[k]||0,mq=matchMedia("(max-width:700px)");
 if(db_ok&&!P.length)$("rm").textContent="Oyuncu listesi bulutta yok. Yönetici, panelde Buluta kaydet düğmesine basmalı.";
 $("me").innerHTML='<option value="">Seç…</option>'+P.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
 $("me").value=localStorage.getItem("me")||"";
