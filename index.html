@@ -92,9 +92,10 @@ if(!players.length)players=Array.from({length:20},(_,i)=>({id:i+1,name:"Oyuncu "
 players.forEach(p=>{p.age=p.age||30;p.adj=p.adj||0;p.pos=p.pos||"O"})}
 function save(){try{localStorage.setItem(KEY,JSON.stringify({players,history}))}catch(e){}window.cloudSave&&window.cloudSave()}
 const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 function render(){
 $("rows").innerHTML=players.map(p=>`<tr><td><input type="checkbox" data-id="${p.id}" data-f="on" ${p.on?"checked":""}></td>
-<td><input type="text" data-id="${p.id}" data-f="name" value="${p.name.replace(/"/g,"&quot;")}"></td><td><input type="checkbox" data-id="${p.id}" data-f="gk" ${p.gk?"checked":""}></td><td><input type="checkbox" data-id="${p.id}" data-f="star" ${p.star?"checked":""}></td><td><select data-id="${p.id}" data-f="pos">${[["D","Defans"],["O","Orta"],["F","Forvet"]].map(([v,l])=>`<option value="${v}" ${(p.pos||"O")===v?"selected":""}>${l}</option>`).join("")}</select></td><td><select data-id="${p.id}" data-f="pos2">${[["","—"],["D","Defans"],["O","Orta"],["F","Forvet"]].map(([v,l])=>`<option value="${v}" ${(p.pos2||"")===v?"selected":""}>${l}</option>`).join("")}</select></td>
+<td><input type="text" data-id="${p.id}" data-f="name" value="${esc(p.name)}"></td><td><input type="checkbox" data-id="${p.id}" data-f="gk" ${p.gk?"checked":""}></td><td><input type="checkbox" data-id="${p.id}" data-f="star" ${p.star?"checked":""}></td><td><select data-id="${p.id}" data-f="pos">${[["D","Defans"],["O","Orta"],["F","Forvet"]].map(([v,l])=>`<option value="${v}" ${(p.pos||"O")===v?"selected":""}>${l}</option>`).join("")}</select></td><td><select data-id="${p.id}" data-f="pos2">${[["","—"],["D","Defans"],["O","Orta"],["F","Forvet"]].map(([v,l])=>`<option value="${v}" ${(p.pos2||"")===v?"selected":""}>${l}</option>`).join("")}</select></td>
 ${CATS.map(([k])=>`<td><input type="number" min="1" max="10" data-id="${p.id}" data-f="${k}" value="${p[k]}"></td>`).join("")}
 <td><input type="number" min="14" max="70" data-id="${p.id}" data-f="age" value="${p.age}"></td><td class="note">${formStr(p)}</td><td><button class="x" data-del="${p.id}">✕</button></td></tr>`).join("");
 count();hist()}
@@ -134,7 +135,7 @@ const team=(T,k,cls,name)=>`<div class="team ${cls}"><h3>${name} <small class="n
 const mx=k=>Math.max(r.sa[k],r.sb[k])||1;
 const bars=CATS.map(([k,l])=>`<div class="bar"><span>${l}</span><div class="l"><i style="background:var(--a);width:${r.sa[k]/mx(k)*100}%"></i></div><div><i style="background:var(--b);width:${r.sb[k]/mx(k)*100}%"></i></div></div>`).join("");
 $("out").innerHTML=`<div class="teams">${team(r.A,ka,"A","A Takımı")}${team(r.B,kb,"B","B Takımı")}</div>
-<h2 style="margin-top:14px">Denge</h2>${bars}<p class="note">${strong(r.sa,r.sb)} (Kaleci çubuğu, takımın en iyi kalecisini gösterir.)${r.stn.length>1?` Ayrı takımlara dağıtılan güçlü oyuncular: ${r.stn.join(", ")}.`:""}</p>${resForm(r)}`;
+<h2 style="margin-top:14px">Denge</h2>${bars}<p class="note">${strong(r.sa,r.sb)} (Kaleci çubuğu, takımın en iyi kalecisini gösterir.)${r.stn.length>1?` Ayrı takımlara dağıtılan güçlü oyuncular: ${r.stn.map(esc).join(", ")}.`:""}</p>${resForm(r)}`;
 $("again").hidden=$("copy").hidden=$("img").hidden=$("pub").hidden=false;$("imgOut").innerHTML="";$("saveRes").onclick=saveRes}
 $("go").onclick=build;$("again").onclick=build;$("img").onclick=makeImg;
 $("copy").onclick=async()=>{if(!last)return;
@@ -148,9 +149,9 @@ return{...p,sut:p.sut+a,pas:p.pas+a,kon:p.kon+a+ag,sav:p.sav+a,kal:p.kal+a}}
 function formStr(p){const r=history.filter(m=>m.A.includes(p.id)||m.B.includes(p.id)).slice(-5).map(m=>{const d=(m.A.includes(p.id)?1:-1)*(m.ga-m.gb);return d>0?"G":d<0?"M":"B"}).join("");
 return (p.adj>=0?"+":"")+(p.adj||0).toFixed(1)+" "+r}
 function resForm(r){const all=[...r.A,...r.B];
-const opts='<option value="">—</option>'+all.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+const opts='<option value="">—</option>'+all.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
 return `<h2 style="margin-top:14px">Maç sonucu</h2><div class="row">A <input type="number" id="ga" min="0" value="0"> - <input type="number" id="gb" min="0" value="0"> B</div>
-<div class="scroll"><table style="min-width:340px;margin-top:8px"><thead><tr><th style="text-align:left">Oyuncu</th><th style="text-align:center">Gol</th><th style="text-align:center">Maçın adamı oyu</th></tr></thead><tbody>${all.map(p=>`<tr><td style="text-align:left">${p.name}</td><td><input type="number" min="0" class="gl" data-id="${p.id}" value="0"></td><td><select class="vt" data-id="${p.id}">${opts.replace(`<option value="${p.id}">`,`<option value="${p.id}" disabled>`)}</select></td></tr>`).join("")}</tbody></table></div>
+<div class="scroll"><table style="min-width:340px;margin-top:8px"><thead><tr><th style="text-align:left">Oyuncu</th><th style="text-align:center">Gol</th><th style="text-align:center">Maçın adamı oyu</th></tr></thead><tbody>${all.map(p=>`<tr><td style="text-align:left">${esc(p.name)}</td><td><input type="number" min="0" class="gl" data-id="${p.id}" value="0"></td><td><select class="vt" data-id="${p.id}">${opts.replace(`<option value="${p.id}">`,`<option value="${p.id}" disabled>`)}</select></td></tr>`).join("")}</tbody></table></div>
 <div class="row" style="margin-top:8px"><button id="saveRes">Sonucu kaydet</button><button class="sec" id="pull">Oyları çek (bulut)</button></div>
 <p class="note">Her oyuncunun oyunu (kendine oy veremez) tek tek girin. En çok oyu alan +0,2, atılan her gol +0,05 form puanı kazanır (en fazla 3 gol). Takım sonucu da beklentiye göre formu etkiler.</p>`}
 function saveRes(){if(!last||last.saved)return;const ga=+$("ga").value||0,gb=+$("gb").value||0;
@@ -164,18 +165,18 @@ const up=(T,k)=>T.forEach(x=>{const p=players.find(q=>q.id===x.id);if(p)p.adj=(p
 up(last.A,1);up(last.B,-1);
 [...last.A,...last.B].forEach(x=>{const p=players.find(q=>q.id===x.id);if(p)p.adj=clamp(Math.round((p.adj+(motm.includes(x.id)?0.2:0)+Math.min(goals[x.id]||0,3)*0.05)*100)/100,-1.5,1.5)});
 history.push({d:new Date().toLocaleDateString("tr-TR"),A:last.A.map(p=>p.id),B:last.B.map(p=>p.id),ga,gb,goals,votes,motm});
-last.saved=true;save();render();$("saveRes").textContent="Kaydedildi ✓";$("saveRes").disabled=true}
-function hist(){const nm=id=>(players.find(p=>p.id===id)||{name:"?"}).name;
+last.saved=true;window.clearAktif&&window.clearAktif();save();render();$("saveRes").textContent="Kaydedildi ✓";$("saveRes").disabled=true}
+function hist(){const nm=id=>(players.find(p=>p.id===id)||{name:"?"}).name,E=esc;
 const G={},M={};history.forEach(m=>{Object.entries(m.goals||{}).forEach(([k,v])=>G[k]=(G[k]||0)+v);(m.motm||[]).forEach(k=>M[k]=(M[k]||0)+1)});
-const top=o=>{const e=Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,3);return e.length?e.map(([k,v])=>nm(+k)+" ("+v+")").join(", "):"-"};
-$("hist").innerHTML=history.length?`<p>⚽ Gol krallığı: ${top(G)}<br>⭐ Maçın adamı: ${top(M)}</p>`+history.slice(-5).reverse().map(m=>`<div class="pl"><span>${m.d} · A ${m.ga}-${m.gb} B</span><span>${(m.motm||[]).length?"⭐ "+m.motm.map(nm).join(", "):""}</span></div>`).join(""):"Henüz kayıtlı maç yok. Sonuçlar girildikçe form puanları, gol krallığı ve maçın adamı sıralaması oluşur."}
+const top=o=>{const e=Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,3);return e.length?e.map(([k,v])=>E(nm(+k))+" ("+v+")").join(", "):"-"};
+$("hist").innerHTML=history.length?`<p>⚽ Gol krallığı: ${top(G)}<br>⭐ Maçın adamı: ${top(M)}</p>`+history.slice(-5).reverse().map(m=>`<div class="pl"><span>${m.d} · A ${m.ga}-${m.gb} B</span><span>${(m.motm||[]).length?"⭐ "+m.motm.map(i=>E(nm(i))).join(", "):""}</span></div>`).join(""):"Henüz kayıtlı maç yok. Sonuçlar girildikçe form puanları, gol krallığı ve maçın adamı sıralaması oluşur."}
 const tier=o=>o>=75?"g":o>=60?"s":"b";
 const sc=v=>clamp(Math.round(40+(v-1)/9*59),30,99);
 const PS={D:"DEF",O:"ORT",F:"FOR"};
 function cardData(p){const o=sc(p.gk?p.kal:(p.sut+p.pas+p.kon+p.sav)/4);
 return{o,pos:p.gk?"KAL":PS[p.pos||"O"],st:p.gk?[["KAL",p.kal]]:[["ŞUT",p.sut],["PAS",p.pas],["KON",p.kon],["SAV",p.sav]]}}
 function card(p){const c=cardData(p);
-return `<div class="fc ${tier(c.o)}"><div class="top"><b>${c.o}</b><span>${c.pos}</span></div><div class="av">${p.name.trim().charAt(0).toUpperCase()}</div><div class="nm">${p.name}</div><div class="st">${c.st.map(([l,v])=>`<span><b>${sc(v)}</b> ${l}</span>`).join("")}</div></div>`}
+return `<div class="fc ${tier(c.o)}"><div class="top"><b>${c.o}</b><span>${c.pos}</span></div><div class="av">${esc(p.name.trim().charAt(0).toUpperCase())}</div><div class="nm">${esc(p.name)}</div><div class="st">${c.st.map(([l,v])=>`<span><b>${sc(v)}</b> ${l}</span>`).join("")}</div></div>`}
 const COL={g:["#f8e58a","#cda62a","#2b2000"],s:["#f1f5f8","#a4b0b9","#17222b"],b:["#e8b080","#b0713a","#2a1505"]};
 function drawCard(x,p,px,py,w,h){const c=cardData(p),k=COL[tier(c.o)];
 const g=x.createLinearGradient(px,py,px+w,py+h);g.addColorStop(0,k[0]);g.addColorStop(1,k[1]);
@@ -206,7 +207,7 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,doc,getDoc,setDoc,collection,getDocs} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const app=initializeApp(window.FB),auth=getAuth(app),db=getFirestore(app),ref=doc(db,"grup","veri");
-let admin=false,aktif=null,t;
+let admin=false,aktif=null,t;window.clearAktif=()=>{aktif=null};
 const $c=id=>document.getElementById(id),msg=m=>$c("cs").textContent=m;
 $c("login").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());
 const sn=await getDoc(ref);if(sn.exists()){const d=sn.data();if(d.players){players=d.players;history=d.history||[];aktif=d.aktif||null;render()}}
@@ -223,7 +224,7 @@ if(el&&[...el.options].some(o=>o.value==v.oy&&!o.disabled)){el.value=v.oy;n++}})
 if(id==="imp"){if(!admin)return msg("Önce yönetici girişi yapın");
 const qs=await getDocs(collection(db,"puanlar")),acc={};
 qs.forEach(d=>{const x=d.data();for(const[pid,r]of Object.entries(x.r||{})){if(pid===String(x.rater))continue;
-for(const k of["sut","pas","kon","sav","kal"])if(r[k]>0){const a=acc[pid]=acc[pid]||{};(a[k]=a[k]||[]).push(+r[k])}}});
+for(const k of["sut","pas","kon","sav","kal"])if(r[k]>=1&&r[k]<=10){const a=acc[pid]=acc[pid]||{};(a[k]=a[k]||[]).push(+r[k])}}});
 let n=0;players.forEach(p=>{const a=acc[p.id];if(!a)return;for(const k in a)p[k]=Math.round(a[k].reduce((s,v)=>s+v,0)/a[k].length*10)/10;n++});
 save();render();msg(n+" oyuncunun puanı güncellendi")}});
 </script>

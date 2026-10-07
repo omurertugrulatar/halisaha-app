@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // SENIN_GMAIL@gmail.com yerine kendi Google adresinizi yazın
+    function admin() {
+      return request.auth != null
+        && request.auth.token.email == "SENIN_GMAIL@gmail.com"
+        && request.auth.token.email_verified == true;
+    }
+    match /grup/veri {
+      allow read: if true;
+      allow write: if admin();
+    }
+    match /oylar/{id} {
+      allow read, delete: if admin();
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['mac','oyuncu','oy','ts'])
+        && request.resource.data.keys().hasAll(['mac','oyuncu','oy','ts'])
+        && request.resource.data.mac is string
+        && request.resource.data.oyuncu is string
+        && request.resource.data.oy is string
+        && request.resource.data.ts is number
+        && request.resource.data.oyuncu != request.resource.data.oy
+        && id == request.resource.data.mac + '_' + request.resource.data.oyuncu;
+    }
+    match /puanlar/{id} {
+      allow read, delete: if admin();
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['rater','r','ts'])
+        && request.resource.data.keys().hasAll(['rater','r','ts'])
+        && request.resource.data.rater is string
+        && request.resource.data.r is map
+        && request.resource.data.r.size() <= 40
+        && request.resource.data.ts is number
+        && id == request.resource.data.rater;
+    }
+  }
+}

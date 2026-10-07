@@ -1,47 +1,76 @@
 <!DOCTYPE html>
-<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Halı Saha: Oy ve Puan</title>
 <style>
 :root{--bg:#f4f7f4;--card:#fff;--tx:#14231a;--mu:#5d6f63;--ac:#1f8a4c;--bd:#dce5de}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1812;--card:#17241c;--tx:#e8f1ea;--mu:#93a699;--ac:#3fbf74;--bd:#2a3b30}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,sans-serif}
-main{max-width:640px;margin:0 auto;padding:16px}.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:14px}
+main{max-width:720px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:14px}
 h1{font-size:22px}h2{font-size:17px;margin:0 0 8px}.note{color:var(--mu);font-size:13px}.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:420px}th{font-size:12px;color:var(--mu)}td{padding:3px;text-align:center;border-top:1px solid var(--bd)}td:first-child{text-align:left}
+table{border-collapse:collapse;width:100%;min-width:460px}th{font-size:12px;color:var(--mu)}td{padding:3px;text-align:center;border-top:1px solid var(--bd)}td:first-child{text-align:left}
 input[type=number],select{background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px;font:inherit}input[type=number]{width:52px;text-align:center}
-button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--ac);color:#fff;font-weight:600;margin-top:10px}
-label.c{display:block;padding:6px 0}
+select{max-width:100%}
+button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--ac);color:#fff;font-weight:600;margin-top:10px;cursor:pointer}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd);margin-top:0}
+label.c{display:block;padding:8px 0}
+.pc{border-top:1px solid var(--bd);padding:10px 0}.pc:first-child{border-top:0}
+.ph{display:flex;justify-content:space-between;align-items:center;font-weight:600;margin-bottom:4px}
+.ph button{padding:4px 10px;font-size:13px;font-weight:500}
+.sr{display:grid;grid-template-columns:1fr 48px 44px 48px;align-items:center;gap:6px;padding:3px 0}
+.sr .s{padding:0;height:44px;margin:0;font-size:22px;border-radius:12px}
+.sr b{text-align:center;font-size:18px}.sr b.e{color:var(--mu)}
+#mob{display:none}
+@media(max-width:700px){#desk{display:none}#mob{display:block}
+#sendBar{position:sticky;bottom:0;background:var(--card);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--bd)}
+#sendBar button{width:100%;margin:0}}
 </style></head><body><main>
 <h1>⚽ Halı Saha</h1>
 <div class="card"><label>Sen kimsin? <select id="me"></select></label></div>
 <div class="card" id="voteBox" hidden><h2>Maçın adamı kim?</h2><div id="cands"></div><button id="vote">Oyumu gönder</button><p id="vm" class="note"></p></div>
 <div class="card"><h2>Arkadaşlarını puanla (1-10)</h2>
 <p class="note">Bildiğin oyuncuları puanla, tanımadıklarını boş bırak. 5 = grubun ortalama oyuncusu, 8 ve üstü = o kategoride grubun en iyileri. Kendini puanlama.</p>
-<div class="scroll"><table id="rt"></table></div><button id="rate">Puanlarımı gönder</button><p id="rm" class="note"></p></div>
+<p class="note" id="cnt"></p>
+<div id="desk" class="scroll"><table id="rt"></table></div><div id="mob"></div>
+<div id="sendBar"><button id="rate">Puanlarımı gönder</button></div><p id="rm" class="note"></p></div>
 <script src="config.js"></script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-const app=initializeApp(window.FB),auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
-await signInAnonymously(auth);
-const d=(await getDoc(doc(db,"grup","veri"))).data()||{players:[]},P=d.players||[],akt=d.aktif;
-$("me").innerHTML='<option value="">Seç…</option>'+P.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const app=initializeApp(window.FB),auth=getAuth(app),db=getFirestore(app);
+let P=[],akt=null,db_ok=false;
+try{await signInAnonymously(auth);const d=(await getDoc(doc(db,"grup","veri"))).data()||{};P=d.players||[];akt=d.aktif||null;db_ok=true}
+catch(e){$("rm").textContent="Bağlantı kurulamadı ("+(e.code||e.message)+"). İnternetini kontrol edip sayfayı yenile."}
+const K=["sut","pas","kon","sav","kal"],L={sut:"Şut",pas:"Pas",kon:"Kondisyon",sav:"Savunma",kal:"Kaleci"};
+const keys=p=>p.gk?["kal"]:K.slice(0,4),R={},get=(p,k)=>(R[p]||{})[k]||0,mq=matchMedia("(max-width:700px)");
+$("me").innerHTML='<option value="">Seç…</option>'+P.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
 $("me").value=localStorage.getItem("me")||"";
-function draw(){const me=$("me").value;localStorage.setItem("me",me);
+if($("me").value!==(localStorage.getItem("me")||""))$("me").value="";
+const rated=()=>P.filter(p=>keys(p).some(k=>get(p.id,k))).length;
+const cnt=()=>$("cnt").textContent=rated()?rated()+" oyuncu puanlandı":"";
+function rates(){const me=$("me").value,Q=P.filter(p=>String(p.id)!==me);
+if(mq.matches){$("mob").innerHTML=Q.map(p=>`<div class="pc"><div class="ph"><span>${esc(p.name)}${p.gk?" 🧤":""}</span><button class="sec" data-clr="${p.id}">Temizle</button></div>`+
+keys(p).map(k=>{const v=get(p.id,k);return `<div class="sr"><span>${L[k]}</span><button class="s" data-p="${p.id}" data-k="${k}" data-d="-1" aria-label="${L[k]} azalt">−</button><b class="${v?"":"e"}" id="v_${p.id}_${k}">${v||"–"}</b><button class="s" data-p="${p.id}" data-k="${k}" data-d="1" aria-label="${L[k]} artır">+</button></div>`}).join("")+"</div>").join("");$("rt").innerHTML=""}
+else{$("rt").innerHTML="<tr><th></th>"+K.map(k=>"<th>"+L[k]+"</th>").join("")+"</tr>"+Q.map(p=>`<tr><td>${esc(p.name)}${p.gk?" 🧤":""}</td>`+K.map(k=>keys(p).includes(k)?`<td><input type="number" min="1" max="10" class="r" data-p="${p.id}" data-k="${k}" value="${get(p.id,k)||""}"></td>`:"<td></td>").join("")+"</tr>").join("");$("mob").innerHTML=""}cnt()}
+$("rt").addEventListener("input",e=>{const t=e.target;if(!t.classList.contains("r"))return;(R[t.dataset.p]=R[t.dataset.p]||{})[t.dataset.k]=+t.value||0;cnt()});
+$("mob").addEventListener("click",e=>{const t=e.target;
+if(t.dataset.clr){delete R[t.dataset.clr];return rates()}
+if(!t.dataset.d)return;const p=t.dataset.p,k=t.dataset.k,c=get(p,k),n=c?Math.max(1,Math.min(10,c+ +t.dataset.d)):5;
+(R[p]=R[p]||{})[k]=n;const b=$("v_"+p+"_"+k);b.textContent=n;b.className="";cnt()});
+mq.addEventListener("change",rates);
+function draw(){const me=$("me").value;localStorage.setItem("me",me);delete R[me];
 const ids=akt?[...akt.A,...akt.B].map(String):[];$("voteBox").hidden=!(akt&&me&&ids.includes(me));
-$("cands").innerHTML=P.filter(p=>ids.includes(String(p.id))&&String(p.id)!==me).map(p=>`<label class="c"><input type="radio" name="v" value="${p.id}"> ${p.name}</label>`).join("");
-const K=["sut","pas","kon","sav"],L=["Şut","Pas","Kondisyon","Savunma","Kaleci"];
-$("rt").innerHTML="<tr><th></th>"+L.map(l=>"<th>"+l+"</th>").join("")+"</tr>"+P.filter(p=>String(p.id)!==me).map(p=>`<tr><td>${p.name}${p.gk?" 🧤":""}</td>`+
-(p.gk?'<td colspan="4"></td>':K.map(k=>`<td><input type="number" min="1" max="10" class="r" data-p="${p.id}" data-k="${k}"></td>`).join("")+"<td></td>")+
-(p.gk?`<td><input type="number" min="1" max="10" class="r" data-p="${p.id}" data-k="kal"></td>`:"")+"</tr>").join("")}
+$("cands").innerHTML=P.filter(p=>ids.includes(String(p.id))&&String(p.id)!==me).map(p=>`<label class="c"><input type="radio" name="v" value="${p.id}"> ${esc(p.name)}</label>`).join("");rates()}
 $("me").onchange=draw;draw();
 $("vote").onclick=async()=>{const me=$("me").value,c=document.querySelector('input[name=v]:checked');if(!c)return $("vm").textContent="Birini seç.";
 try{await setDoc(doc(db,"oylar",akt.id+"_"+me),{mac:akt.id,oyuncu:me,oy:c.value,ts:Date.now()});$("vm").textContent="Oyun kaydedildi ✓ (değiştirmek için tekrar gönderebilirsin)"}catch(e){$("vm").textContent="Hata: "+e.code}};
 $("rate").onclick=async()=>{const me=$("me").value;if(!me)return $("rm").textContent="Önce kim olduğunu seç.";
-const r={};let bad=false;
-P.forEach(p=>{const ins=[...document.querySelectorAll('.r[data-p="'+p.id+'"]')],v=ins.map(i=>+i.value||0);
-if(!v.some(x=>x))return;if(v.some(x=>x<1||x>10)){bad=true;return}r[p.id]=Object.fromEntries(ins.map((i,j)=>[i.dataset.k,v[j]]))});
-if(bad)return $("rm").textContent="Başladığın oyuncuda tüm kutuları 1-10 arası doldur.";
-try{await setDoc(doc(db,"puanlar",me),{rater:me,r,ts:Date.now()});$("rm").textContent="Puanların kaydedildi ✓"}catch(e){$("rm").textContent="Hata: "+e.code}};
+const r={};let bad="";
+P.forEach(p=>{if(String(p.id)===me)return;const ks=keys(p),v=ks.map(k=>get(p.id,k));if(!v.some(x=>x))return;
+if(v.some(x=>!(x>=1&&x<=10))){bad=p.name;return}r[p.id]=Object.fromEntries(ks.map((k,j)=>[k,v[j]]))});
+if(bad)return $("rm").textContent=bad+" için tüm kategorileri 1-10 arası doldur ya da Temizle'ye bas.";
+if(!Object.keys(r).length)return $("rm").textContent="Henüz hiç puan girmedin.";
+try{await setDoc(doc(db,"puanlar",me),{rater:me,r,ts:Date.now()});$("rm").textContent="Puanların kaydedildi ✓ ("+Object.keys(r).length+" oyuncu)"}catch(e){$("rm").textContent="Hata: "+e.code}};
 </script></main></body></html>
