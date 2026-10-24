@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HalıSaha AI - Akıllı Kadro, Gerçek Rating & Canlı Yorumcu Sistemi</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pitch: {
+                            DEFAULT: '#10b981',
+                            dark: '#047857',
+                            lines: 'rgba(255, 255, 255, 0.4)'
+                        },
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b'
+                    },
+                    animation: {
+                        'ticker': 'ticker 35s linear infinite',
+                    },
+                    keyframes: {
+                        ticker: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-50%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .pitch-bg {
+            background: linear-gradient(to bottom, #065f46, #047857);
+            position: relative;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.6);
+        }
+        .pitch-lines {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            margin: 10px;
+            pointer-events: none;
+        }
+        .pitch-center-circle {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90px; height: 90px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+        }
+        .pitch-center-line {
+            position: absolute;
+            top: 50%; left: 10px; right: 10px;
+            height: 2px;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+        .pitch-box-top {
+            position: absolute;
+            top: 10px; left: 25%; right: 25%;
+            height: 55px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-top: none;
+        }
+        .pitch-box-bottom {
+            position: absolute;
+            bottom: 10px; left: 25%; right: 25%;
+            height: 55px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-bottom: none;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            animation: ticker 40s linear infinite;
+        }
+        .ticker-wrap:hover .ticker-move {
+            animation-play-state: paused;
+        }
+    </style>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col pb-16 antialiased selection:bg-emerald-500 selection:text-white">
+<script>
+/* Ekranda hata gösterici: sayfa/Firebase bozulursa kırmızı kutuda hata mesajı çıkar */
+(function(){
+  function show(msg){
+    var box=document.getElementById('__err_box');
+    if(!box){
+      box=document.createElement('div');
+      box.id='__err_box';
+      box.style.cssText='position:fixed;left:0;right:0;bottom:48px;z-index:99999;background:#7f1d1d;color:#fff;font:12px/1.4 monospace;padding:10px 14px;max-height:40vh;overflow:auto;white-space:pre-wrap';
+      (document.body||document.documentElement).appendChild(box);
+    }
+    box.textContent+=msg+'\n';
+  }
+  window.__showErr=show;
+  window.addEventListener('error',function(e){show('HATA: '+e.message+' (satır '+e.lineno+':'+e.colno+')');});
+  window.addEventListener('unhandledrejection',function(e){show('HATA (promise): '+(e.reason&&e.reason.message||e.reason));});
+})();
+</script>
+
+
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-900 font-black text-xl shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-futbol"></i>
+                    </div>
+                    <div>
+                        <span class="font-black text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-200">HalıSaha AI</span>
+                        <span class="text-[10px] block text-slate-400 font-semibold tracking-wider uppercase">Gerçek Rating & Kadro Algoritması</span>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex items-center space-x-1">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-emerald-400 bg-slate-800">
+                        <i class="fa-solid fa-chart-pie"></i> Genel Bakış
+                    </button>
+                    <button onclick="switchTab('players')" id="nav-players" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-users-gear"></i> Oyuncular
+                    </button>
+                    <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-user-pen"></i> Form & Akran Oylaması
+                    </button>
+                    <button onclick="switchTab('generator')" id="nav-generator" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> AI Kadro
+                    </button>
+                    <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-award"></i> MVP Oylaması
+                    </button>
+                    <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-clipboard-list"></i> Maç Kaydı
+                    </button>
+                </nav>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="switchTab('players')" class="bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 hover:brightness-110">
+                        <i class="fa-solid fa-user-plus"></i> <span>Oyuncu Ekle</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Navigation -->
+        <div class="md:hidden flex justify-around border-t border-slate-800 bg-slate-900/95 py-2 px-1 text-[10px]">
+            <button onclick="switchTab('dashboard')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-chart-pie text-sm"></i> Genel
+            </button>
+            <button onclick="switchTab('players')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-users-gear text-sm"></i> Oyuncu
+            </button>
+            <button onclick="switchTab('evaluation')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-user-pen text-sm"></i> Oylama
+            </button>
+            <button onclick="switchTab('generator')" class="text-emerald-400 flex flex-col items-center gap-1 font-bold">
+                <i class="fa-solid fa-wand-magic-sparkles text-sm"></i> AI Kadro
+            </button>
+            <button onclick="switchTab('admin')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-clipboard-list text-sm"></i> Maç Gir
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: DASHBOARD -->
+        <section id="tab-dashboard" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="glass-panel p-5 rounded-2xl flex items-center space-x-4 border-l-4 border-emerald-500">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Kayıtlı Oyuncu</p>
+                        <h3 class="text-2xl font-black text-white" id="stat-total-players">0</h3>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex items-center space-x-4 border-l-4 border-blue-500">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Oynanan Maç</p>
+                        <h3 class="text-2xl font-black text-white" id="stat-total-matches">0</h3>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex items-center space-x-4 border-l-4 border-purple-500">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-soccer-ball"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Atılan Gol</p>
+                        <h3 class="text-2xl font-black text-white" id="stat-total-goals">0</h3>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex items-center space-x-4 border-l-4 border-amber-500">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-crown"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Son Maçın MVP'si</p>
+                        <h3 class="text-base font-bold text-amber-300 truncate" id="stat-mvp">Henüz Seçilmedi</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Leaderboard -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-ranking-star text-amber-400"></i> Oyuncu Liderlik ve Gerçek Rating Tablosu
+                                </h2>
+                                <p class="text-xs text-slate-400">Gerçek Rating: %30 Öz Rating + %70 Akran Ortalaması + Maç/Gol/Galibiyet İstatistik Bonusu</p>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead>
+                                    <tr class="text-slate-400 border-b border-slate-700/60 text-xs font-semibold uppercase tracking-wider">
+                                        <th class="pb-3 px-2">#</th>
+                                        <th class="pb-3 px-2">Oyuncu</th>
+                                        <th class="pb-3 px-2">Pozisyon</th>
+                                        <th class="pb-3 px-2 text-center">Öz / Akran</th>
+                                        <th class="pb-3 px-2 text-center">Maç</th>
+                                        <th class="pb-3 px-2 text-center">Gol</th>
+                                        <th class="pb-3 px-2 text-center" title="Galibiyet / Beraberlik / Mağlubiyet">G / B / M</th>
+                                        <th class="pb-3 px-2 text-center">MVP</th>
+                                        <th class="pb-3 px-2 text-right">Gerçek Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="player-leaderboard-body" class="divide-y divide-slate-800">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Match History -->
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> Oynanan Son Maçlar
+                        </h2>
+                        <div id="recent-matches-container" class="space-y-3">
+                            <!-- Dynamic Matches -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Stats -->
+                <div class="space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-fire text-orange-500"></i> Gol Krallığı
+                        </h2>
+                        <div id="top-scorers-list" class="space-y-2.5">
+                            <!-- Dynamic -->
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved text-emerald-400"></i> En Çok Galibiyet
+                        </h2>
+                        <div id="top-wins-list" class="space-y-2.5">
+                            <!-- Dynamic -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: PLAYER MANAGEMENT -->
+        <section id="tab-players" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Add / Edit Form -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 h-fit">
+                    <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2" id="player-form-title">
+                        <i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Oyuncu Kaydı
+                    </h2>
+                    
+                    <form id="player-form" onsubmit="handlePlayerSubmit(event)" class="space-y-4">
+                        <input type="hidden" id="edit-player-id" value="">
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Adı Soyadı / Lakabı</label>
+                            <input type="text" id="player-name" required placeholder="Örn: Burak Özdemir" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tercih Ettiği Pozisyon</label>
+                            <select id="player-position" required onchange="updateAttributeLabelsForForm()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <option value="Kaleci">Kaleci [GK]</option>
+                                <option value="Defans">Defans [DEF]</option>
+                                <option value="Orta Saha" selected>Orta Saha [MID]</option>
+                                <option value="Forvet">Forvet [FWD]</option>
+                            </select>
+                        </div>
+
+                        <p id="attr-form-note" class="text-[10px] text-slate-500 -mb-1"></p>
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div>
+                                <label id="label-attr-pace" class="block text-[11px] text-slate-400 mb-1">Hız (Pace)</label>
+                                <input type="number" id="attr-pace" min="1" max="99" value="75" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label id="label-attr-shooting" class="block text-[11px] text-slate-400 mb-1">Şut (Shooting)</label>
+                                <input type="number" id="attr-shooting" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label id="label-attr-passing" class="block text-[11px] text-slate-400 mb-1">Pas (Passing)</label>
+                                <input type="number" id="attr-passing" min="1" max="99" value="75" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label id="label-attr-dribbling" class="block text-[11px] text-slate-400 mb-1">Dripling (Dribbling)</label>
+                                <input type="number" id="attr-dribbling" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label id="label-attr-defending" class="block text-[11px] text-slate-400 mb-1">Defans (Defending)</label>
+                                <input type="number" id="attr-defending" min="1" max="99" value="65" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                            <div>
+                                <label id="label-attr-physical" class="block text-[11px] text-slate-400 mb-1">Fizik (Physical)</label>
+                                <input type="number" id="attr-physical" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/60 border border-emerald-500/30 rounded-xl px-3 py-2.5 flex items-center justify-between">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300">Öz Rating (Otomatik Hesaplanır)</label>
+                                <p class="text-[10px] text-slate-500">6 nitelik puanının ortalamasından üretilir</p>
+                            </div>
+                            <input type="number" id="player-self-rating" value="75" readonly tabindex="-1" class="w-16 bg-transparent text-amber-400 font-black text-xl text-right focus:outline-none cursor-default">
+                        </div>
+
+                        <div class="pt-3 flex gap-2">
+                            <button type="submit" id="player-form-btn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2.5 rounded-xl transition-all text-xs flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-check"></i> Kaydet ve Puanlamaya Geç
+                            </button>
+                            <button type="button" onclick="resetPlayerForm()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2.5 rounded-xl text-xs">
+                                Temizle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Players List -->
+                <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users text-emerald-400"></i> Kayıtlı Oyuncular
+                        </h2>
+                        <span class="text-xs text-slate-400" id="player-list-count">0 Oyuncu</span>
+                    </div>
+
+                    <div id="players-card-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[520px] overflow-y-auto pr-1">
+                        <!-- Dynamic Cards -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: SELF AND PEER EVALUATION -->
+        <section id="tab-evaluation" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="mb-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-user-pen text-emerald-400"></i> Öz Değerlendirme & Akran Puanlaması
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">Girdiğiniz öz puanlar ile diğer oyuncuların size verdiği puanlar harmanlanarak sistemde 'Gerçek Rating' oluşur.</p>
+                    <p class="text-xs text-amber-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Her oyuncu bir değerlendirme döneminde yalnızca 1 kez akran değerlendirmesi yapabilir ve kaydedildikten sonra güncellenemez. Dönemler her Perşembe 00:01'de sıfırlanır.</p>
+                </div>
+
+                <!-- Step 1: Select Evaluator -->
+                <div id="eval-step-1" class="space-y-4">
+                    <label class="block text-sm font-medium text-slate-300">Oy kullanan oyuncuyu seçiniz:</label>
+                    <select id="eval-current-user" onchange="checkVoterEvalStatus()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        <option value="">-- Oyuncu Seçiniz --</option>
+                    </select>
+
+                    <p id="eval-voter-status" class="text-xs font-semibold min-h-[1rem]"></p>
+
+                    <div class="pt-4 flex justify-end">
+                        <button id="eval-step2-btn" onclick="goToEvalStep(2)" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
+                            Diğer Oyuncuları Puanla <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Peer Ratings -->
+                <div id="eval-step-2" class="hidden space-y-6">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
+                            <i class="fa-solid fa-users-gear"></i> Akran Değerlendirme Listesi
+                        </h3>
+                        <span class="text-xs text-amber-400 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i>Tüm nitelikler zorunlu (1-99)</span>
+                    </div>
+
+                    <div id="peer-ratings-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                        <!-- Dynamic Peer Items -->
+                    </div>
+
+                    <div class="pt-4 flex justify-between border-t border-slate-800">
+                        <button onclick="goToEvalStep(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-2.5 rounded-xl text-xs font-semibold">
+                            <i class="fa-solid fa-arrow-left"></i> Geri
+                        </button>
+                        <button onclick="submitEvaluation()" class="bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                            <i class="fa-solid fa-check"></i> Değerlendirmeleri Kaydet
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: AI TEAM GENERATOR -->
+        <section id="tab-generator" class="tab-content hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl border border-slate-700">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI Dengeli Kadro Kurucu
+                        </h2>
+                        <p class="text-xs text-slate-400">Gerçek rating, pozisyon dağılımı ve performans puanlarını baz alarak mükemmel dengeli 2 takım kurar.</p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button onclick="generateAITeams()" class="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 text-slate-950 font-black px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-rotate-right"></i> Kadroları Otomatik Dengele
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Squad Selection Checkboxes -->
+                <div class="mt-6 pt-4 border-t border-slate-800">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bu Maçın Kadrosu (<span id="selected-player-count">0</span> Seçili)</span>
+                        <div class="space-x-2">
+                            <button onclick="toggleAllPlayers(true)" class="text-xs text-emerald-400 hover:underline">Tümünü Seç</button>
+                            <span class="text-slate-600">•</span>
+                            <button onclick="toggleAllPlayers(false)" class="text-xs text-slate-400 hover:underline">Temizle</button>
+                        </div>
+                    </div>
+                    <div id="player-checkbox-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        <!-- Dynamic Checkboxes -->
+                    </div>
+                    <p id="gk-balance-warning" class="text-[11px] text-amber-400 font-semibold mt-3 hidden"></p>
+                </div>
+            </div>
+
+            <!-- Pitch Visualizer -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 glass-panel p-4 sm:p-6 rounded-2xl flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                            <h3 class="font-bold text-sm text-red-400">A TAKIMI</h3>
+                        </div>
+                        <div class="text-center">
+                            <span id="pitch-match-balance" class="text-xs font-bold bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30">Denge Hesaplaması</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <h3 class="font-bold text-sm text-blue-400">B TAKIMI</h3>
+                            <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                        </div>
+                    </div>
+
+                    <!-- Tactical Pitch Graphic -->
+                    <div class="pitch-bg rounded-xl border-2 border-emerald-600/50 min-h-[440px] p-4 flex flex-col justify-between relative overflow-hidden">
+                        <div class="pitch-lines"></div>
+                        <div class="pitch-center-circle"></div>
+                        <div class="pitch-center-line"></div>
+                        <div class="pitch-box-top"></div>
+                        <div class="pitch-box-bottom"></div>
+
+                        <!-- Team A Side -->
+                        <div id="pitch-team-a" class="relative z-10 grid grid-cols-3 sm:grid-cols-4 gap-2 text-center my-2"></div>
+
+                        <div class="relative z-10 text-center my-1">
+                            <span class="bg-slate-900/80 text-emerald-400 text-[10px] uppercase tracking-widest px-3 py-0.5 rounded-full border border-emerald-500/30 font-bold">
+                                SANTRAL ÇİZGİSİ
+                            </span>
+                        </div>
+
+                        <!-- Team B Side -->
+                        <div id="pitch-team-b" class="relative z-10 grid grid-cols-3 sm:grid-cols-4 gap-2 text-center my-2"></div>
+                    </div>
+                </div>
+
+                <!-- Analysis Summary -->
+                <div class="space-y-6">
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-700 space-y-4">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-robot text-emerald-400"></i> Güç Dengesi ve Analiz
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-red-400 font-semibold">Takım A Ortalama Rating</span>
+                                    <span id="team-a-avg-score" class="font-bold text-white">0</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div id="team-a-score-bar" class="bg-red-500 h-full" style="width: 50%;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-blue-400 font-semibold">Takım B Ortalama Rating</span>
+                                    <span id="team-b-avg-score" class="font-bold text-white">0</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div id="team-b-score-bar" class="bg-blue-500 h-full" style="width: 50%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1">
+                            <p class="font-semibold text-emerald-400">Algoritma Değerlendirmesi:</p>
+                            <p id="ai-verdict-desc" class="leading-relaxed text-[11px] text-slate-300">
+                                Kadrodaki oyuncuların öz ve akran puanları dengelenerek oluşturulmuştur.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-700">
+                        <h3 class="font-bold text-white text-xs mb-3">Takım Listeleri</h3>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <h4 class="font-bold text-red-400 mb-2 border-b border-red-500/20 pb-1">Takım A</h4>
+                                <ul id="list-team-a-names" class="space-y-1 text-slate-300 text-[11px]"></ul>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-blue-400 mb-2 border-b border-blue-500/20 pb-1">Takım B</h4>
+                                <ul id="list-team-b-names" class="space-y-1 text-slate-300 text-[11px]"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: MVP VOTING -->
+        <section id="tab-mvp-vote" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="mb-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-award text-amber-400"></i> Maç Sonu MVP Oylaması
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">Bu haftanın en değerli oyuncusunu (MVP) seçmek için kadrodaki oyuncular oy verebilir.</p>
+                </div>
+
+                <div id="mvp-locked-notice" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 text-center space-y-3">
+                    <i class="fa-solid fa-lock text-amber-400 text-3xl"></i>
+                    <h3 class="text-base font-bold text-white">MVP Oylaması Henüz Başlamadı</h3>
+                    <p class="text-xs text-slate-300 max-w-md mx-auto">Maç bittikten sonra yönetim panelinden (Maç Kaydı sekmesi) oylama başlatılacaktır.</p>
+                </div>
+
+                <div id="mvp-voting-area" class="space-y-6">
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">Oy Kullanan Oyuncu:</label>
+                        <select id="mvp-voter-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                            <option value="">-- Adınızı Seçin --</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Hangi Oyuncuya Oy Veriyorsunuz?</h3>
+                        <div id="mvp-nominees-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+                            <!-- Dynamic Nominees -->
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-xs text-slate-400" id="total-votes-cast">Toplam Oy: 0</span>
+                        <button onclick="submitMVPVote()" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Oyu Gönder
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: ADMIN MATCH RECORD ENTRY -->
+        <section id="tab-admin" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-check text-emerald-400"></i> Maç Kaydı ve Gol Girişi
+                        </h2>
+                        <p class="text-sm text-slate-400">Skoru ve golleri girin; galibiyet / beraberlik / mağlubiyet kayıtları takımlara göre otomatik işlenir.</p>
+                    </div>
+                    <button id="admin-mvp-toggle-btn" onclick="toggleMVPVotingFromAdmin()" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2 shrink-0">
+                        <i class="fa-solid fa-award"></i> <span>MVP Oylamasını Başlat</span>
+                    </button>
+                </div>
+
+                <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 mb-6">
+                    <div class="text-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">MAÇ SKORU</div>
+                    <div class="flex items-center justify-center space-x-6">
+                        <div class="text-center">
+                            <span class="block text-xs font-bold text-red-400 mb-2">Takım A</span>
+                            <input type="number" id="admin-score-a" value="0" min="0" class="w-16 sm:w-20 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+                        </div>
+
+                        <span class="text-2xl font-black text-slate-600">-</span>
+
+                        <div class="text-center">
+                            <span class="block text-xs font-bold text-blue-400 mb-2">Takım B</span>
+                            <input type="number" id="admin-score-b" value="0" min="0" class="w-16 sm:w-20 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-6">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Takımlar ve Gol Girişi</h3>
+                    <div id="admin-player-stats-rows" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                        <!-- Dynamic Player Rows -->
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex justify-end">
+                    <button id="admin-save-btn" onclick="saveMatchResult()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-8 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-xs flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-floppy-disk"></i> Maç Kaydını İşle
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 border-t border-emerald-500/30 py-2.5 px-3 backdrop-blur-md">
+        <div class="flex items-center space-x-3 max-w-7xl mx-auto overflow-hidden">
+            <div class="flex items-center space-x-2 bg-gradient-to-r from-red-600 to-amber-600 text-white font-black text-[11px] px-3 py-1 rounded-lg shrink-0 shadow">
+                <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                <span>TELEGOL AI CANLI YORUM</span>
+            </div>
+
+            <div class="ticker-wrap flex-grow text-xs font-medium text-slate-200">
+                <div class="ticker-move flex items-center space-x-8" id="commentators-ticker-content">
+                    <!-- Dynamic Commentator Quotes will render here -->
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Player Detail Modal (Radar Chart) -->
+    <div id="player-detail-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closePlayerDetail()"></div>
+        <div class="relative glass-panel w-full max-w-lg rounded-2xl border border-slate-700 p-6 max-h-[90vh] overflow-y-auto">
+            <button onclick="closePlayerDetail()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="flex items-center space-x-4 mb-5 pr-6">
+                <div id="detail-avatar" class="w-14 h-14 shrink-0 rounded-full bg-slate-800 text-emerald-400 font-black flex items-center justify-center text-xl border border-slate-700 shadow"></div>
+                <div class="min-w-0">
+                    <h3 id="detail-name" class="text-lg font-black text-white truncate"></h3>
+                    <p id="detail-position" class="text-xs text-emerald-400 font-semibold"></p>
+                </div>
+                <div class="ml-auto text-right shrink-0">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wider">Gerçek Rating</p>
+                    <p id="detail-true-rating" class="text-2xl font-black text-emerald-400"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mb-2.5 text-center">
+                <div class="bg-slate-900/60 rounded-xl p-2 border border-slate-800">
+                    <p class="text-[10px] text-slate-400">Maç</p>
+                    <p id="detail-matches" class="text-sm font-bold text-white"></p>
+                </div>
+                <div class="bg-slate-900/60 rounded-xl p-2 border border-slate-800">
+                    <p class="text-[10px] text-slate-400">Gol</p>
+                    <p id="detail-goals" class="text-sm font-bold text-amber-400"></p>
+                </div>
+                <div class="bg-slate-900/60 rounded-xl p-2 border border-slate-800">
+                    <p class="text-[10px] text-slate-400">MVP</p>
+                    <p id="detail-mvp-count" class="text-sm font-bold text-purple-400"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mb-5 text-center">
+                <div class="bg-emerald-500/10 rounded-xl p-2 border border-emerald-500/30">
+                    <p class="text-[10px] text-emerald-300">Galibiyet</p>
+                    <p id="detail-wins" class="text-sm font-bold text-emerald-400"></p>
+                </div>
+                <div class="bg-slate-500/10 rounded-xl p-2 border border-slate-500/30">
+                    <p class="text-[10px] text-slate-300">Beraberlik</p>
+                    <p id="detail-draws" class="text-sm font-bold text-slate-300"></p>
+                </div>
+                <div class="bg-red-500/10 rounded-xl p-2 border border-red-500/30">
+                    <p class="text-[10px] text-red-300">Mağlubiyet</p>
+                    <p id="detail-losses" class="text-sm font-bold text-red-400"></p>
+                </div>
+            </div>
+
+            <div id="detail-radar-container" class="flex justify-center py-1"></div>
+            <p id="detail-radar-note" class="text-center text-[10px] text-slate-500 -mt-1 mb-2"></p>
+
+            <div id="detail-attr-list" class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast-msg" class="fixed bottom-16 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 border border-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>
+        <span id="toast-text" class="text-sm font-medium">İşlem yapıldı.</span>
+    </div>
+
+    <script>
+        // -------------------------------------------------------------
+        // FIREBASE (Firestore) KURULUMU
+        // -------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyBC5anWNILz9VPS_ktAroINLf8W8MRNL7s",
+            authDomain: "halisahaai.firebaseapp.com",
+            databaseURL: "https://halisahaai-default-rtdb.firebaseio.com",
+            projectId: "halisahaai",
+            storageBucket: "halisahaai.firebasestorage.app",
+            messagingSenderId: "752014826496",
+            appId: "1:752014826496:web:925ed3ae6aa466b178cce5",
+            measurementId: "G-FK62FWPFR7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Tüm veriler Firestore'dan canlı gelir (herkes aynı veriyi görür)
+        let players = [];
+        let matches = [];
+        let mvpVotes = [];
+        let voterEvalLog = {};          // { oyuncuId: sonOyZamanıMs }  (Firestore: eval_log)
+        let isMVPVotingActive = false;
+
+        let currentTeamA = [];
+        let currentTeamB = [];
+        let selectedMVPPlayerId = null;
+        let currentTabId = 'dashboard';
+        let lastTickerSig = '';
+
+        // Kullanıcı girdisini HTML'e basmadan önce kaçışla (ortak veritabanı = XSS riski)
+        function esc(v) {
+            return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        function reportErr(where, err) {
+            const msg = `Firestore (${where}): ${(err && err.code) || ''} ${(err && err.message) || err}`;
+            if (window.__showErr) window.__showErr(msg);
+        }
+
+        function matchTime(m) {
+            if (typeof m.ts === 'number') return m.ts;
+            if (m.timestamp && typeof m.timestamp.toMillis === 'function') return m.timestamp.toMillis();
+            return 0;
+        }
+
+        function initFirestoreListeners() {
+            db.collection('players').onSnapshot(snap => {
+                players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderCurrentTab();
+            }, err => reportErr('players', err));
+
+            db.collection('matches').onSnapshot(snap => {
+                matches = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => matchTime(b) - matchTime(a));
+                renderCurrentTab();
+            }, err => reportErr('matches', err));
+
+            db.collection('settings').doc('mvp_status').onSnapshot(doc => {
+                isMVPVotingActive = doc.exists ? !!doc.data().isActive : false;
+                renderCurrentTab();
+            }, err => reportErr('settings', err));
+
+            db.collection('mvp_votes').onSnapshot(snap => {
+                mvpVotes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderCurrentTab();
+            }, err => reportErr('mvp_votes', err));
+
+            db.collection('eval_log').onSnapshot(snap => {
+                voterEvalLog = {};
+                snap.forEach(d => { voterEvalLog[d.id] = d.data().ts || 0; });
+                checkVoterEvalStatus();
+            }, err => reportErr('eval_log', err));
+        }
+
+        // Veri değişince yalnızca açık sekmeyi yeniden çizer (yazılmakta olan alanları bozmamak için)
+        function renderCurrentTab() {
+            generateAITeams(); // A/B takımları her zaman güncel kalsın (Maç Kaydı bunları kullanır)
+            switch (currentTabId) {
+                case 'dashboard': renderDashboard(); break;
+                case 'players': renderPlayerManagement(); break;
+                case 'evaluation': populateUserDropdown(); break;
+                case 'generator': renderGeneratorControls(); break;
+                case 'mvp-vote': renderMVPVoteTab(); break;
+                case 'admin': renderAdminRows(); break;
+            }
+            updateAdminMVPButtonUI();
+            updateCommentatorTicker();
+        }
+
+        // İçinde bulunulan değerlendirme döneminin başlangıcını hesaplar.
+        // Dönemler her Perşembe 00:01'de sıfırlanır (bir önceki Perşembe 00:01 - bir sonraki Perşembe 00:00:59 arası tek dönemdir).
+        function getCurrentPeriodStart(now = new Date()) {
+            const THURSDAY = 4; // JS: 0=Pazar, 1=Pazartesi ... 4=Perşembe
+            const daysSinceThursday = (now.getDay() - THURSDAY + 7) % 7;
+
+            const candidate = new Date(now);
+            candidate.setDate(now.getDate() - daysSinceThursday);
+            candidate.setHours(0, 1, 0, 0);
+
+            // Eğer bugün Perşembe ama saat henüz 00:01'i geçmediyse, dönem aslında bir önceki hafta başladı
+            if (candidate.getTime() > now.getTime()) {
+                candidate.setDate(candidate.getDate() - 7);
+            }
+            return candidate;
+        }
+
+        // Bir oyuncunun bu değerlendirme döneminde (Perşembe 00:01 - sonraki Perşembe 00:01) oy kullanıp kullanamayacağını hesaplar
+        function getVoterEvalStatus(voterId) {
+            const lastSubmittedAt = voterEvalLog[voterId];
+            const periodStart = getCurrentPeriodStart();
+
+            if (!lastSubmittedAt || lastSubmittedAt < periodStart.getTime()) {
+                return { canVote: true };
+            }
+
+            const nextPeriodStart = new Date(periodStart);
+            nextPeriodStart.setDate(nextPeriodStart.getDate() + 7);
+            const remainingMs = nextPeriodStart.getTime() - Date.now();
+            const remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+
+            return {
+                canVote: false,
+                remainingDays,
+                nextDateLabel: nextPeriodStart.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' 00:01'
+            };
+        }
+
+        // Calculate True Rating Formula: 30% Self Rating + 70% Peer Average + Bonus
+        function calculateTrueRating(player) {
+            const self = player.selfRating || 70;
+            const peers = player.peerRatings || [];
+
+            let peerAvg = self;
+            if (peers.length > 0) {
+                peerAvg = peers.reduce((a, b) => a + b, 0) / peers.length;
+            }
+
+            // Stat Bonuses (Asist kaldırıldı; yerine Galibiyet bonusu geldi)
+            const goalBonus = Math.min((player.goals || 0) * 0.5, 5);
+            const winBonus = Math.min((player.wins || 0) * 0.4, 4);
+            const mvpBonus = (player.mvpCount || 0) * 1.5;
+
+            const baseRating = (self * 0.30) + (peerAvg * 0.70);
+            const finalRating = Math.min(Math.round(baseRating + goalBonus + winBonus + mvpBonus), 99);
+
+            return {
+                trueRating: finalRating,
+                peerAvg: Math.round(peerAvg),
+                selfRating: self
+            };
+        }
+
+        function switchTab(tabId) {
+            currentTabId = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-emerald-400', 'bg-slate-800');
+                btn.classList.add('text-slate-300');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('text-emerald-400', 'bg-slate-800');
+                activeBtn.classList.remove('text-slate-300');
+            }
+
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'players') renderPlayerManagement();
+            if (tabId === 'evaluation') populateUserDropdown();
+            if (tabId === 'generator') renderGeneratorControls();
+            if (tabId === 'mvp-vote') renderMVPVoteTab();
+            if (tabId === 'admin') renderAdminRows();
+        }
+
+        // -------------------------------------------------------------
+        // CANLI YORUMCULAR (Telegol AI) - her birinin kendi tarzı var
+        // -------------------------------------------------------------
+        const COMM = {
+            hoca:    { label: 'Taktik Hoca',       color: 'text-amber-400',   icon: 'fa-chalkboard-user' },
+            hakem:   { label: 'Hakem Eleştirmeni', color: 'text-red-400',     icon: 'fa-gavel' },
+            kehanet: { label: 'Kehanet Abi',       color: 'text-purple-400',  icon: 'fa-hat-wizard' },
+            analiz:  { label: 'Analiz Abi',        color: 'text-blue-400',    icon: 'fa-chart-line' },
+            spiker:  { label: 'Coşkulu Spiker',    color: 'text-emerald-400', icon: 'fa-microphone-lines' },
+            sakin:   { label: 'Sakin Abi',         color: 'text-teal-400',    icon: 'fa-mug-hot' }
+        };
+
+        const hl = (name) => `<strong class="text-emerald-400">${esc(name)}</strong>`;
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+        function commLine(key, text) {
+            const c = COMM[key];
+            return `<span class="flex items-center gap-2"><span class="font-extrabold ${c.color} shrink-0"><i class="fa-solid ${c.icon} mr-1"></i>${c.label}:</span><span>"${text}"</span></span>`;
+        }
+
+        // Son maç + sezon verilerinden yorumlara temel olacak bağlamı çıkarır
+        function buildCommentaryContext() {
+            const x = { n: matches.length };
+            const withTr = players.map(p => ({ p, tr: calculateTrueRating(p) }));
+            x.topRated = [...withTr].sort((a, b) => b.tr.trueRating - a.tr.trueRating)[0];
+
+            const by = (key) => [...players].sort((a, b) => (b[key] || 0) - (a[key] || 0));
+            const g = by('goals')[0];   x.topScorer = g && (g.goals || 0) > 0 ? g : null;
+            const w = by('wins')[0];    x.topWinner = w && (w.wins || 0) > 0 ? w : null;
+            const l = by('losses')[0];  x.mostLoser = l && (l.losses || 0) > 0 ? l : null;
+            const mv = by('mvpCount')[0]; x.mvpLeader = mv && (mv.mvpCount || 0) > 0 ? mv : null;
+
+            x.unbeaten = players.filter(p => (p.matches || 0) >= 2 && (p.losses || 0) === 0 && (p.wins || 0) > 0)
+                .sort((a, b) => (b.wins || 0) - (a.wins || 0))[0] || null;
+            x.winless = players.filter(p => (p.matches || 0) >= 3 && (p.wins || 0) === 0)
+                .sort((a, b) => (b.matches || 0) - (a.matches || 0))[0] || null;
+            x.bench = x.n > 0 ? (players.find(p => (p.matches || 0) === 0) || null) : null;
+            x.gk = players.filter(p => p.position === 'Kaleci').sort((a, b) => (b.matches || 0) - (a.matches || 0))[0] || null;
+
+            // Öz puan - akran puanı farkı
+            let gap = null, humble = null, maxGap = 10, maxHum = 8;
+            withTr.forEach(({ p, tr }) => {
+                if ((p.peerRatings || []).length === 0) return;
+                const d = (p.selfRating || 70) - tr.peerAvg;
+                if (d > maxGap) { maxGap = d; gap = { p, tr }; }
+                if (-d >= maxHum) { maxHum = -d; humble = { p, tr }; }
+            });
+            x.gap = gap; x.humble = humble;
+
+            x.goals = players.reduce((s, p) => s + (p.goals || 0), 0);
+            x.avg = x.n ? (x.goals / x.n).toFixed(1) : '0';
+
+            const m = matches[0];
+            if (m) {
+                x.m = m;
+                x.sA = m.teamAScore || 0;
+                x.sB = m.teamBScore || 0;
+                x.diff = Math.abs(x.sA - x.sB);
+                x.total = x.sA + x.sB;
+                x.winner = x.sA > x.sB ? 'A Takımı' : (x.sB > x.sA ? 'B Takımı' : null);
+                x.mvpName = (m.mvp && m.mvp !== 'Belirtilmedi') ? m.mvp : null;
+                x.cat = x.sA === x.sB ? 'draw' : x.diff >= 4 ? 'blowout' : x.total >= 12 ? 'goalfest' : x.diff === 1 ? 'narrow' : 'normal';
+            }
+            return x;
+        }
+
+        // SON MAÇ hakkında yorumlar (maç kategorisine göre)
+        const COMM_LAST = {
+            hoca: {
+                draw:     x => `Bakın kardeşim, ${x.sA}-${x.sB}... İki takım da birbirinin geometrisini bozamadı. Halı sahada bile denge bu kadar güzel kurulursa seyreden de keyif alır!`,
+                blowout:  x => `${x.sA}-${x.sB} kardeşim! ${x.winner} ikinci topları topladı, rakip yarım alanları sadece sayarak izledi. Bu skor tesadüf değil, bu bir ders!`,
+                narrow:   x => `Tek farkla biten bir maç: ${x.sA}-${x.sB}. Futbol dediğin son pasta, son dakikada ve bir de kimin dizinin tutup tutmadığında bitiyor kardeşim.`,
+                goalfest: x => `${x.total} gol! Bakın kardeşim, savunma diye bir şey bu maçta konuşulmadı; kaleciler bile kendini seyirci sanmış.`,
+                normal:   x => `${x.sA}-${x.sB} biten maçta ${x.winner} oyunu okudu; rakip ise oyunu okumak yerine formasını düzeltmekle meşguldü.`
+            },
+            hakem: {
+                draw:     x => `Arkadaş, ${x.sA}-${x.sB}! Herkes memnun gibi görünüyor ama ben diyorum ki o pozisyonda bir penaltı vardı, kimse ağzını açmadı!`,
+                blowout:  x => `${x.sA}-${x.sB}! Ben şunu söylüyorum: bu skorda hakemin düdüğü bile yoruldu; kaybeden taraf "faul değil mi?" diye bağırmaktan sesini kaybetti.`,
+                narrow:   x => `${x.sA}-${x.sB}, tek gol fark! Arkadaş ofsayt mıydı, değil miydi? Halı sahada VAR olsa maç hâlâ bitmemişti!`,
+                goalfest: x => `${x.total} gol! Ben kural kitabını açtım, "savunma" maddesini bulamadım arkadaş. Bu maçta defans diye bir kavram yok!`,
+                normal:   x => `${x.sA}-${x.sB} biten maçta ${x.winner} kazandı ama ben o ikinci gole giden kornerdeki şüpheli çekişmeyi hâlâ düşünüyorum, arkadaş!`
+            },
+            kehanet: {
+                draw:     x => `Bakın bakın, ${x.sA}-${x.sB}! Yazın bir kenara: haftaya bu iki takımdan biri kesin kazanır, kazanmazsa mesleği bırakırım!`,
+                blowout:  x => `İnanamıyorum! ${x.sA}-${x.sB}! Bu skor bağıra bağıra bir şey söylüyor: kaybeden takım haftaya pijamayla gelse bile rövanşı alır!`,
+                narrow:   x => `${x.sA}-${x.sB}... Bakın bakın, bu maç tesadüf değil, bu maç bir senaryo! Haftaya aynı skor çıkarsa şike aramak lazım!`,
+                goalfest: x => `${x.total} gol attılar, ben ağlamamak için kendimi tutuyorum! Yazın bir kenara, bu maç kırk yıl sonra torunlara anlatılır!`,
+                normal:   x => `${x.winner} kazandı ama bakın bakın, haftaya iş değişir; bu liganın yazılmamış kuralı: kazanan rahat uyur, kaybeden rövanşı hayal eder!`
+            },
+            analiz: {
+                draw:     x => `Verilere bakıyorum: ${x.sA}-${x.sB}. Beklenen gol dengesi simetrik, şans faktörü sıfır, çay faktörü yüksek. Rakamlar yalan söylemez.`,
+                blowout:  x => `Skor ${x.sA}-${x.sB}; gol farkı ${x.diff}. İstatistiksel olarak bu bir aykırı değer; takım dengesi algoritması bile "ben ne yaptım" diyor olabilir.`,
+                narrow:   x => `${x.sA}-${x.sB}: tek gol fark, güven aralığı çok dar. Bir pas daha isabetli olsaydı tabloyu tersine çevirirdi.`,
+                goalfest: x => `${x.total} gol: maç başına gol ortalamasını tavana vuran bir veri noktası. Defans oyuncuları için ayrı bir tablo açmam gerekebilir.`,
+                normal:   x => `${x.sA}-${x.sB}. ${x.winner} verimlilikte öndeydi; ceza sahasındaki karar kalitesi rakibe kıyasla ciddi biçimde yüksekti.`
+            },
+            spiker: {
+                draw:     x => `Hocam ${x.sA}-${x.sB}! Kimse kazanamadı ama tribünler ayakta, ben ayaktayım, simitçi bile ayakta!`,
+                blowout:  x => `Hocam ${x.sA}-${x.sB}! Oğlum bu ne skor, bu ne maç! ${x.winner} sahayı yaktı, ben de yanık kokusu aldım!`,
+                narrow:   x => `${x.sA}-${x.sB}! Hocam son dakikaya kadar nefes alamadık, ben ağzımdaki çekirdeği yuttum yuttum!`,
+                goalfest: x => `${x.total} gol hocam! Çocuklar kaleyi açık büfe sanmış, kimse gol atmaya doymadı!`,
+                normal:   x => x.mvpName
+                    ? `${x.sA}-${x.sB} hocam! ${x.winner} aslanlar gibi oynadı; maçın adamı ${hl(x.mvpName)} ise her topa gol arar gibi koştu!`
+                    : `${x.sA}-${x.sB} hocam! ${x.winner} aslanlar gibi oynadı, tribünler hâlâ alkışlıyor!`
+            },
+            sakin: {
+                draw:     x => `Kardeşim ${x.sA}-${x.sB}; kimse kaybetmedi, kimse fazla kazanmadı. Maç sonrası çay birlikte içildi, işte futbol bu.`,
+                blowout:  x => `${x.sA}-${x.sB}... Kardeşim, kaybeden takım üzülmesin; top yuvarlak, haftaya yine buradayız, bu sefer işi daha güzel yaparız.`,
+                narrow:   x => `${x.sA}-${x.sB}. Kardeşim bu kadar yakın maçta kazanan da kaybeden de hak etti; oturup konuşunca anlaşırız.`,
+                goalfest: x => `${x.total} gol... Kardeşim ben sakinim ama kaleciler için bu hafta bir kahve ısmarlamalıyız.`,
+                normal:   x => `${x.sA}-${x.sB}; sonuç sonuç, geçti gitti. Kardeşim önemli olan topu al, oyna, yine al, yine oyna.`
+            }
+        };
+
+        // SEZON hakkında yorumlar (koşul sağlanırsa metin döner, yoksa null)
+        const COMM_SEASON = {
+            hoca: [
+                x => x.topScorer && `Sezonun gol makinesi ${hl(x.topScorer.name)}: ${x.topScorer.goals} gol! Ceza sahasında yer açmayı, yer bulmayı ve gerektiğinde yere yatmayı biliyor kardeşim.`,
+                x => x.n > 0 && `Maç başına ortalama ${x.avg} gol... Bakın, bu halı saha değil, savunma felsefesinin cenaze töreni!`,
+                x => x.unbeaten && `${hl(x.unbeaten.name)} henüz mağlubiyet yüzü görmedi. Zekâ budur kardeşim: kaybetmemek için önce nerede durmayacağını bilmek gerek.`
+            ],
+            hakem: [
+                x => x.gap && `${hl(x.gap.p.name)} kendine ${x.gap.p.selfRating} basmış, arkadaşları ${x.gap.tr.peerAvg} vermiş! Bu fark, VAR'a gitmeden verilen penaltı gibi arkadaş!`,
+                x => x.mostLoser && `${hl(x.mostLoser.name)} ${x.mostLoser.losses} mağlubiyetle sezonun yük çeken adamı; ya talih yok ya da ayakkabı bağcığı sorunlu arkadaş!`,
+                x => x.gk && (x.gk.matches || 0) > 0 && `Kaleci ${hl(x.gk.name)}: ${x.gk.matches} maç, ${x.gk.losses || 0} mağlubiyet. O topların hepsi file yerine şans meleğinin sinirine gitti, arkadaş!`
+            ],
+            kehanet: [
+                x => x.topWinner && `${hl(x.topWinner.name)} ${x.topWinner.wins} galibiyetle önde! Bu adam sezonu zirvede bitirmezse ben mesleği bırakırım!`,
+                x => x.mvpLeader && `${hl(x.mvpLeader.name)} ${x.mvpLeader.mvpCount} MVP'ye ulaşmış! Yazın bir kenara, o kupa bu adamın evinde yatar!`,
+                x => x.bench && `${hl(x.bench.name)} sezon boyu hiç forma giymedi! Bakın bakın, bu bir komplo mu yoksa dolabın şifresi mi unutuldu?!`
+            ],
+            analiz: [
+                x => x.n > 0 && `Sezon verisi: ${x.n} maç, ${x.goals} gol, maç başına ${x.avg}. Bu oran halı saha standartlarının üzerinde; sistem "biraz savunma çalışın" uyarısı veriyor.`,
+                x => x.topScorer && `Gol dağılımında ${hl(x.topScorer.name)} ${x.topScorer.goals} golle zirvede; verimlilik grafiği "ben buradayım" diye bağırıyor.`,
+                x => x.gap && `Öz-algı sapması: ${hl(x.gap.p.name)} kendini ${x.gap.p.selfRating} görüyor, çevresi ${x.gap.tr.peerAvg}. Korelasyon katsayısı mizahi düzeyde.`
+            ],
+            spiker: [
+                x => x.topScorer && `${hl(x.topScorer.name)}! ${x.topScorer.goals} gol hocam, yakarım bu ligi! Kaleciler onu görünce sigorta şirketini arıyor!`,
+                x => x.unbeaten && `${hl(x.unbeaten.name)} hiç yenilmedi hocam! Bu adam yenilgiyi sözlükte arasa bulamaz!`,
+                x => x.winless && `${hl(x.winless.name)} ${x.winless.matches} maçtır galibiyet bekliyor hocam, bu hafta Allah'ın izniyle bozarız bu laneti!`
+            ],
+            sakin: [
+                x => x.humble && `${hl(x.humble.p.name)} kendine ${x.humble.p.selfRating} vermiş, arkadaşları ${x.humble.tr.peerAvg}; kardeşim bu çocuk mütevazılığı topla birlikte sahaya getirmiş, helal olsun.`,
+                x => x.n > 0 && `Sezonda ${x.n} maç oynadık, ${x.goals} gol attık. Kardeşim, topun yuvarlak olduğunu bir kez daha gördük; gerisi detay.`,
+                x => x.mostLoser && `${hl(x.mostLoser.name)} ${x.mostLoser.losses} kez kaybetti ama sahada kalmaya devam ediyor. Bu adam karakter sahibi kardeşim.`
+            ]
+        };
+
+        // Hiçbir koşul sağlanmazsa (yeni sezon) genel yorum
+        const COMM_FALLBACK = {
+            hoca:    x => `Bakın kardeşim, ${hl(x.topRated.p.name)} şu an ${x.topRated.tr.trueRating}'lik gerçek rating'le kadronun beyni; top onu arıyor, rakip ise gölgesini bile yakalayamıyor.`,
+            hakem:   x => `Arkadaş, ${hl(x.topRated.p.name)} ${x.topRated.tr.trueRating}'lik rating'le zirvede ama ben henüz maç görmeden kimseye kredi vermem; önce sahada görelim!`,
+            kehanet: x => `Bakın bakın, ${hl(x.topRated.p.name)} ${x.topRated.tr.trueRating}'lik rating'le geliyor; bu adam sezonu şampiyon bitirmezse ben mesleği bırakırım!`,
+            analiz:  x => `En yüksek gerçek rating ${hl(x.topRated.p.name)} oyuncusunda: ${x.topRated.tr.trueRating}. Örneklem küçük ama güven aralığı şimdilik gülümsüyor.`,
+            spiker:  x => `Hocam ${hl(x.topRated.p.name)}! ${x.topRated.tr.trueRating}'lik rating'le sahaya çıkıyor, kaleciler şimdiden terlemeye başladı!`,
+            sakin:   x => `Kardeşim, rating dediğin sadece sayı; ${hl(x.topRated.p.name)} ${x.topRated.tr.trueRating} almış, yine de topu arkadaşlarına paslamayı unutmasın.`
+        };
+
+        function updateCommentatorTicker() {
+            const container = document.getElementById('commentators-ticker-content');
+            if (!container) return;
+
+            if (players.length === 0) {
+                container.innerHTML = `<span class="text-slate-400 italic">Sistemde henüz yorumlanacak oyuncu verisi bulunmuyor. Sağ üstten oyuncu ekleyebilirsiniz.</span>`;
+                lastTickerSig = '';
+                return;
+            }
+
+            // Veri değişmediyse ticker'ı yeniden kurma (animasyon başa sarmasın)
+            const sig = JSON.stringify([
+                players.map(p => [p.id, p.goals, p.matches, p.wins, p.draws, p.losses, p.mvpCount, p.selfRating, (p.peerRatings || []).length]),
+                matches.length ? [matches[0].id, matches[0].teamAScore, matches[0].teamBScore, matches[0].mvp] : null
+            ]);
+            if (sig === lastTickerSig && container.innerHTML.trim()) return;
+            lastTickerSig = sig;
+
+            const x = buildCommentaryContext();
+            const sep = '<span class="text-slate-600 px-4">•</span>';
+            const keys = Object.keys(COMM);
+            const lastLines = [];
+            const seasonLines = [];
+
+            keys.forEach(k => {
+                if (x.m) lastLines.push(commLine(k, COMM_LAST[k][x.cat](x)));
+
+                const candidates = COMM_SEASON[k].map(fn => fn(x)).filter(Boolean);
+                if (candidates.length === 0) {
+                    if (!x.m) seasonLines.push(commLine(k, COMM_FALLBACK[k](x)));
+                } else {
+                    shuffle(candidates).slice(0, 2).forEach(t => seasonLines.push(commLine(k, t)));
+                }
+            });
+
+            const chip = (text, cls) => `<span class="px-2 py-0.5 rounded-md font-black text-[10px] tracking-wider ${cls}">${text}</span>`;
+            const parts = [];
+            if (x.m) {
+                parts.push(chip(`SON MAÇ • A ${x.sA} - ${x.sB} B`, 'bg-amber-500/20 text-amber-300 border border-amber-500/40'));
+                parts.push(...lastLines);
+            }
+            if (seasonLines.length) {
+                parts.push(chip(x.n ? `SEZON • ${x.n} MAÇ • ${x.goals} GOL` : 'SEZON ÖNCESİ', 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'));
+                parts.push(...seasonLines);
+            }
+
+            const one = parts.join(sep);
+            container.innerHTML = one + sep + one;
+        }
+
+        // PLAYER MANAGEMENT FUNCTIONS (FIRESTORE)
+        async function handlePlayerSubmit(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-player-id').value;
+            const name = document.getElementById('player-name').value.trim();
+            const position = document.getElementById('player-position').value;
+
+            const pace = parseInt(document.getElementById('attr-pace').value) || 70;
+            const shooting = parseInt(document.getElementById('attr-shooting').value) || 70;
+            const passing = parseInt(document.getElementById('attr-passing').value) || 70;
+            const dribbling = parseInt(document.getElementById('attr-dribbling').value) || 70;
+            const defending = parseInt(document.getElementById('attr-defending').value) || 70;
+            const physical = parseInt(document.getElementById('attr-physical').value) || 70;
+
+            // Öz Rating: 6 niteliğin ortalamasından otomatik hesaplanır
+            const selfRating = Math.round((pace + shooting + passing + dribbling + defending + physical) / 6);
+            const attributes = { pace, shooting, passing, dribbling, defending, physical };
+
+            try {
+                let savedId = editId;
+                if (editId) {
+                    await db.collection('players').doc(editId).update({ name, position, selfRating, attributes });
+                    showToast("Oyuncu verileri güncellendi.");
+                } else {
+                    const ref = await db.collection('players').add({
+                        name, position, selfRating, attributes,
+                        peerRatings: [], peerAttributeVotes: [],
+                        matches: 0, goals: 0, wins: 0, draws: 0, losses: 0, mvpCount: 0,
+                        selected: true
+                    });
+                    savedId = ref.id;
+                    showToast("Yeni oyuncu başarıyla eklendi.");
+                }
+
+                resetPlayerForm();
+
+                // Kaydettikten sonra akran puanlamasına geç
+                setTimeout(() => {
+                    switchTab('evaluation');
+                    document.getElementById('eval-current-user').value = savedId;
+                    checkVoterEvalStatus();
+                    goToEvalStep(2);
+                }, 600);
+            } catch (err) {
+                showToast("Hata oluştu: " + err.message);
+                reportErr('players.save', err);
+            }
+        }
+
+        function editPlayer(id) {
+            const player = players.find(p => p.id === id);
+            if (!player) return;
+            const a = player.attributes || {};
+
+            document.getElementById('edit-player-id').value = player.id;
+            document.getElementById('player-name').value = player.name;
+            document.getElementById('player-position').value = player.position;
+            updateAttributeLabelsForForm();
+
+            document.getElementById('attr-pace').value = a.pace ?? 75;
+            document.getElementById('attr-shooting').value = a.shooting ?? 70;
+            document.getElementById('attr-passing').value = a.passing ?? 75;
+            document.getElementById('attr-dribbling').value = a.dribbling ?? 70;
+            document.getElementById('attr-defending').value = a.defending ?? 65;
+            document.getElementById('attr-physical').value = a.physical ?? 70;
+            updateSelfRatingPreview();
+
+            document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-pen text-amber-400"></i> Oyuncu Düzenle`;
+            document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Güncelle ve Puanlamaya Geç`;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deletePlayer(id) {
+            if (!confirm("Bu oyuncuyu silmek istediğinize emin misiniz?")) return;
+            try {
+                await db.collection('players').doc(id).delete();
+                showToast("Oyuncu silindi.");
+            } catch (err) {
+                showToast("Silme hatası: " + err.message);
+                reportErr('players.delete', err);
+            }
+        }
+
+        function resetPlayerForm() {
+            document.getElementById('edit-player-id').value = '';
+            document.getElementById('player-name').value = '';
+            document.getElementById('player-position').value = 'Orta Saha';
+            updateAttributeLabelsForForm();
+            document.getElementById('attr-pace').value = 75;
+            document.getElementById('attr-shooting').value = 70;
+            document.getElementById('attr-passing').value = 75;
+            document.getElementById('attr-dribbling').value = 70;
+            document.getElementById('attr-defending').value = 65;
+            document.getElementById('attr-physical').value = 70;
+            updateSelfRatingPreview();
+
+            document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Oyuncu Kaydı`;
+            document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-check"></i> Kaydet ve Puanlamaya Geç`;
+        }
+
+        // Nitelik ortalamasından otomatik Öz Rating hesapla ve canlı göster
+        function updateSelfRatingPreview() {
+            const ids = ['attr-pace', 'attr-shooting', 'attr-passing', 'attr-dribbling', 'attr-defending', 'attr-physical'];
+            const values = ids.map(id => parseInt(document.getElementById(id).value) || 0);
+            const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+            document.getElementById('player-self-rating').value = avg;
+        }
+
+        function renderPlayerManagement() {
+            document.getElementById('player-list-count').textContent = `${players.length} Oyuncu`;
+            const grid = document.getElementById('players-card-grid');
+            grid.innerHTML = '';
+
+            if (players.length === 0) {
+                grid.innerHTML = `<p class="text-xs text-slate-500 italic col-span-2 text-center py-6">Kayıtlı oyuncu yok. Sol panelden yeni oyuncu ekleyebilirsiniz.</p>`;
+                return;
+            }
+
+            players.forEach(p => {
+                const tr = calculateTrueRating(p);
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-colors';
+                card.onclick = () => openPlayerDetail(p.id);
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-800 text-emerald-400 font-extrabold flex items-center justify-center text-xs border border-slate-700 shadow">
+                            ${esc(p.name.charAt(0))}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">${esc(p.name)}</p>
+                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)} • Öz: <span class="text-amber-400">${p.selfRating || 70}</span> | Akran: <span class="text-blue-400">${tr.peerAvg}</span></p>
+                            <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1" onclick="event.stopPropagation()">
+                        <button onclick="openPlayerDetail('${p.id}')" class="p-1.5 text-slate-400 hover:text-emerald-400 text-xs" title="Radar Grafiği">
+                            <i class="fa-solid fa-chart-simple"></i>
+                        </button>
+                        <button onclick="editPlayer('${p.id}')" class="p-1.5 text-slate-400 hover:text-amber-400 text-xs">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="deletePlayer('${p.id}')" class="p-1.5 text-slate-400 hover:text-red-400 text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // PLAYER DETAIL MODAL & RADAR CHART
+        // Nitelik anahtarları sabit kalır (veri yapısı ve AI algoritması bunlara göre çalışır);
+        // yalnızca pozisyona göre gösterilen ETİKETLER değişir (Kaleci için kaleciye özgü isimler).
+        const ATTR_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
+
+        const ATTR_SHORT_LABELS = {
+            Kaleci: { pace: 'ÇIKIŞ', shooting: 'REFLEKS', passing: 'AYAK', dribbling: 'ELKN', defending: 'POZ', physical: 'HAVA' },
+            default: { pace: 'HIZ', shooting: 'ŞUT', passing: 'PAS', dribbling: 'DRİP', defending: 'DEF', physical: 'FİZ' }
+        };
+
+        const ATTR_FULL_LABELS = {
+            Kaleci: {
+                pace: 'Çıkış Hızı (Rushing)',
+                shooting: 'Refleks (Reflexes)',
+                passing: 'Ayak Ustalığı (Kicking)',
+                dribbling: 'Elle Kontrol (Handling)',
+                defending: 'Pozisyon Alma (Positioning)',
+                physical: 'Hava Hakimiyeti (Aerial)'
+            },
+            default: {
+                pace: 'Hız (Pace)',
+                shooting: 'Şut (Shooting)',
+                passing: 'Pas (Passing)',
+                dribbling: 'Dripling (Dribbling)',
+                defending: 'Defans (Defending)',
+                physical: 'Fizik (Physical)'
+            }
+        };
+
+        // Verilen pozisyona uygun nitelik etiketlerini (kısa + tam) döndürür. Anahtarlar her pozisyon için aynıdır.
+        function getAttrMeta(position) {
+            const shortTable = ATTR_SHORT_LABELS[position] || ATTR_SHORT_LABELS.default;
+            const fullTable = ATTR_FULL_LABELS[position] || ATTR_FULL_LABELS.default;
+            return ATTR_KEYS.map(key => ({ key, label: shortTable[key], fullLabel: fullTable[key] }));
+        }
+
+        // Oyuncu ekleme/düzenleme formunda pozisyon değiştiğinde nitelik etiketlerini günceller
+        // (ör. Kaleci seçilince Hız/Şut yerine Çıkış Hızı/Refleks gibi kaleciye özgü isimler çıkar).
+        function updateAttributeLabelsForForm() {
+            const position = document.getElementById('player-position').value;
+            const meta = getAttrMeta(position);
+            meta.forEach(a => {
+                const labelEl = document.getElementById(`label-attr-${a.key}`);
+                if (labelEl) labelEl.textContent = a.fullLabel;
+            });
+            const note = document.getElementById('attr-form-note');
+            if (note) {
+                note.textContent = position === 'Kaleci'
+                    ? 'Kaleci seçildi — nitelikler kaleciye özgü olarak gösteriliyor.'
+                    : '';
+            }
+        }
+
+        // Öz nitelikler (%30) + akranların o niteliğe verdiği ortalama puan (%70) harmanlanarak
+        // "Gerçek Nitelik" değerleri üretilir (henüz akran nitelik oyu yoksa öz değer kullanılır).
+        function getEffectiveAttributes(player) {
+            const self = player.attributes || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
+            const votes = player.peerAttributeVotes || [];
+            const effective = {};
+
+            ATTR_KEYS.forEach(key => {
+                const peerVals = votes.map(v => v[key]).filter(v => typeof v === 'number' && !isNaN(v));
+                if (peerVals.length > 0) {
+                    const peerAvg = peerVals.reduce((x, y) => x + y, 0) / peerVals.length;
+                    effective[key] = Math.round((self[key] || 70) * 0.3 + peerAvg * 0.7);
+                } else {
+                    effective[key] = self[key] || 70;
+                }
+            });
+
+            return { values: effective, hasPeerVotes: votes.length > 0 };
+        }
+
+        function openPlayerDetail(id) {
+            const p = players.find(x => x.id === id);
+            if (!p) return;
+            const tr = calculateTrueRating(p);
+            const eff = getEffectiveAttributes(p);
+            const attrs = eff.values;
+            const attrMeta = getAttrMeta(p.position);
+
+            document.getElementById('detail-avatar').textContent = p.name.charAt(0);
+            document.getElementById('detail-name').textContent = p.name;
+            document.getElementById('detail-position').textContent = p.position;
+            document.getElementById('detail-true-rating').textContent = tr.trueRating;
+            document.getElementById('detail-matches').textContent = p.matches || 0;
+            document.getElementById('detail-goals').textContent = p.goals || 0;
+            document.getElementById('detail-mvp-count').textContent = p.mvpCount || 0;
+            document.getElementById('detail-wins').textContent = p.wins || 0;
+            document.getElementById('detail-draws').textContent = p.draws || 0;
+            document.getElementById('detail-losses').textContent = p.losses || 0;
+
+            document.getElementById('detail-radar-container').innerHTML = buildRadarSVG(attrs, attrMeta);
+
+            const noteEl = document.getElementById('detail-radar-note');
+            if (noteEl) {
+                noteEl.textContent = eff.hasPeerVotes
+                    ? 'Gerçek Nitelik: %30 Öz Değer + %70 Akran Nitelik Ortalaması'
+                    : 'Henüz akran nitelik oyu yok — öz değerler gösteriliyor';
+            }
+
+            document.getElementById('detail-attr-list').innerHTML = attrMeta.map(a => `
+                <div class="flex items-center justify-between bg-slate-900/40 rounded-lg px-2.5 py-1.5 border border-slate-800 text-xs">
+                    <span class="text-slate-400 font-semibold">${a.fullLabel}</span>
+                    <span class="text-emerald-300 font-bold">${attrs[a.key] ?? '-'}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('player-detail-modal').classList.remove('hidden');
+        }
+
+        function closePlayerDetail() {
+            document.getElementById('player-detail-modal').classList.add('hidden');
+        }
+
+        function buildRadarSVG(attrs, attrMeta) {
+            const meta = attrMeta || getAttrMeta('default');
+            const size = 280;
+            const center = size / 2;
+            const maxRadius = 90;
+            const labelRadius = 115;
+            const levels = [20, 40, 60, 80, 100];
+            const n = meta.length;
+            const angleStep = (Math.PI * 2) / n;
+
+            function pointAt(index, value, radius) {
+                const angle = -Math.PI / 2 + index * angleStep;
+                const r = (value / 100) * radius;
+                return {
+                    x: center + r * Math.cos(angle),
+                    y: center + r * Math.sin(angle)
+                };
+            }
+
+            let gridSVG = '';
+            levels.forEach(lvl => {
+                const pts = meta.map((_, i) => {
+                    const pt = pointAt(i, lvl, maxRadius);
+                    return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+                }).join(' ');
+                gridSVG += `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+            });
+
+            let axisSVG = '';
+            let labelSVG = '';
+            meta.forEach((a, i) => {
+                const outer = pointAt(i, 100, maxRadius);
+                axisSVG += `<line x1="${center}" y1="${center}" x2="${outer.x.toFixed(1)}" y2="${outer.y.toFixed(1)}" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>`;
+                const lp = pointAt(i, 100, labelRadius);
+                let anchor = 'middle';
+                if (lp.x < center - 8) anchor = 'end';
+                else if (lp.x > center + 8) anchor = 'start';
+                labelSVG += `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-size="11" font-weight="700" fill="#94a3b8">${a.label}</text>`;
+            });
+
+            const dataPts = meta.map((a, i) => {
+                const val = Math.max(1, Math.min(99, attrs[a.key] ?? 70));
+                return pointAt(i, val, maxRadius);
+            });
+            const dataPolygon = dataPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+            const dotsSVG = dataPts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#10b981" stroke="#0f172a" stroke-width="1.5"/>`).join('');
+
+            return `
+                <svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:300px">
+                    ${gridSVG}
+                    ${axisSVG}
+                    <polygon points="${dataPolygon}" fill="rgba(16,185,129,0.35)" stroke="#10b981" stroke-width="2"/>
+                    ${dotsSVG}
+                    ${labelSVG}
+                </svg>
+            `;
+        }
+
+        // DASHBOARD RENDER
+        function renderDashboard() {
+            document.getElementById('stat-total-players').textContent = players.length;
+            document.getElementById('stat-total-matches').textContent = matches.length;
+
+            const totalGoals = players.reduce((sum, p) => sum + (p.goals || 0), 0);
+            document.getElementById('stat-total-goals').textContent = totalGoals;
+
+            const lastMatch = matches[0];
+            document.getElementById('stat-mvp').textContent = lastMatch ? (lastMatch.mvp || 'Henüz Seçilmedi') : 'Henüz Seçilmedi';
+
+            const tbody = document.getElementById('player-leaderboard-body');
+            tbody.innerHTML = '';
+
+            const sorted = [...players].sort((a, b) => calculateTrueRating(b).trueRating - calculateTrueRating(a).trueRating);
+
+            if (sorted.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-xs text-slate-500">Oyuncu verisi bulunmuyor.</td></tr>`;
+            } else {
+                sorted.forEach((player, index) => {
+                    const trStats = calculateTrueRating(player);
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-800/50 transition-colors cursor-pointer';
+                    tr.onclick = () => openPlayerDetail(player.id);
+                    tr.innerHTML = `
+                        <td class="py-3 px-2 font-bold text-slate-500 text-xs">${index + 1}</td>
+                        <td class="py-3 px-2 font-bold text-white text-xs">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center text-[10px] border border-slate-700">
+                                    ${esc(player.name.charAt(0))}
+                                </div>
+                                ${esc(player.name)}
+                            </div>
+                        </td>
+                        <td class="py-3 px-2"><span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700">${esc(player.position)}</span></td>
+                        <td class="py-3 px-2 text-center text-xs">
+                            <span class="text-amber-400 font-bold">${player.selfRating || 70}</span> / <span class="text-blue-400 font-bold">${trStats.peerAvg}</span>
+                        </td>
+                        <td class="py-3 px-2 text-center text-slate-300 text-xs">${player.matches || 0}</td>
+                        <td class="py-3 px-2 text-center text-xs"><span class="text-amber-400 font-bold">${player.goals || 0}</span></td>
+                        <td class="py-3 px-2 text-center text-xs whitespace-nowrap">
+                            <span class="text-emerald-400 font-bold">${player.wins || 0}</span> /
+                            <span class="text-slate-300 font-bold">${player.draws || 0}</span> /
+                            <span class="text-red-400 font-bold">${player.losses || 0}</span>
+                        </td>
+                        <td class="py-3 px-2 text-center font-bold text-purple-400 text-xs">${player.mvpCount || 0}</td>
+                        <td class="py-3 px-2 text-right font-black text-emerald-400 text-sm">${trStats.trueRating}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const scorersContainer = document.getElementById('top-scorers-list');
+            scorersContainer.innerHTML = '';
+            [...players].sort((a, b) => (b.goals || 0) - (a.goals || 0)).slice(0, 4).forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold text-amber-400">#${idx + 1}</span>
+                        <span class="font-bold text-slate-200">${esc(p.name)}</span>
+                    </div>
+                    <span class="font-black text-orange-400">${p.goals || 0} Gol</span>
+                `;
+                scorersContainer.appendChild(div);
+            });
+
+            const winsContainer = document.getElementById('top-wins-list');
+            winsContainer.innerHTML = '';
+            [...players].sort((a, b) => (b.wins || 0) - (a.wins || 0) || (a.losses || 0) - (b.losses || 0)).slice(0, 4).forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold text-emerald-400">#${idx + 1}</span>
+                        <span class="font-bold text-slate-200">${esc(p.name)}</span>
+                    </div>
+                    <span class="font-black text-emerald-400 whitespace-nowrap">${p.wins || 0}G <span class="text-slate-400">${p.draws || 0}B</span> <span class="text-red-400">${p.losses || 0}M</span></span>
+                `;
+                winsContainer.appendChild(div);
+            });
+
+            const matchContainer = document.getElementById('recent-matches-container');
+            matchContainer.innerHTML = '';
+            if (matches.length === 0) {
+                matchContainer.innerHTML = `<p class="text-xs text-slate-500 italic">Henüz kaydedilmiş maç bulunmuyor.</p>`;
+            } else {
+                matches.slice(0, 10).forEach(m => {
+                    const scorers = (m.scorers || []).map(s => `${esc(s.name)}${s.goals > 1 ? ' x' + s.goals : ''}`).join(', ');
+                    const card = document.createElement('div');
+                    card.className = 'p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-3 text-xs';
+                    card.innerHTML = `
+                        <div class="min-w-0">
+                            <span class="text-[10px] text-slate-400 block mb-1">${esc(m.date)}</span>
+                            <div class="flex items-center space-x-2 font-bold">
+                                <span class="text-red-400">Takım A</span>
+                                <span class="bg-slate-800 px-2.5 py-0.5 rounded text-white font-black">${m.teamAScore} - ${m.teamBScore}</span>
+                                <span class="text-blue-400">Takım B</span>
+                            </div>
+                            ${scorers ? `<span class="text-[10px] text-slate-500 block mt-1 truncate">⚽ ${scorers}</span>` : ''}
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="text-[10px] text-amber-400 font-bold block">MVP</span>
+                            <span class="font-bold text-slate-200">${esc(m.mvp)}</span>
+                        </div>
+                    `;
+                    matchContainer.appendChild(card);
+                });
+            }
+
+            updateCommentatorTicker();
+        }
+
+        // EVALUATION FUNCTIONS
+        function populateUserDropdown() {
+            const select = document.getElementById('eval-current-user');
+            const prev = select.value; // anlık veri güncellemelerinde seçimi koru
+            select.innerHTML = '<option value="">-- Oyuncu Seçiniz --</option>';
+            players.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${esc(p.name)} (${esc(p.position)})`;
+                select.appendChild(opt);
+            });
+            if (prev && players.some(p => p.id === prev)) select.value = prev;
+            checkVoterEvalStatus();
+        }
+
+        // Dropdown'da seçim değiştiğinde bu hafta oy kullanılıp kullanılamayacağını gösterir
+        function checkVoterEvalStatus() {
+            const select = document.getElementById('eval-current-user');
+            const statusEl = document.getElementById('eval-voter-status');
+            const btn = document.getElementById('eval-step2-btn');
+            const voterId = select.value;
+
+            if (!voterId) {
+                statusEl.textContent = '';
+                btn.disabled = false;
+                return;
+            }
+
+            const status = getVoterEvalStatus(voterId);
+            if (status.canVote) {
+                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>Bu hafta için değerlendirme yapabilirsiniz.`;
+                btn.disabled = false;
+            } else {
+                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-red-400';
+                statusEl.innerHTML = `<i class="fa-solid fa-lock mr-1"></i>Bu hafta zaten değerlendirme yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel} (${status.remainingDays} gün sonra).`;
+                btn.disabled = true;
+            }
+        }
+
+        function goToEvalStep(step) {
+            const userSelect = document.getElementById('eval-current-user');
+            if (step === 2) {
+                if (!userSelect.value) {
+                    showToast("Lütfen önce oy kullanan kendi adınızı seçin!");
+                    return;
+                }
+
+                const voterId = userSelect.value;
+                const status = getVoterEvalStatus(voterId);
+                if (!status.canVote) {
+                    showToast(`Bu hafta zaten akran değerlendirmesi yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel}.`);
+                    checkVoterEvalStatus();
+                    return;
+                }
+            }
+
+            document.getElementById('eval-step-1').classList.add('hidden');
+            document.getElementById('eval-step-2').classList.add('hidden');
+            document.getElementById(`eval-step-${step}`).classList.remove('hidden');
+
+            if (step === 2) renderPeerRatingFields();
+        }
+
+        function renderPeerRatingFields() {
+            const container = document.getElementById('peer-ratings-list');
+            container.innerHTML = '';
+
+            const selectedId = document.getElementById('eval-current-user').value;
+            const peers = players.filter(p => p.id !== selectedId && p.selected);
+
+            peers.forEach(peer => {
+                const attrMeta = getAttrMeta(peer.position); // Kaleciyse kaleciye özgü nitelik etiketleri çıkar
+                const card = document.createElement('div');
+                card.dataset.peerCardId = peer.id;
+                card.className = 'bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2.5';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center text-xs border border-slate-700 shrink-0">
+                            ${esc(peer.name.charAt(0))}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">${esc(peer.name)}</p>
+                            <p class="text-[10px] text-slate-400">${esc(peer.position)}${peer.position === 'Kaleci' ? ' • Kaleci nitelikleri' : ''}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                        ${attrMeta.map(a => `
+                            <div>
+                                <label class="block text-[9px] text-slate-500 font-semibold mb-0.5 text-center" title="${a.fullLabel}">${a.label}</label>
+                                <input type="number" min="1" max="99" placeholder="—" data-peer-id="${peer.id}" data-attr-key="${a.key}" class="peer-attr-input w-full bg-slate-800 border border-slate-700 text-emerald-400 text-xs font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        let evalSubmitting = false;
+
+        async function submitEvaluation() {
+            if (evalSubmitting) return;
+            const voterId = document.getElementById('eval-current-user').value;
+            if (!voterId) {
+                showToast("Lütfen önce oy kullanan kendi adınızı seçin!");
+                goToEvalStep(1);
+                return;
+            }
+
+            // Güvenlik amaçlı ikinci kontrol: başka cihazdan oy kullanılmış olabilir
+            const status = getVoterEvalStatus(voterId);
+            if (!status.canVote) {
+                showToast(`Bu hafta zaten akran değerlendirmesi yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel}.`);
+                goToEvalStep(1);
+                checkVoterEvalStatus();
+                return;
+            }
+
+            const cards = document.querySelectorAll('#peer-ratings-list > div[data-peer-card-id]');
+            if (cards.length === 0) {
+                showToast("Puanlanacak oyuncu bulunamadı.");
+                return;
+            }
+
+            const votesByPeer = {};
+            const incompleteCards = [];
+
+            cards.forEach(card => {
+                card.classList.remove('border-red-500');
+                const peerId = card.dataset.peerCardId;
+                const values = {};
+                let complete = true;
+
+                card.querySelectorAll('.peer-attr-input').forEach(input => {
+                    const key = input.getAttribute('data-attr-key');
+                    const raw = input.value.trim();
+                    const num = parseInt(raw, 10);
+                    if (raw === '' || isNaN(num) || num < 1 || num > 99) complete = false;
+                    else values[key] = num;
+                });
+
+                if (complete) votesByPeer[peerId] = values;
+                else incompleteCards.push(card);
+            });
+
+            if (incompleteCards.length > 0) {
+                incompleteCards.forEach(card => card.classList.add('border-red-500'));
+                showToast(`Lütfen tüm oyuncular için 6 niteliğin tamamını (1-99) girin. ${incompleteCards.length} oyuncu eksik.`);
+                return;
+            }
+
+            evalSubmitting = true;
+            try {
+                // Her oyuncu için: okuyup ekleyip yaz (eşzamanlı oylarda kayıp olmasın diye transaction)
+                await Promise.all(Object.keys(votesByPeer).map(peerId => {
+                    const vals = votesByPeer[peerId];
+                    const overall = Math.round(ATTR_KEYS.reduce((sum, key) => sum + vals[key], 0) / ATTR_KEYS.length);
+                    const ref = db.collection('players').doc(peerId);
+                    return db.runTransaction(async tx => {
+                        const snap = await tx.get(ref);
+                        if (!snap.exists) return;
+                        const d = snap.data();
+                        tx.update(ref, {
+                            peerRatings: [...(d.peerRatings || []), overall],
+                            peerAttributeVotes: [...(d.peerAttributeVotes || []), { voterId, ...vals }]
+                        });
+                    });
+                }));
+
+                // Bu dönem için oy hakkı kullanıldı (herkes için ortak kayıt)
+                const now = Date.now();
+                await db.collection('eval_log').doc(voterId).set({ ts: now });
+                voterEvalLog[voterId] = now;
+
+                showToast("Akran değerlendirmeleri başarıyla kaydedildi. Bir sonraki Perşembe 00:01'e kadar tekrar oy kullanamazsınız.");
+                checkVoterEvalStatus();
+                goToEvalStep(1);
+                switchTab('generator');
+            } catch (err) {
+                showToast("Kayıt hatası: " + err.message);
+                reportErr('evaluation', err);
+            } finally {
+                evalSubmitting = false;
+            }
+        }
+
+        // AI TEAM GENERATOR
+        function renderGeneratorControls() {
+            const grid = document.getElementById('player-checkbox-grid');
+            grid.innerHTML = '';
+
+            players.forEach(p => {
+                const tr = calculateTrueRating(p).trueRating;
+                const label = document.createElement('label');
+                label.className = `flex items-center space-x-2 p-2 rounded-xl border cursor-pointer transition-all ${
+                    p.selected ? 'bg-emerald-500/10 border-emerald-500/40 text-white' : 'bg-slate-900/50 border-slate-800 text-slate-400'
+                }`;
+                label.innerHTML = `
+                    <input type="checkbox" ${p.selected ? 'checked' : ''} onchange="togglePlayerSelection('${p.id}', this.checked)" class="accent-emerald-500 rounded">
+                    <div class="truncate text-xs font-semibold">
+                        <span>${esc(p.name)}</span>
+                        <span class="text-[10px] text-emerald-400 block">${esc(p.position)} (${tr})</span>
+                    </div>
+                `;
+                grid.appendChild(label);
+            });
+
+            updateSelectedCount();
+            generateAITeams();
+        }
+
+        async function togglePlayerSelection(id, checked) {
+            try {
+                await db.collection('players').doc(id).update({ selected: checked });
+            } catch (err) {
+                showToast("Seçim güncellenemedi: " + err.message);
+                reportErr('players.select', err);
+            }
+        }
+
+        async function toggleAllPlayers(select) {
+            try {
+                const batch = db.batch();
+                players.forEach(p => batch.update(db.collection('players').doc(p.id), { selected: select }));
+                await batch.commit();
+            } catch (err) {
+                showToast("Seçim güncellenemedi: " + err.message);
+                reportErr('players.selectAll', err);
+            }
+        }
+
+        function updateSelectedCount() {
+            const count = players.filter(p => p.selected).length;
+            document.getElementById('selected-player-count').textContent = count;
+        }
+
+        function generateAITeams() {
+            const activePlayers = players.filter(p => p.selected);
+
+            if (activePlayers.length < 2) {
+                currentTeamA = [];
+                currentTeamB = [];
+                renderPitchDisplay();
+                setGkWarning('');
+                return;
+            }
+
+            const teamSum = (team) => team.reduce((s, x) => s + calculateTrueRating(x).trueRating, 0);
+
+            // Reytinge göre büyükten küçüğe sırala
+            const sorted = [...activePlayers].sort((a, b) => calculateTrueRating(b).trueRating - calculateTrueRating(a).trueRating);
+
+            const goalkeepers = sorted.filter(p => p.position === 'Kaleci');
+            const outfielders = sorted.filter(p => p.position !== 'Kaleci');
+
+            let teamA = [];
+            let teamB = [];
+
+            // 1) ÖNCELİK: her takıma en fazla 1 kaleci ata (en yüksek reytingli 2 kaleci öncelikli).
+            const primaryGKs = goalkeepers.slice(0, 2);
+            const extraGKs = goalkeepers.slice(2);
+
+            if (primaryGKs.length === 2) {
+                // İki kaleci de var: reyting dengesini bozmamak için düşük toplamlı takıma güçlü kaleciyi ver
+                teamA.push(primaryGKs[0]);
+                teamB.push(primaryGKs[1]);
+            } else if (primaryGKs.length === 1) {
+                // Tek kaleci var — sadece bir takım kaleciyle başlayabilir
+                teamA.push(primaryGKs[0]);
+            }
+
+            // 2) Kalan herkesi (fazladan kaleciler dahil) reyting dengesine göre dağıt
+            const remaining = [...extraGKs, ...outfielders].sort(
+                (a, b) => calculateTrueRating(b).trueRating - calculateTrueRating(a).trueRating
+            );
+
+            remaining.forEach((p) => {
+                if (teamSum(teamA) <= teamSum(teamB)) teamA.push(p);
+                else teamB.push(p);
+            });
+
+            currentTeamA = teamA;
+            currentTeamB = teamB;
+
+            renderPitchDisplay();
+            renderAIAnalysis();
+
+            // Kaleci dağılımı hakkında bilgilendirme
+            if (goalkeepers.length === 0) {
+                setGkWarning('Uyarı: Seçili kadroda kaleci yok. Takımlar kalecisiz oluşturuldu.');
+            } else if (goalkeepers.length === 1) {
+                setGkWarning('Uyarı: Sadece 1 kaleci seçili olduğu için yalnızca A Takımı kaleciyle kuruldu. B Takımına kaleci ataması yapılamadı.');
+            } else if (goalkeepers.length > 2) {
+                setGkWarning(`Bilgi: ${goalkeepers.length} kaleci seçili. Her takıma 1 kaleci atandı, kalan ${goalkeepers.length - 2} kaleci reyting dengesine göre saha oyuncusu gibi dağıtıldı.`);
+            } else {
+                setGkWarning('');
+            }
+        }
+
+        function setGkWarning(text) {
+            const el = document.getElementById('gk-balance-warning');
+            if (!el) return;
+            if (text) {
+                el.textContent = text;
+                el.classList.remove('hidden');
+            } else {
+                el.textContent = '';
+                el.classList.add('hidden');
+            }
+        }
+
+        function renderPitchDisplay() {
+            const pitchA = document.getElementById('pitch-team-a');
+            const pitchB = document.getElementById('pitch-team-b');
+
+            pitchA.innerHTML = '';
+            pitchB.innerHTML = '';
+
+            currentTeamA.forEach(p => {
+                const tr = calculateTrueRating(p).trueRating;
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/90 border border-red-500/40 p-1.5 rounded-xl text-center shadow';
+                card.innerHTML = `
+                    <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
+                    <p class="text-[10px] text-red-300 font-extrabold">${esc(p.position)} • ${tr}</p>
+                `;
+                pitchA.appendChild(card);
+            });
+
+            currentTeamB.forEach(p => {
+                const tr = calculateTrueRating(p).trueRating;
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/90 border border-blue-500/40 p-1.5 rounded-xl text-center shadow';
+                card.innerHTML = `
+                    <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
+                    <p class="text-[10px] text-blue-300 font-extrabold">${esc(p.position)} • ${tr}</p>
+                `;
+                pitchB.appendChild(card);
+            });
+
+            document.getElementById('list-team-a-names').innerHTML = currentTeamA.map(p => `<li class="flex justify-between"><span>${esc(p.name)}</span><span class="font-bold text-red-400">${calculateTrueRating(p).trueRating}</span></li>`).join('');
+            document.getElementById('list-team-b-names').innerHTML = currentTeamB.map(p => `<li class="flex justify-between"><span>${esc(p.name)}</span><span class="font-bold text-blue-400">${calculateTrueRating(p).trueRating}</span></li>`).join('');
+        }
+
+        function renderAIAnalysis() {
+            const sumA = currentTeamA.reduce((s, x) => s + calculateTrueRating(x).trueRating, 0);
+            const sumB = currentTeamB.reduce((s, x) => s + calculateTrueRating(x).trueRating, 0);
+
+            const avgA = currentTeamA.length ? (sumA / currentTeamA.length).toFixed(1) : 0;
+            const avgB = currentTeamB.length ? (sumB / currentTeamB.length).toFixed(1) : 0;
+
+            document.getElementById('team-a-avg-score').textContent = avgA;
+            document.getElementById('team-b-avg-score').textContent = avgB;
+
+            const total = parseFloat(avgA) + parseFloat(avgB);
+            const pctA = total ? ((avgA / total) * 100).toFixed(1) : 50;
+            const pctB = total ? ((avgB / total) * 100).toFixed(1) : 50;
+
+            document.getElementById('team-a-score-bar').style.width = `${pctA}%`;
+            document.getElementById('team-b-score-bar').style.width = `${pctB}%`;
+            document.getElementById('pitch-match-balance').textContent = `Güç Dengesi: %${pctA} vs %${pctB}`;
+        }
+
+        // MVP VOTING SYSTEM (FIRESTORE)
+        async function toggleMVPVotingFromAdmin() {
+            try {
+                const settingsRef = db.collection('settings').doc('mvp_status');
+                const batch = db.batch();
+
+                if (!isMVPVotingActive) {
+                    // Yeni tur: eski oyları temizle ve oylamayı aç
+                    mvpVotes.forEach(v => batch.delete(db.collection('mvp_votes').doc(v.id)));
+                    batch.set(settingsRef, { isActive: true });
+                    await batch.commit();
+                    selectedMVPPlayerId = null;
+                    showToast("MVP oylaması kadrodaki oyunculara açıldı!");
+                } else {
+                    // Oylamayı kapat: en çok oyu alan MVP olur
+                    const tally = {};
+                    mvpVotes.forEach(v => { tally[v.nomineeId] = (tally[v.nomineeId] || 0) + 1; });
+                    let winnerId = null, best = 0;
+                    Object.keys(tally).forEach(id => {
+                        if (tally[id] > best) { best = tally[id]; winnerId = id; }
+                        else if (tally[id] === best && winnerId) {
+                            const a = players.find(p => p.id === id), b = players.find(p => p.id === winnerId);
+                            if (a && b && calculateTrueRating(a).trueRating > calculateTrueRating(b).trueRating) winnerId = id;
+                        }
+                    });
+
+                    batch.set(settingsRef, { isActive: false });
+                    const winner = players.find(p => p.id === winnerId);
+                    if (winner) {
+                        batch.update(db.collection('players').doc(winner.id), { mvpCount: firebase.firestore.FieldValue.increment(1) });
+                        if (matches[0]) batch.update(db.collection('matches').doc(matches[0].id), { mvp: winner.name });
+                    }
+                    await batch.commit();
+                    showToast(winner ? `Oylama kapandı. MVP: ${esc(winner.name)} (${best} oy)` : "Oylama oy gelmeden kapatıldı.");
+                }
+            } catch (err) {
+                showToast("Ayar güncellenemedi: " + err.message);
+                reportErr('mvp.toggle', err);
+            }
+        }
+
+        function updateAdminMVPButtonUI() {
+            const btn = document.getElementById('admin-mvp-toggle-btn');
+            if (!btn) return;
+            if (isMVPVotingActive) {
+                btn.className = 'bg-red-500 hover:bg-red-600 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-red-500/20 flex items-center gap-2 shrink-0';
+                btn.innerHTML = `<i class="fa-solid fa-lock"></i> <span>MVP Oylamasını Kapat ve Sonuçlandır</span>`;
+            } else {
+                btn.className = 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2 shrink-0';
+                btn.innerHTML = `<i class="fa-solid fa-award"></i> <span>MVP Oylamasını Başlat</span>`;
+            }
+        }
+
+        function renderMVPVoteTab() {
+            const lockedNotice = document.getElementById('mvp-locked-notice');
+            const votingArea = document.getElementById('mvp-voting-area');
+
+            if (!isMVPVotingActive) {
+                lockedNotice.classList.remove('hidden');
+                votingArea.classList.add('hidden');
+                return;
+            }
+            lockedNotice.classList.add('hidden');
+            votingArea.classList.remove('hidden');
+
+            const pool = players.filter(p => p.selected);
+
+            const select = document.getElementById('mvp-voter-select');
+            const prevVoter = select.value;
+            select.innerHTML = '<option value="">-- Adınızı Seçin --</option>';
+            pool.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                select.appendChild(opt);
+            });
+            if (prevVoter && pool.some(p => p.id === prevVoter)) select.value = prevVoter;
+
+            if (!pool.some(p => p.id === selectedMVPPlayerId)) selectedMVPPlayerId = null;
+
+            const grid = document.getElementById('mvp-nominees-grid');
+            grid.innerHTML = '';
+
+            if (pool.length === 0) {
+                grid.innerHTML = `<p class="text-xs text-slate-400 italic col-span-2 text-center py-4">Kadroda seçili oyuncu bulunmuyor.</p>`;
+            }
+
+            pool.forEach(p => {
+                const votes = mvpVotes.filter(v => v.nomineeId === p.id).length;
+                const card = document.createElement('div');
+                card.id = `mvp-card-${p.id}`;
+                card.onclick = () => selectMVPNominee(p.id);
+                card.className = 'cursor-pointer bg-slate-900/80 p-3 rounded-xl border border-slate-800 hover:border-amber-400 transition-all flex items-center justify-between';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-xs border border-slate-700">
+                            ${esc(p.name.charAt(0))}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">${esc(p.name)}</p>
+                            <p class="text-[10px] text-slate-400">${esc(p.position)}</p>
+                        </div>
+                    </div>
+                    <span class="text-xs text-amber-400 font-extrabold">${votes} Oy</span>
+                `;
+                grid.appendChild(card);
+            });
+
+            if (selectedMVPPlayerId) selectMVPNominee(selectedMVPPlayerId);
+            document.getElementById('total-votes-cast').textContent = `Toplam Oy: ${mvpVotes.length}`;
+        }
+
+        function selectMVPNominee(id) {
+            selectedMVPPlayerId = id;
+            players.forEach(p => {
+                const el = document.getElementById(`mvp-card-${p.id}`);
+                if (!el) return;
+                if (p.id === id) el.classList.add('border-amber-400', 'bg-amber-500/10');
+                else el.classList.remove('border-amber-400', 'bg-amber-500/10');
+            });
+        }
+
+        async function submitMVPVote() {
+            const voterId = document.getElementById('mvp-voter-select').value;
+            if (!voterId) {
+                showToast("Lütfen oy kullanan kişi olarak kendi adınızı seçin.");
+                return;
+            }
+            if (!selectedMVPPlayerId) {
+                showToast("Lütfen MVP seçmek istediğiniz oyuncuya tıklayın.");
+                return;
+            }
+            if (mvpVotes.some(v => v.voterId === voterId)) {
+                showToast("Bu oylamada zaten oy kullandınız.");
+                return;
+            }
+
+            try {
+                await db.collection('mvp_votes').add({ voterId, nomineeId: selectedMVPPlayerId, ts: Date.now() });
+                showToast("MVP oyunuz başarıyla gönderildi!");
+            } catch (err) {
+                showToast("Oy verme hatası: " + err.message);
+                reportErr('mvp.vote', err);
+            }
+        }
+
+        // ADMIN MATCH SAVE (FIRESTORE)
+        function renderAdminRows() {
+            updateAdminMVPButtonUI();
+            const container = document.getElementById('admin-player-stats-rows');
+            const saveBtn = document.getElementById('admin-save-btn');
+
+            // Yazılmakta olan gol değerlerini koru
+            const kept = {};
+            container.querySelectorAll('.admin-goal-input').forEach(i => { kept[i.dataset.playerId] = i.value; });
+
+            if (currentTeamA.length === 0 || currentTeamB.length === 0) {
+                container.innerHTML = `<p class="text-xs text-amber-400 text-center py-4">Önce <strong>AI Kadro</strong> sekmesinde en az 2 oyuncu seçerek takımları oluşturun. Galibiyet / beraberlik / mağlubiyet takımlara göre işlenir.</p>`;
+                saveBtn.disabled = true;
+                return;
+            }
+            saveBtn.disabled = false;
+
+            const section = (title, color, team) => `
+                <div class="space-y-2">
+                    <h4 class="text-xs font-black ${color} uppercase tracking-wider">${title}</h4>
+                    ${team.map(p => `
+                        <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                            <span class="font-bold text-white">${esc(p.name)} <span class="text-slate-400 font-normal">(${esc(p.position)})</span></span>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-slate-400 text-[10px]">Gol:</span>
+                                <input type="number" min="0" value="${kept[p.id] ?? 0}" data-player-id="${p.id}" class="admin-goal-input w-12 bg-slate-800 border border-slate-700 rounded-lg p-1 text-center font-bold text-amber-400">
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>`;
+
+            container.innerHTML = section('Takım A', 'text-red-400', currentTeamA) + section('Takım B', 'text-blue-400', currentTeamB);
+        }
+
+        let savingMatch = false;
+
+        async function saveMatchResult() {
+            if (savingMatch) return;
+            if (currentTeamA.length === 0 || currentTeamB.length === 0) {
+                showToast("Önce AI Kadro sekmesinde takımları oluşturun.");
+                return;
+            }
+
+            const scoreA = parseInt(document.getElementById('admin-score-a').value) || 0;
+            const scoreB = parseInt(document.getElementById('admin-score-b').value) || 0;
+            const result = scoreA > scoreB ? 'A' : (scoreB > scoreA ? 'B' : 'DRAW');
+
+            const goalsById = {};
+            document.querySelectorAll('.admin-goal-input').forEach(i => { goalsById[i.dataset.playerId] = Math.max(0, parseInt(i.value) || 0); });
+
+            const scorers = [...currentTeamA, ...currentTeamB]
+                .filter(p => (goalsById[p.id] || 0) > 0)
+                .map(p => ({ name: p.name, goals: goalsById[p.id] }))
+                .sort((a, b) => b.goals - a.goals);
+            const topScorer = scorers.length ? scorers[0].name : 'Belirtilmedi';
+
+            const inc = firebase.firestore.FieldValue.increment;
+            const batch = db.batch();
+
+            const apply = (team, side) => team.forEach(p => {
+                const outcome = result === 'DRAW' ? 'draws' : (result === side ? 'wins' : 'losses');
+                const upd = { matches: inc(1), [outcome]: inc(1) };
+                const g = goalsById[p.id] || 0;
+                if (g > 0) upd.goals = inc(g);
+                batch.update(db.collection('players').doc(p.id), upd);
+            });
+            apply(currentTeamA, 'A');
+            apply(currentTeamB, 'B');
+
+            batch.set(db.collection('matches').doc(), {
+                date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }),
+                ts: Date.now(),
+                teamAScore: scoreA,
+                teamBScore: scoreB,
+                result,
+                mvp: topScorer,
+                scorers,
+                teamANames: currentTeamA.map(p => p.name),
+                teamBNames: currentTeamB.map(p => p.name)
+            });
+
+            savingMatch = true;
+            try {
+                await batch.commit();
+                document.getElementById('admin-score-a').value = 0;
+                document.getElementById('admin-score-b').value = 0;
+                document.querySelectorAll('.admin-goal-input').forEach(i => { i.value = 0; });
+                showToast("Maç kaydı işlendi: galibiyet/beraberlik/mağlubiyet ve goller güncellendi!");
+                switchTab('dashboard');
+            } catch (err) {
+                showToast("Maç kaydedilemedi: " + err.message);
+                reportErr('matches.save', err);
+            } finally {
+                savingMatch = false;
+            }
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast-msg');
+            document.getElementById('toast-text').textContent = text;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        window.onload = function() {
+            updateAttributeLabelsForForm();
+            updateSelfRatingPreview();
+            initFirestoreListeners();
+        };
+    </script>
+</body>
+</html>
