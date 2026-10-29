@@ -156,7 +156,7 @@
                         <i class="fa-solid fa-wand-magic-sparkles"></i> AI Kadro
                     </button>
                     <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
-                        <i class="fa-solid fa-award"></i> MVP Oylaması
+                        <i class="fa-solid fa-award"></i> Maç Puanı &amp; MVP
                     </button>
                     <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
                         <i class="fa-solid fa-clipboard-list"></i> Maç Kaydı
@@ -246,7 +246,7 @@
                                 <h2 class="text-lg font-bold text-white flex items-center gap-2">
                                     <i class="fa-solid fa-ranking-star text-amber-400"></i> Oyuncu Liderlik ve Gerçek Rating Tablosu
                                 </h2>
-                                <p class="text-xs text-slate-400">Gerçek Rating: %30 Öz Rating + %70 Akran Ortalaması + Maç/Gol/Galibiyet İstatistik Bonusu</p>
+                                <p class="text-xs text-slate-400">Gerçek Rating: haftalık oy ortalaması (%60) + son 3 maç puanı (%40) + gol / galibiyet / MVP bonusu</p>
                             </div>
                         </div>
 
@@ -257,7 +257,7 @@
                                         <th class="pb-3 px-2">#</th>
                                         <th class="pb-3 px-2">Oyuncu</th>
                                         <th class="pb-3 px-2">Pozisyon</th>
-                                        <th class="pb-3 px-2 text-center">Öz / Akran</th>
+                                        <th class="pb-3 px-2 text-center">Oylama / Form</th>
                                         <th class="pb-3 px-2 text-center">Maç</th>
                                         <th class="pb-3 px-2 text-center">Gol</th>
                                         <th class="pb-3 px-2 text-center" title="Galibiyet / Beraberlik / Mağlubiyet">G / B / M</th>
@@ -325,7 +325,7 @@
 
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1">Tercih Ettiği Pozisyon</label>
-                            <select id="player-position" required onchange="updateAttributeLabelsForForm()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <select id="player-position" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                                 <option value="Kaleci">Kaleci [GK]</option>
                                 <option value="Defans">Defans [DEF]</option>
                                 <option value="Orta Saha" selected>Orta Saha [MID]</option>
@@ -333,45 +333,14 @@
                             </select>
                         </div>
 
-                        <p id="attr-form-note" class="text-[10px] text-slate-500 -mb-1"></p>
-                        <div class="grid grid-cols-2 gap-3 pt-2">
-                            <div>
-                                <label id="label-attr-pace" class="block text-[11px] text-slate-400 mb-1">Hız (Pace)</label>
-                                <input type="number" id="attr-pace" min="1" max="99" value="75" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
-                            </div>
-                            <div>
-                                <label id="label-attr-shooting" class="block text-[11px] text-slate-400 mb-1">Şut (Shooting)</label>
-                                <input type="number" id="attr-shooting" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
-                            </div>
-                            <div>
-                                <label id="label-attr-passing" class="block text-[11px] text-slate-400 mb-1">Pas (Passing)</label>
-                                <input type="number" id="attr-passing" min="1" max="99" value="75" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
-                            </div>
-                            <div>
-                                <label id="label-attr-dribbling" class="block text-[11px] text-slate-400 mb-1">Dripling (Dribbling)</label>
-                                <input type="number" id="attr-dribbling" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
-                            </div>
-                            <div>
-                                <label id="label-attr-defending" class="block text-[11px] text-slate-400 mb-1">Defans (Defending)</label>
-                                <input type="number" id="attr-defending" min="1" max="99" value="65" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
-                            </div>
-                            <div>
-                                <label id="label-attr-physical" class="block text-[11px] text-slate-400 mb-1">Fizik (Physical)</label>
-                                <input type="number" id="attr-physical" min="1" max="99" value="70" oninput="updateSelfRatingPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white">
-                            </div>
-                        </div>
-
-                        <div class="bg-slate-900/60 border border-emerald-500/30 rounded-xl px-3 py-2.5 flex items-center justify-between">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-300">Öz Rating (Otomatik Hesaplanır)</label>
-                                <p class="text-[10px] text-slate-500">6 nitelik puanının ortalamasından üretilir</p>
-                            </div>
-                            <input type="number" id="player-self-rating" value="75" readonly tabindex="-1" class="w-16 bg-transparent text-amber-400 font-black text-xl text-right focus:outline-none cursor-default">
+                        <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-[11px] text-emerald-200 leading-relaxed">
+                            <i class="fa-solid fa-circle-info mr-1"></i>
+                            Rating girmenize gerek yok. Bu haftanın kadrosuna yazılan oyuncular birbirini puanlar; ortalama oy, maç sonrası verilen maç puanları ve gol/galibiyet/MVP performansı oyuncunun <strong>Gerçek Rating</strong>'ini oluşturur.
                         </div>
 
                         <div class="pt-3 flex gap-2">
                             <button type="submit" id="player-form-btn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2.5 rounded-xl transition-all text-xs flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-check"></i> Kaydet ve Puanlamaya Geç
+                                <i class="fa-solid fa-check"></i> Kaydet
                             </button>
                             <button type="button" onclick="resetPlayerForm()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2.5 rounded-xl text-xs">
                                 Temizle
@@ -403,7 +372,7 @@
                     <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
                         <i class="fa-solid fa-user-pen text-emerald-400"></i> Öz Değerlendirme & Akran Puanlaması
                     </h2>
-                    <p class="text-sm text-slate-400 mt-1">Girdiğiniz öz puanlar ile diğer oyuncuların size verdiği puanlar harmanlanarak sistemde 'Gerçek Rating' oluşur.</p>
+                    <p class="text-sm text-slate-400 mt-1">Bu haftanın kadrosuna yazılan oyuncular birbirini puanlar. Gelen oyların ortalaması 'Gerçek Rating'i oluşturur; admin rating girmez.</p>
                     <p class="text-xs text-amber-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Her oyuncu bir değerlendirme döneminde yalnızca 1 kez akran değerlendirmesi yapabilir ve kaydedildikten sonra güncellenemez. Dönemler her Perşembe 00:01'de sıfırlanır.</p>
                 </div>
 
@@ -456,7 +425,7 @@
                         <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI Dengeli Kadro Kurucu
                         </h2>
-                        <p class="text-xs text-slate-400">Gerçek rating, pozisyon dağılımı ve performans puanlarını baz alarak mükemmel dengeli 2 takım kurar.</p>
+                        <p class="text-xs text-slate-400">Haftalık oy ortalaması, son maç puanları ve pozisyon dengesini baz alarak dengeli 2 takım kurar (her takıma 1 kaleci).</p>
                     </div>
 
                     <div class="flex items-center gap-3">
@@ -469,7 +438,7 @@
                 <!-- Squad Selection Checkboxes -->
                 <div class="mt-6 pt-4 border-t border-slate-800">
                     <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bu Maçın Kadrosu (<span id="selected-player-count">0</span> Seçili)</span>
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bu Haftanın Kadrosu - Kadroya Yazılanlar (<span id="selected-player-count">0</span> Oyuncu)</span>
                         <div class="space-x-2">
                             <button onclick="toggleAllPlayers(true)" class="text-xs text-emerald-400 hover:underline">Tümünü Seç</button>
                             <span class="text-slate-600">•</span>
@@ -581,38 +550,43 @@
             <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
                 <div class="mb-6">
                     <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-                        <i class="fa-solid fa-award text-amber-400"></i> Maç Sonu MVP Oylaması
+                        <i class="fa-solid fa-award text-amber-400"></i> Maç Puanı &amp; MVP
                     </h2>
-                    <p class="text-sm text-slate-400 mt-1">Bu haftanın en değerli oyuncusunu (MVP) seçmek için kadrodaki oyuncular oy verebilir.</p>
+                    <p class="text-sm text-slate-400 mt-1">Maç bittikten sonra her oyuncu, o maçta oynayan diğer oyunculara 1-10 arası puan verir. Ortalaması en yüksek oyuncu MVP olur; bu puanlar sonraki kadro dengesinde de kullanılır.</p>
                 </div>
 
                 <div id="mvp-locked-notice" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 text-center space-y-3">
                     <i class="fa-solid fa-lock text-amber-400 text-3xl"></i>
-                    <h3 class="text-base font-bold text-white">MVP Oylaması Henüz Başlamadı</h3>
-                    <p class="text-xs text-slate-300 max-w-md mx-auto">Maç bittikten sonra yönetim panelinden (Maç Kaydı sekmesi) oylama başlatılacaktır.</p>
+                    <h3 class="text-base font-bold text-white">Açık Maç Puanlaması Yok</h3>
+                    <p id="mr-locked-text" class="text-xs text-slate-300 max-w-md mx-auto"></p>
                 </div>
 
                 <div id="mvp-voting-area" class="space-y-6">
-                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                        <label class="block text-xs font-semibold text-slate-300">Oy Kullanan Oyuncu:</label>
-                        <select id="mvp-voter-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <p id="mr-match-info" class="text-xs font-bold text-amber-300"></p>
+                        <label class="block text-xs font-semibold text-slate-300">Puan Veren Oyuncu:</label>
+                        <select id="mvp-voter-select" onchange="onMatchVoterChange()" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:ring-2 focus:ring-amber-400 focus:outline-none">
                             <option value="">-- Adınızı Seçin --</option>
                         </select>
+                        <p id="mr-voter-status" class="text-xs font-semibold min-h-[1rem]"></p>
                     </div>
 
                     <div class="space-y-3">
-                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Hangi Oyuncuya Oy Veriyorsunuz?</h3>
-                        <div id="mvp-nominees-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
-                            <!-- Dynamic Nominees -->
-                        </div>
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Maçtaki Diğer Oyuncuları Puanlayın (1-10)</h3>
+                        <div id="mvp-nominees-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1"></div>
                     </div>
 
                     <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
-                        <span class="text-xs text-slate-400" id="total-votes-cast">Toplam Oy: 0</span>
-                        <button onclick="submitMVPVote()" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs flex items-center gap-2">
-                            <i class="fa-solid fa-paper-plane"></i> Oyu Gönder
+                        <span class="text-xs text-slate-400" id="total-votes-cast">Puanlayan: 0</span>
+                        <button id="mr-submit-btn" onclick="submitMatchRatings()" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-paper-plane"></i> Puanları Gönder
                         </button>
                     </div>
+                </div>
+
+                <div id="mr-results" class="hidden mt-6 space-y-3 border-t border-slate-800 pt-6">
+                    <h3 class="text-sm font-bold text-amber-300 flex items-center gap-2"><i class="fa-solid fa-crown"></i> <span id="mr-results-title">Son Sonuçlanan Maç</span></h3>
+                    <div id="mr-results-list" class="space-y-2"></div>
                 </div>
             </div>
         </section>
@@ -627,7 +601,7 @@
                         </h2>
                         <p class="text-sm text-slate-400">Skoru ve golleri girin; galibiyet / beraberlik / mağlubiyet kayıtları takımlara göre otomatik işlenir.</p>
                     </div>
-                    <button id="admin-mvp-toggle-btn" onclick="toggleMVPVotingFromAdmin()" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2 shrink-0">
+                    <button id="admin-mvp-toggle-btn" onclick="finalizeOpenMatchFromAdmin()" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2 shrink-0">
                         <i class="fa-solid fa-award"></i> <span>MVP Oylamasını Başlat</span>
                     </button>
                 </div>
@@ -764,9 +738,8 @@
         // Tüm veriler Firestore'dan canlı gelir (herkes aynı veriyi görür)
         let players = [];
         let matches = [];
-        let mvpVotes = [];
+        let matchRatings = [];          // Maç sonrası oyuncuların birbirine verdiği puanlar (Firestore: match_ratings)
         let voterEvalLog = {};          // { oyuncuId: sonOyZamanıMs }  (Firestore: eval_log)
-        let isMVPVotingActive = false;
 
         let currentTeamA = [];
         let currentTeamB = [];
@@ -801,15 +774,10 @@
                 renderCurrentTab();
             }, err => reportErr('matches', err));
 
-            db.collection('settings').doc('mvp_status').onSnapshot(doc => {
-                isMVPVotingActive = doc.exists ? !!doc.data().isActive : false;
+            db.collection('match_ratings').onSnapshot(snap => {
+                matchRatings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderCurrentTab();
-            }, err => reportErr('settings', err));
-
-            db.collection('mvp_votes').onSnapshot(snap => {
-                mvpVotes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                renderCurrentTab();
-            }, err => reportErr('mvp_votes', err));
+            }, err => reportErr('match_ratings', err));
 
             db.collection('eval_log').onSnapshot(snap => {
                 voterEvalLog = {};
@@ -871,28 +839,75 @@
             };
         }
 
-        // Calculate True Rating Formula: 30% Self Rating + 70% Peer Average + Bonus
-        function calculateTrueRating(player) {
-            const self = player.selfRating || 70;
-            const peers = player.peerRatings || [];
+        // Geçerli değerlendirme dönemine (Perşembe 00:01'de sıfırlanan hafta) ait oyların ortalamasını verir.
+        // Bu hafta oy yoksa en son oy verilen önceki dönem kullanılır; hiç oy yoksa varsayılan 70 uygulanır.
+        function getVoteStats(player) {
+            const votes = player.peerAttributeVotes || [];
+            const periodNow = getCurrentPeriodStart().getTime();
 
-            let peerAvg = self;
-            if (peers.length > 0) {
-                peerAvg = peers.reduce((a, b) => a + b, 0) / peers.length;
+            let chosen = votes.filter(v => (v.period || 0) === periodNow);
+            let scope = 'week';
+            if (chosen.length === 0 && votes.length > 0) {
+                const lastPeriod = Math.max(...votes.map(v => v.period || 0));
+                chosen = votes.filter(v => (v.period || 0) === lastPeriod);
+                scope = lastPeriod ? 'previous' : 'legacy';
             }
 
-            // Stat Bonuses (Asist kaldırıldı; yerine Galibiyet bonusu geldi)
+            if (chosen.length === 0) {
+                // Eski sürümden kalan tek puanlı oylar (varsa)
+                const legacy = (player.peerRatings || []).filter(n => typeof n === 'number');
+                if (legacy.length) {
+                    const avg = Math.round(legacy.reduce((a, b) => a + b, 0) / legacy.length);
+                    const attrs = {};
+                    ATTR_KEYS.forEach(k => { attrs[k] = avg; });
+                    return { count: legacy.length, overall: avg, attrs, scope: 'legacy' };
+                }
+                return { count: 0, overall: null, attrs: null, scope: 'none' };
+            }
+
+            const attrs = {};
+            ATTR_KEYS.forEach(k => {
+                const vals = chosen.map(v => v[k]).filter(n => typeof n === 'number' && !isNaN(n));
+                attrs[k] = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 70;
+            });
+            const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + attrs[k], 0) / ATTR_KEYS.length);
+            return { count: chosen.length, overall, attrs, scope };
+        }
+
+        // Güncel form: son 3 maçta arkadaşlardan gelen maç puanı ortalaması (1-10 puan x 10 = 10-100 ölçeği)
+        function getFormScore(playerId) {
+            const scores = [];
+            for (const m of matches) { // matches yeniden eskiye sıralı
+                const s = m.playerScores && m.playerScores[playerId];
+                if (s && typeof s.avg === 'number') scores.push(s.avg);
+                if (scores.length >= 3) break;
+            }
+            if (!scores.length) return null;
+            return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10);
+        }
+
+        // Gerçek Rating: haftalık oy ortalaması (%60) + son maç puanları (%40) + gol/galibiyet/MVP bonusu
+        // Admin rating girmez; her şey kadrodaki oyuncuların oylarından çıkar.
+        function calculateTrueRating(player) {
+            const vs = getVoteStats(player);
+            const voteAvg = vs.overall !== null ? vs.overall : 70;
+            const form = getFormScore(player.id);
+
+            const base = form === null ? voteAvg : (voteAvg * 0.6 + form * 0.4);
+
             const goalBonus = Math.min((player.goals || 0) * 0.5, 5);
             const winBonus = Math.min((player.wins || 0) * 0.4, 4);
             const mvpBonus = (player.mvpCount || 0) * 1.5;
 
-            const baseRating = (self * 0.30) + (peerAvg * 0.70);
-            const finalRating = Math.min(Math.round(baseRating + goalBonus + winBonus + mvpBonus), 99);
+            const finalRating = Math.min(Math.round(base + goalBonus + winBonus + mvpBonus), 99);
 
             return {
                 trueRating: finalRating,
-                peerAvg: Math.round(peerAvg),
-                selfRating: self
+                voteAvg,
+                form,
+                voteCount: vs.count,
+                voteScope: vs.scope,
+                peerAvg: voteAvg
             };
         }
 
@@ -960,15 +975,14 @@
             x.bench = x.n > 0 ? (players.find(p => (p.matches || 0) === 0) || null) : null;
             x.gk = players.filter(p => p.position === 'Kaleci').sort((a, b) => (b.matches || 0) - (a.matches || 0))[0] || null;
 
-            // Öz puan - akran puanı farkı
-            let gap = null, humble = null, maxGap = 10, maxHum = 8;
-            withTr.forEach(({ p, tr }) => {
-                if ((p.peerRatings || []).length === 0) return;
-                const d = (p.selfRating || 70) - tr.peerAvg;
-                if (d > maxGap) { maxGap = d; gap = { p, tr }; }
-                if (-d >= maxHum) { maxHum = -d; humble = { p, tr }; }
-            });
-            x.gap = gap; x.humble = humble;
+            // Güncel form (son maç puanları) ve haftalık oy dağılımı
+            const formed = withTr.filter(({ tr }) => tr.form !== null);
+            x.formStar = formed.length ? [...formed].sort((a, b) => b.tr.form - a.tr.form)[0] : null;
+            x.formSlump = formed.length > 1 ? [...formed].sort((a, b) => a.tr.form - b.tr.form)[0] : null;
+            if (x.formStar && x.formSlump && x.formStar.p.id === x.formSlump.p.id) x.formSlump = null;
+            const rated = withTr.filter(({ tr }) => tr.voteCount > 0);
+            x.highRated = rated.length ? [...rated].sort((a, b) => b.tr.voteAvg - a.tr.voteAvg)[0] : null;
+            x.lowRated = rated.length > 1 ? [...rated].sort((a, b) => a.tr.voteAvg - b.tr.voteAvg)[0] : null;
 
             x.goals = players.reduce((s, p) => s + (p.goals || 0), 0);
             x.avg = x.n ? (x.goals / x.n).toFixed(1) : '0';
@@ -1038,16 +1052,18 @@
         // SEZON hakkında yorumlar (koşul sağlanırsa metin döner, yoksa null)
         const COMM_SEASON = {
             hoca: [
+                x => x.m && x.m.finalized === true && x.mvpName && `Maçın MVP'si arkadaşlarının puanıyla belli oldu: ${hl(x.mvpName)}. Bakın kardeşim, en doğru hakem sahada birlikte koşanların vicdanıdır.`,
                 x => x.topScorer && `Sezonun gol makinesi ${hl(x.topScorer.name)}: ${x.topScorer.goals} gol! Ceza sahasında yer açmayı, yer bulmayı ve gerektiğinde yere yatmayı biliyor kardeşim.`,
                 x => x.n > 0 && `Maç başına ortalama ${x.avg} gol... Bakın, bu halı saha değil, savunma felsefesinin cenaze töreni!`,
                 x => x.unbeaten && `${hl(x.unbeaten.name)} henüz mağlubiyet yüzü görmedi. Zekâ budur kardeşim: kaybetmemek için önce nerede durmayacağını bilmek gerek.`
             ],
             hakem: [
-                x => x.gap && `${hl(x.gap.p.name)} kendine ${x.gap.p.selfRating} basmış, arkadaşları ${x.gap.tr.peerAvg} vermiş! Bu fark, VAR'a gitmeden verilen penaltı gibi arkadaş!`,
+                x => x.formSlump && `${hl(x.formSlump.p.name)} son maçlarda arkadaşlarından ortalama ${(x.formSlump.tr.form / 10).toFixed(1)} puan almış! Arkadaş, bu puan değil, bu bir ihtar kartı!`,
                 x => x.mostLoser && `${hl(x.mostLoser.name)} ${x.mostLoser.losses} mağlubiyetle sezonun yük çeken adamı; ya talih yok ya da ayakkabı bağcığı sorunlu arkadaş!`,
                 x => x.gk && (x.gk.matches || 0) > 0 && `Kaleci ${hl(x.gk.name)}: ${x.gk.matches} maç, ${x.gk.losses || 0} mağlubiyet. O topların hepsi file yerine şans meleğinin sinirine gitti, arkadaş!`
             ],
             kehanet: [
+                x => x.m && x.m.finalized === true && x.mvpName && `${hl(x.mvpName)} MVP seçildi! Bakın bakın, haftaya bu adamın forması karaborsaya düşer, yazın bir kenara!`,
                 x => x.topWinner && `${hl(x.topWinner.name)} ${x.topWinner.wins} galibiyetle önde! Bu adam sezonu zirvede bitirmezse ben mesleği bırakırım!`,
                 x => x.mvpLeader && `${hl(x.mvpLeader.name)} ${x.mvpLeader.mvpCount} MVP'ye ulaşmış! Yazın bir kenara, o kupa bu adamın evinde yatar!`,
                 x => x.bench && `${hl(x.bench.name)} sezon boyu hiç forma giymedi! Bakın bakın, bu bir komplo mu yoksa dolabın şifresi mi unutuldu?!`
@@ -1055,15 +1071,16 @@
             analiz: [
                 x => x.n > 0 && `Sezon verisi: ${x.n} maç, ${x.goals} gol, maç başına ${x.avg}. Bu oran halı saha standartlarının üzerinde; sistem "biraz savunma çalışın" uyarısı veriyor.`,
                 x => x.topScorer && `Gol dağılımında ${hl(x.topScorer.name)} ${x.topScorer.goals} golle zirvede; verimlilik grafiği "ben buradayım" diye bağırıyor.`,
-                x => x.gap && `Öz-algı sapması: ${hl(x.gap.p.name)} kendini ${x.gap.p.selfRating} görüyor, çevresi ${x.gap.tr.peerAvg}. Korelasyon katsayısı mizahi düzeyde.`
+                x => x.highRated && x.lowRated && x.highRated.p.id !== x.lowRated.p.id && `Haftalık oylamada en yüksek ortalama ${hl(x.highRated.p.name)} (${x.highRated.tr.voteAvg}), en düşük ${hl(x.lowRated.p.name)} (${x.lowRated.tr.voteAvg}). Aradaki ${x.highRated.tr.voteAvg - x.lowRated.tr.voteAvg} puan, takım seçerken kavga çıkma riskini istatistiksel olarak anlamlı kılıyor.`
             ],
             spiker: [
+                x => x.m && x.m.finalized === false && `Hocam maç bitti ama iş bitmedi: puanlama sürüyor! Herkes birbirine not versin, MVP kim olacak merakla bekliyorum!`,
                 x => x.topScorer && `${hl(x.topScorer.name)}! ${x.topScorer.goals} gol hocam, yakarım bu ligi! Kaleciler onu görünce sigorta şirketini arıyor!`,
                 x => x.unbeaten && `${hl(x.unbeaten.name)} hiç yenilmedi hocam! Bu adam yenilgiyi sözlükte arasa bulamaz!`,
                 x => x.winless && `${hl(x.winless.name)} ${x.winless.matches} maçtır galibiyet bekliyor hocam, bu hafta Allah'ın izniyle bozarız bu laneti!`
             ],
             sakin: [
-                x => x.humble && `${hl(x.humble.p.name)} kendine ${x.humble.p.selfRating} vermiş, arkadaşları ${x.humble.tr.peerAvg}; kardeşim bu çocuk mütevazılığı topla birlikte sahaya getirmiş, helal olsun.`,
+                x => x.formStar && `${hl(x.formStar.p.name)} son maçlarda arkadaşlarından ortalama ${(x.formStar.tr.form / 10).toFixed(1)} puan almış; kardeşim bu çocuk sessiz sessiz işini yapıyor, helal olsun.`,
                 x => x.n > 0 && `Sezonda ${x.n} maç oynadık, ${x.goals} gol attık. Kardeşim, topun yuvarlak olduğunu bir kez daha gördük; gerisi detay.`,
                 x => x.mostLoser && `${hl(x.mostLoser.name)} ${x.mostLoser.losses} kez kaybetti ama sahada kalmaya devam ediyor. Bu adam karakter sahibi kardeşim.`
             ]
@@ -1091,8 +1108,8 @@
 
             // Veri değişmediyse ticker'ı yeniden kurma (animasyon başa sarmasın)
             const sig = JSON.stringify([
-                players.map(p => [p.id, p.goals, p.matches, p.wins, p.draws, p.losses, p.mvpCount, p.selfRating, (p.peerRatings || []).length]),
-                matches.length ? [matches[0].id, matches[0].teamAScore, matches[0].teamBScore, matches[0].mvp] : null
+                players.map(p => [p.id, p.goals, p.matches, p.wins, p.draws, p.losses, p.mvpCount, (p.peerAttributeVotes || []).length]),
+                matches.length ? [matches[0].id, matches[0].teamAScore, matches[0].teamBScore, matches[0].mvp, matches[0].finalized, Object.keys(matches[0].playerScores || {}).length] : null
             ]);
             if (sig === lastTickerSig && container.innerHTML.trim()) return;
             lastTickerSig = sig;
@@ -1129,49 +1146,28 @@
             container.innerHTML = one + sep + one;
         }
 
-        // PLAYER MANAGEMENT FUNCTIONS (FIRESTORE)
+        // PLAYER MANAGEMENT FUNCTIONS (FIRESTORE) - admin rating girmez, sadece isim + pozisyon
         async function handlePlayerSubmit(e) {
             e.preventDefault();
             const editId = document.getElementById('edit-player-id').value;
             const name = document.getElementById('player-name').value.trim();
             const position = document.getElementById('player-position').value;
-
-            const pace = parseInt(document.getElementById('attr-pace').value) || 70;
-            const shooting = parseInt(document.getElementById('attr-shooting').value) || 70;
-            const passing = parseInt(document.getElementById('attr-passing').value) || 70;
-            const dribbling = parseInt(document.getElementById('attr-dribbling').value) || 70;
-            const defending = parseInt(document.getElementById('attr-defending').value) || 70;
-            const physical = parseInt(document.getElementById('attr-physical').value) || 70;
-
-            // Öz Rating: 6 niteliğin ortalamasından otomatik hesaplanır
-            const selfRating = Math.round((pace + shooting + passing + dribbling + defending + physical) / 6);
-            const attributes = { pace, shooting, passing, dribbling, defending, physical };
+            if (!name) return;
 
             try {
-                let savedId = editId;
                 if (editId) {
-                    await db.collection('players').doc(editId).update({ name, position, selfRating, attributes });
-                    showToast("Oyuncu verileri güncellendi.");
+                    await db.collection('players').doc(editId).update({ name, position });
+                    showToast("Oyuncu güncellendi.");
                 } else {
-                    const ref = await db.collection('players').add({
-                        name, position, selfRating, attributes,
-                        peerRatings: [], peerAttributeVotes: [],
+                    await db.collection('players').add({
+                        name, position,
+                        peerAttributeVotes: [],
                         matches: 0, goals: 0, wins: 0, draws: 0, losses: 0, mvpCount: 0,
                         selected: true
                     });
-                    savedId = ref.id;
-                    showToast("Yeni oyuncu başarıyla eklendi.");
+                    showToast("Oyuncu eklendi. Rating'i kadrodaki oyuncuların oylarından otomatik oluşacak.");
                 }
-
                 resetPlayerForm();
-
-                // Kaydettikten sonra akran puanlamasına geç
-                setTimeout(() => {
-                    switchTab('evaluation');
-                    document.getElementById('eval-current-user').value = savedId;
-                    checkVoterEvalStatus();
-                    goToEvalStep(2);
-                }, 600);
             } catch (err) {
                 showToast("Hata oluştu: " + err.message);
                 reportErr('players.save', err);
@@ -1181,23 +1177,13 @@
         function editPlayer(id) {
             const player = players.find(p => p.id === id);
             if (!player) return;
-            const a = player.attributes || {};
 
             document.getElementById('edit-player-id').value = player.id;
             document.getElementById('player-name').value = player.name;
             document.getElementById('player-position').value = player.position;
-            updateAttributeLabelsForForm();
-
-            document.getElementById('attr-pace').value = a.pace ?? 75;
-            document.getElementById('attr-shooting').value = a.shooting ?? 70;
-            document.getElementById('attr-passing').value = a.passing ?? 75;
-            document.getElementById('attr-dribbling').value = a.dribbling ?? 70;
-            document.getElementById('attr-defending').value = a.defending ?? 65;
-            document.getElementById('attr-physical').value = a.physical ?? 70;
-            updateSelfRatingPreview();
 
             document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-pen text-amber-400"></i> Oyuncu Düzenle`;
-            document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Güncelle ve Puanlamaya Geç`;
+            document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Güncelle`;
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -1216,25 +1202,8 @@
             document.getElementById('edit-player-id').value = '';
             document.getElementById('player-name').value = '';
             document.getElementById('player-position').value = 'Orta Saha';
-            updateAttributeLabelsForForm();
-            document.getElementById('attr-pace').value = 75;
-            document.getElementById('attr-shooting').value = 70;
-            document.getElementById('attr-passing').value = 75;
-            document.getElementById('attr-dribbling').value = 70;
-            document.getElementById('attr-defending').value = 65;
-            document.getElementById('attr-physical').value = 70;
-            updateSelfRatingPreview();
-
             document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Oyuncu Kaydı`;
-            document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-check"></i> Kaydet ve Puanlamaya Geç`;
-        }
-
-        // Nitelik ortalamasından otomatik Öz Rating hesapla ve canlı göster
-        function updateSelfRatingPreview() {
-            const ids = ['attr-pace', 'attr-shooting', 'attr-passing', 'attr-dribbling', 'attr-defending', 'attr-physical'];
-            const values = ids.map(id => parseInt(document.getElementById(id).value) || 0);
-            const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-            document.getElementById('player-self-rating').value = avg;
+            document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-check"></i> Kaydet`;
         }
 
         function renderPlayerManagement() {
@@ -1259,7 +1228,7 @@
                         </div>
                         <div>
                             <p class="text-xs font-bold text-white">${esc(p.name)}</p>
-                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)} • Öz: <span class="text-amber-400">${p.selfRating || 70}</span> | Akran: <span class="text-blue-400">${tr.peerAvg}</span></p>
+                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)} • Oylama: <span class="text-amber-400">${tr.voteCount ? tr.voteAvg : '—'}</span> | Form: <span class="text-blue-400">${tr.form ?? '—'}</span></p>
                             <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong></p>
                         </div>
                     </div>
@@ -1315,41 +1284,11 @@
             return ATTR_KEYS.map(key => ({ key, label: shortTable[key], fullLabel: fullTable[key] }));
         }
 
-        // Oyuncu ekleme/düzenleme formunda pozisyon değiştiğinde nitelik etiketlerini günceller
-        // (ör. Kaleci seçilince Hız/Şut yerine Çıkış Hızı/Refleks gibi kaleciye özgü isimler çıkar).
-        function updateAttributeLabelsForForm() {
-            const position = document.getElementById('player-position').value;
-            const meta = getAttrMeta(position);
-            meta.forEach(a => {
-                const labelEl = document.getElementById(`label-attr-${a.key}`);
-                if (labelEl) labelEl.textContent = a.fullLabel;
-            });
-            const note = document.getElementById('attr-form-note');
-            if (note) {
-                note.textContent = position === 'Kaleci'
-                    ? 'Kaleci seçildi — nitelikler kaleciye özgü olarak gösteriliyor.'
-                    : '';
-            }
-        }
-
-        // Öz nitelikler (%30) + akranların o niteliğe verdiği ortalama puan (%70) harmanlanarak
-        // "Gerçek Nitelik" değerleri üretilir (henüz akran nitelik oyu yoksa öz değer kullanılır).
+        // Radar nitelikleri yalnızca oylardan gelir (haftalık oy ortalaması); oy yoksa varsayılan 70
         function getEffectiveAttributes(player) {
-            const self = player.attributes || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
-            const votes = player.peerAttributeVotes || [];
-            const effective = {};
-
-            ATTR_KEYS.forEach(key => {
-                const peerVals = votes.map(v => v[key]).filter(v => typeof v === 'number' && !isNaN(v));
-                if (peerVals.length > 0) {
-                    const peerAvg = peerVals.reduce((x, y) => x + y, 0) / peerVals.length;
-                    effective[key] = Math.round((self[key] || 70) * 0.3 + peerAvg * 0.7);
-                } else {
-                    effective[key] = self[key] || 70;
-                }
-            });
-
-            return { values: effective, hasPeerVotes: votes.length > 0 };
+            const vs = getVoteStats(player);
+            const values = vs.attrs || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
+            return { values, hasPeerVotes: vs.count > 0, count: vs.count, scope: vs.scope };
         }
 
         function openPlayerDetail(id) {
@@ -1375,9 +1314,10 @@
 
             const noteEl = document.getElementById('detail-radar-note');
             if (noteEl) {
+                const scopeTxt = eff.scope === 'week' ? 'Bu haftanın' : (eff.scope === 'previous' ? 'Geçen haftanın' : 'Eski sürümün');
                 noteEl.textContent = eff.hasPeerVotes
-                    ? 'Gerçek Nitelik: %30 Öz Değer + %70 Akran Nitelik Ortalaması'
-                    : 'Henüz akran nitelik oyu yok — öz değerler gösteriliyor';
+                    ? `${scopeTxt} ${eff.count} oyunun ortalaması` + (tr.form !== null ? ` • Son maç formu: ${(tr.form / 10).toFixed(1)}/10` : '')
+                    : 'Henüz oylama yok — varsayılan değerler gösteriliyor';
             }
 
             document.getElementById('detail-attr-list').innerHTML = attrMeta.map(a => `
@@ -1461,7 +1401,7 @@
             document.getElementById('stat-total-goals').textContent = totalGoals;
 
             const lastMatch = matches[0];
-            document.getElementById('stat-mvp').textContent = lastMatch ? (lastMatch.mvp || 'Henüz Seçilmedi') : 'Henüz Seçilmedi';
+            document.getElementById('stat-mvp').textContent = lastMatch ? (lastMatch.finalized === false ? 'Puanlama sürüyor…' : (lastMatch.mvp || 'Henüz Seçilmedi')) : 'Henüz Seçilmedi';
 
             const tbody = document.getElementById('player-leaderboard-body');
             tbody.innerHTML = '';
@@ -1488,7 +1428,7 @@
                         </td>
                         <td class="py-3 px-2"><span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700">${esc(player.position)}</span></td>
                         <td class="py-3 px-2 text-center text-xs">
-                            <span class="text-amber-400 font-bold">${player.selfRating || 70}</span> / <span class="text-blue-400 font-bold">${trStats.peerAvg}</span>
+                            <span class="text-amber-400 font-bold">${trStats.voteCount ? trStats.voteAvg : '—'}</span> / <span class="text-blue-400 font-bold">${trStats.form ?? '—'}</span>
                         </td>
                         <td class="py-3 px-2 text-center text-slate-300 text-xs">${player.matches || 0}</td>
                         <td class="py-3 px-2 text-center text-xs"><span class="text-amber-400 font-bold">${player.goals || 0}</span></td>
@@ -1555,7 +1495,7 @@
                         </div>
                         <div class="text-right shrink-0">
                             <span class="text-[10px] text-amber-400 font-bold block">MVP</span>
-                            <span class="font-bold text-slate-200">${esc(m.mvp)}</span>
+                            <span class="font-bold text-slate-200">${m.finalized === false ? '<span class="text-slate-400 italic font-semibold">Puanlama sürüyor…</span>' : esc(m.mvp)}</span>
                         </div>
                     `;
                     matchContainer.appendChild(card);
@@ -1570,13 +1510,13 @@
             const select = document.getElementById('eval-current-user');
             const prev = select.value; // anlık veri güncellemelerinde seçimi koru
             select.innerHTML = '<option value="">-- Oyuncu Seçiniz --</option>';
-            players.forEach(p => {
+            players.filter(p => p.selected).forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
-                opt.textContent = `${esc(p.name)} (${esc(p.position)})`;
+                opt.textContent = `${p.name} (${p.position})`;
                 select.appendChild(opt);
             });
-            if (prev && players.some(p => p.id === prev)) select.value = prev;
+            if (prev && players.some(p => p.id === prev && p.selected)) select.value = prev;
             checkVoterEvalStatus();
         }
 
@@ -1718,6 +1658,8 @@
             }
 
             evalSubmitting = true;
+            const period = getCurrentPeriodStart().getTime(); // bu oylar hangi haftaya ait
+            const voteTs = Date.now();
             try {
                 // Her oyuncu için: okuyup ekleyip yaz (eşzamanlı oylarda kayıp olmasın diye transaction)
                 await Promise.all(Object.keys(votesByPeer).map(peerId => {
@@ -1729,8 +1671,7 @@
                         if (!snap.exists) return;
                         const d = snap.data();
                         tx.update(ref, {
-                            peerRatings: [...(d.peerRatings || []), overall],
-                            peerAttributeVotes: [...(d.peerAttributeVotes || []), { voterId, ...vals }]
+                            peerAttributeVotes: [...(d.peerAttributeVotes || []), { voterId, period, ts: voteTs, overall, ...vals }]
                         });
                     });
                 }));
@@ -1929,149 +1870,259 @@
             document.getElementById('pitch-match-balance').textContent = `Güç Dengesi: %${pctA} vs %${pctB}`;
         }
 
-        // MVP VOTING SYSTEM (FIRESTORE)
-        async function toggleMVPVotingFromAdmin() {
-            try {
-                const settingsRef = db.collection('settings').doc('mvp_status');
-                const batch = db.batch();
+        // MAÇ PUANLAMA & MVP (FIRESTORE)
+        // Maç kaydedilince puanlama otomatik açılır. Maçta oynayan her oyuncu, diğer oyunculara 1-10 puan verir.
+        // Herkes puanlayınca (ya da admin kapatınca) ortalaması en yüksek oyuncu MVP olur; puanlar kadro dengesine "form" olarak girer.
+        let mrDraft = {}; // yazılmakta olan puanlar { oyuncuId: değer }
 
-                if (!isMVPVotingActive) {
-                    // Yeni tur: eski oyları temizle ve oylamayı aç
-                    mvpVotes.forEach(v => batch.delete(db.collection('mvp_votes').doc(v.id)));
-                    batch.set(settingsRef, { isActive: true });
-                    await batch.commit();
-                    selectedMVPPlayerId = null;
-                    showToast("MVP oylaması kadrodaki oyunculara açıldı!");
-                } else {
-                    // Oylamayı kapat: en çok oyu alan MVP olur
-                    const tally = {};
-                    mvpVotes.forEach(v => { tally[v.nomineeId] = (tally[v.nomineeId] || 0) + 1; });
-                    let winnerId = null, best = 0;
-                    Object.keys(tally).forEach(id => {
-                        if (tally[id] > best) { best = tally[id]; winnerId = id; }
-                        else if (tally[id] === best && winnerId) {
-                            const a = players.find(p => p.id === id), b = players.find(p => p.id === winnerId);
-                            if (a && b && calculateTrueRating(a).trueRating > calculateTrueRating(b).trueRating) winnerId = id;
-                        }
-                    });
+        function getOpenMatch() {
+            return matches.find(m => m.finalized === false) || null;
+        }
 
-                    batch.set(settingsRef, { isActive: false });
-                    const winner = players.find(p => p.id === winnerId);
-                    if (winner) {
-                        batch.update(db.collection('players').doc(winner.id), { mvpCount: firebase.firestore.FieldValue.increment(1) });
-                        if (matches[0]) batch.update(db.collection('matches').doc(matches[0].id), { mvp: winner.name });
-                    }
-                    await batch.commit();
-                    showToast(winner ? `Oylama kapandı. MVP: ${esc(winner.name)} (${best} oy)` : "Oylama oy gelmeden kapatıldı.");
-                }
-            } catch (err) {
-                showToast("Ayar güncellenemedi: " + err.message);
-                reportErr('mvp.toggle', err);
-            }
+        function getMatchParticipantIds(m) {
+            return [...(m.teamAIds || []), ...(m.teamBIds || [])];
+        }
+
+        function getMatchParticipants(m) {
+            return getMatchParticipantIds(m).map(id => players.find(p => p.id === id)).filter(Boolean);
         }
 
         function updateAdminMVPButtonUI() {
             const btn = document.getElementById('admin-mvp-toggle-btn');
             if (!btn) return;
-            if (isMVPVotingActive) {
+            const open = getOpenMatch();
+            if (open) {
+                const got = matchRatings.filter(r => r.matchId === open.id).length;
+                const total = getMatchParticipantIds(open).length;
+                btn.disabled = false;
                 btn.className = 'bg-red-500 hover:bg-red-600 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-red-500/20 flex items-center gap-2 shrink-0';
-                btn.innerHTML = `<i class="fa-solid fa-lock"></i> <span>MVP Oylamasını Kapat ve Sonuçlandır</span>`;
+                btn.innerHTML = `<i class="fa-solid fa-flag-checkered"></i> <span>Puanlamayı Kapat ve MVP'yi Belirle (${got}/${total})</span>`;
             } else {
-                btn.className = 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2 shrink-0';
-                btn.innerHTML = `<i class="fa-solid fa-award"></i> <span>MVP Oylamasını Başlat</span>`;
+                btn.disabled = true;
+                btn.className = 'bg-slate-700 text-slate-400 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shrink-0 opacity-60 cursor-not-allowed';
+                btn.innerHTML = `<i class="fa-solid fa-award"></i> <span>Açık Maç Puanlaması Yok</span>`;
             }
+        }
+
+        // Maç puanlarının ortalamasını alır, MVP'yi belirler ve maçı kapatır (tek seferlik, transaction ile korunur)
+        async function finalizeMatch(matchId) {
+            const snap = await db.collection('match_ratings').where('matchId', '==', matchId).get();
+            const agg = {};
+            snap.forEach(d => {
+                const sc = d.data().scores || {};
+                Object.keys(sc).forEach(pid => {
+                    const v = Number(sc[pid]);
+                    if (isNaN(v)) return;
+                    const a = agg[pid] || (agg[pid] = { sum: 0, count: 0 });
+                    a.sum += v;
+                    a.count++;
+                });
+            });
+
+            const playerScores = {};
+            Object.keys(agg).forEach(pid => {
+                playerScores[pid] = { avg: Math.round(agg[pid].sum / agg[pid].count * 100) / 100, count: agg[pid].count };
+            });
+
+            const m = matches.find(x => x.id === matchId);
+            const goalsOf = (name) => ((m && m.scorers) || []).filter(s => s.name === name).reduce((s, x) => s + x.goals, 0);
+            const ranked = Object.keys(playerScores)
+                .map(pid => ({ pid, ...playerScores[pid], p: players.find(p => p.id === pid) }))
+                .filter(r => r.p)
+                .sort((a, b) => b.avg - a.avg || b.count - a.count || goalsOf(b.p.name) - goalsOf(a.p.name) || a.p.name.localeCompare(b.p.name, 'tr'));
+            const winner = ranked[0] || null;
+
+            let outcome = null;
+            await db.runTransaction(async tx => {
+                const mref = db.collection('matches').doc(matchId);
+                const ms = await tx.get(mref);
+                if (!ms.exists || ms.data().finalized !== false) return; // zaten kapanmış
+
+                const upd = { finalized: true, playerScores };
+                if (winner) {
+                    upd.mvp = winner.p.name;
+                    upd.mvpId = winner.pid;
+                    tx.update(db.collection('players').doc(winner.pid), { mvpCount: firebase.firestore.FieldValue.increment(1) });
+                }
+                tx.update(mref, upd);
+                outcome = winner ? { name: winner.p.name, avg: winner.avg } : { name: null };
+            });
+            return outcome;
+        }
+
+        async function finalizeOpenMatchFromAdmin() {
+            const open = getOpenMatch();
+            if (!open) { showToast("Kapatılacak açık maç puanlaması yok."); return; }
+            const got = matchRatings.filter(r => r.matchId === open.id).length;
+            const total = getMatchParticipantIds(open).length;
+            if (got < total && !confirm(`Henüz ${got}/${total} oyuncu puanladı. Yine de kapatıp MVP'yi belirleyelim mi?`)) return;
+            try {
+                const res = await finalizeMatch(open.id);
+                showToast(res && res.name ? `Puanlama kapandı. MVP: ${res.name} (ort. ${res.avg})` : "Puanlama kapandı (hiç puan gelmedi).");
+            } catch (err) {
+                showToast("Kapatılamadı: " + err.message);
+                reportErr('match.finalize', err);
+            }
+        }
+
+        function onMatchVoterChange() {
+            mrDraft = {};
+            renderMVPVoteTab();
+        }
+
+        function renderMatchResults() {
+            const box = document.getElementById('mr-results');
+            const list = document.getElementById('mr-results-list');
+            const done = matches.find(m => m.finalized === true && m.playerScores && Object.keys(m.playerScores).length > 0);
+            if (!done) { box.classList.add('hidden'); return; }
+
+            const rows = Object.keys(done.playerScores)
+                .map(pid => ({ pid, ...done.playerScores[pid], p: players.find(p => p.id === pid) }))
+                .filter(r => r.p)
+                .sort((a, b) => b.avg - a.avg || b.count - a.count);
+
+            document.getElementById('mr-results-title').textContent = `Son Sonuçlanan Maç • ${done.date} • A ${done.teamAScore} - ${done.teamBScore} B`;
+            list.innerHTML = rows.map((r, i) => `
+                <div class="flex items-center justify-between p-2 rounded-xl border text-xs ${r.pid === done.mvpId ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900/60 border-slate-800'}">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold ${i === 0 ? 'text-amber-400' : 'text-slate-500'}">#${i + 1}</span>
+                        <span class="font-bold text-slate-200">${esc(r.p.name)}</span>
+                        ${r.pid === done.mvpId ? '<span class="text-[10px] font-black text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded">MVP</span>' : ''}
+                    </div>
+                    <span class="font-black text-amber-400">${r.avg.toFixed(2)} <span class="text-[10px] text-slate-500 font-semibold">(${r.count} puan)</span></span>
+                </div>`).join('');
+            box.classList.remove('hidden');
         }
 
         function renderMVPVoteTab() {
             const lockedNotice = document.getElementById('mvp-locked-notice');
             const votingArea = document.getElementById('mvp-voting-area');
+            renderMatchResults();
 
-            if (!isMVPVotingActive) {
+            const open = getOpenMatch();
+            if (!open) {
                 lockedNotice.classList.remove('hidden');
                 votingArea.classList.add('hidden');
+                document.getElementById('mr-locked-text').textContent = matches.length
+                    ? 'Şu an puanlanacak açık bir maç yok. Yeni maç kaydedildiğinde puanlama burada otomatik açılır.'
+                    : 'Henüz oynanmış bir maç yok. Maç kaydedildikten sonra oyuncular birbirini burada puanlar.';
                 return;
             }
             lockedNotice.classList.add('hidden');
             votingArea.classList.remove('hidden');
 
-            const pool = players.filter(p => p.selected);
+            const participants = getMatchParticipants(open);
+            const total = getMatchParticipantIds(open).length;
+            const got = matchRatings.filter(r => r.matchId === open.id).length;
+            document.getElementById('mr-match-info').textContent = `Puanlanacak maç: ${open.date} • A ${open.teamAScore} - ${open.teamBScore} B`;
+            document.getElementById('total-votes-cast').textContent = `Puanlayan: ${got}/${total}`;
 
             const select = document.getElementById('mvp-voter-select');
             const prevVoter = select.value;
             select.innerHTML = '<option value="">-- Adınızı Seçin --</option>';
-            pool.forEach(p => {
+            participants.forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.textContent = p.name;
                 select.appendChild(opt);
             });
-            if (prevVoter && pool.some(p => p.id === prevVoter)) select.value = prevVoter;
+            if (prevVoter && participants.some(p => p.id === prevVoter)) select.value = prevVoter;
+            const voterId = select.value;
 
-            if (!pool.some(p => p.id === selectedMVPPlayerId)) selectedMVPPlayerId = null;
-
+            const status = document.getElementById('mr-voter-status');
             const grid = document.getElementById('mvp-nominees-grid');
-            grid.innerHTML = '';
+            const submitBtn = document.getElementById('mr-submit-btn');
 
-            if (pool.length === 0) {
-                grid.innerHTML = `<p class="text-xs text-slate-400 italic col-span-2 text-center py-4">Kadroda seçili oyuncu bulunmuyor.</p>`;
+            if (!voterId) {
+                status.className = 'text-xs font-semibold min-h-[1rem] text-slate-400';
+                status.textContent = 'Önce adınızı seçin.';
+                grid.innerHTML = '';
+                submitBtn.disabled = true;
+                return;
             }
 
-            pool.forEach(p => {
-                const votes = mvpVotes.filter(v => v.nomineeId === p.id).length;
-                const card = document.createElement('div');
-                card.id = `mvp-card-${p.id}`;
-                card.onclick = () => selectMVPNominee(p.id);
-                card.className = 'cursor-pointer bg-slate-900/80 p-3 rounded-xl border border-slate-800 hover:border-amber-400 transition-all flex items-center justify-between';
-                card.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-xs border border-slate-700">
-                            ${esc(p.name.charAt(0))}
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-white">${esc(p.name)}</p>
+            if (matchRatings.some(r => r.matchId === open.id && r.voterId === voterId)) {
+                status.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                status.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Bu maç için puanlarınızı gönderdiniz. Gönderilen puanlar güncellenemez.';
+                grid.innerHTML = '';
+                submitBtn.disabled = true;
+                return;
+            }
+
+            status.className = 'text-xs font-semibold min-h-[1rem] text-amber-400';
+            status.textContent = 'Diğer tüm oyuncuları 1-10 arası puanlayın (zorunlu). Gönderdikten sonra değiştirilemez.';
+            submitBtn.disabled = false;
+
+            grid.innerHTML = participants.filter(p => p.id !== voterId).map(p => `
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
+                    <div class="flex items-center space-x-3 min-w-0">
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-xs border border-slate-700">${esc(p.name.charAt(0))}</div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
                             <p class="text-[10px] text-slate-400">${esc(p.position)}</p>
                         </div>
                     </div>
-                    <span class="text-xs text-amber-400 font-extrabold">${votes} Oy</span>
-                `;
-                grid.appendChild(card);
-            });
-
-            if (selectedMVPPlayerId) selectMVPNominee(selectedMVPPlayerId);
-            document.getElementById('total-votes-cast').textContent = `Toplam Oy: ${mvpVotes.length}`;
+                    <input type="number" min="1" max="10" step="0.5" placeholder="1-10" data-nominee-id="${p.id}" value="${mrDraft[p.id] ?? ''}"
+                        oninput="mrDraft['${p.id}'] = this.value"
+                        class="match-score-input w-16 shrink-0 bg-slate-800 border border-slate-700 text-amber-400 text-sm font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                </div>`).join('');
         }
 
-        function selectMVPNominee(id) {
-            selectedMVPPlayerId = id;
-            players.forEach(p => {
-                const el = document.getElementById(`mvp-card-${p.id}`);
-                if (!el) return;
-                if (p.id === id) el.classList.add('border-amber-400', 'bg-amber-500/10');
-                else el.classList.remove('border-amber-400', 'bg-amber-500/10');
-            });
-        }
+        let mrSubmitting = false;
 
-        async function submitMVPVote() {
+        async function submitMatchRatings() {
+            if (mrSubmitting) return;
+            const open = getOpenMatch();
+            if (!open) { showToast("Puanlanacak açık bir maç yok."); return; }
+
             const voterId = document.getElementById('mvp-voter-select').value;
-            if (!voterId) {
-                showToast("Lütfen oy kullanan kişi olarak kendi adınızı seçin.");
-                return;
-            }
-            if (!selectedMVPPlayerId) {
-                showToast("Lütfen MVP seçmek istediğiniz oyuncuya tıklayın.");
-                return;
-            }
-            if (mvpVotes.some(v => v.voterId === voterId)) {
-                showToast("Bu oylamada zaten oy kullandınız.");
+            const ids = getMatchParticipantIds(open);
+            if (!voterId || !ids.includes(voterId)) { showToast("Lütfen maçta oynayan kendi adınızı seçin."); return; }
+            if (matchRatings.some(r => r.matchId === open.id && r.voterId === voterId)) {
+                showToast("Bu maç için zaten puan verdiniz.");
                 return;
             }
 
+            const scores = {};
+            let bad = 0;
+            document.querySelectorAll('#mvp-nominees-grid .match-score-input').forEach(input => {
+                input.classList.remove('border-red-500');
+                const raw = String(input.value).trim();
+                const n = parseFloat(raw);
+                if (raw === '' || isNaN(n) || n < 1 || n > 10) {
+                    bad++;
+                    input.classList.add('border-red-500');
+                } else {
+                    scores[input.getAttribute('data-nominee-id')] = n;
+                }
+            });
+            if (bad > 0 || Object.keys(scores).length !== ids.length - 1) {
+                showToast("Lütfen maçtaki diğer tüm oyuncuları 1-10 arasında puanlayın.");
+                return;
+            }
+
+            mrSubmitting = true;
             try {
-                await db.collection('mvp_votes').add({ voterId, nomineeId: selectedMVPPlayerId, ts: Date.now() });
-                showToast("MVP oyunuz başarıyla gönderildi!");
+                const ref = db.collection('match_ratings').doc(`${open.id}_${voterId}`);
+                await db.runTransaction(async tx => {
+                    const s = await tx.get(ref);
+                    if (s.exists) throw new Error('Bu maç için zaten puan verdiniz.');
+                    tx.set(ref, { matchId: open.id, voterId, scores, ts: Date.now() });
+                });
+                mrDraft = {};
+
+                const cnt = (await db.collection('match_ratings').where('matchId', '==', open.id).get()).size;
+                if (cnt >= ids.length) {
+                    const res = await finalizeMatch(open.id);
+                    showToast(res && res.name ? `Herkes puanladı! MVP: ${res.name} (ort. ${res.avg})` : "Puanlar kaydedildi.");
+                } else {
+                    showToast(`Puanlarınız kaydedildi (${cnt}/${ids.length}).`);
+                }
             } catch (err) {
-                showToast("Oy verme hatası: " + err.message);
-                reportErr('mvp.vote', err);
+                showToast("Kayıt hatası: " + err.message);
+                reportErr('match_ratings', err);
+            } finally {
+                mrSubmitting = false;
             }
         }
 
@@ -2153,16 +2204,23 @@
                 mvp: topScorer,
                 scorers,
                 teamANames: currentTeamA.map(p => p.name),
-                teamBNames: currentTeamB.map(p => p.name)
+                teamBNames: currentTeamB.map(p => p.name),
+                teamAIds: currentTeamA.map(p => p.id),
+                teamBIds: currentTeamB.map(p => p.id),
+                finalized: false,   // maç sonrası puanlama açık
+                playerScores: {}
             });
 
             savingMatch = true;
             try {
+                // Önceki maçın puanlaması hâlâ açıksa önce onu sonuçlandır
+                const prevOpen = getOpenMatch();
+                if (prevOpen) await finalizeMatch(prevOpen.id);
                 await batch.commit();
                 document.getElementById('admin-score-a').value = 0;
                 document.getElementById('admin-score-b').value = 0;
                 document.querySelectorAll('.admin-goal-input').forEach(i => { i.value = 0; });
-                showToast("Maç kaydı işlendi: galibiyet/beraberlik/mağlubiyet ve goller güncellendi!");
+                showToast("Maç kaydedildi. Oyuncular artık 'Maç Puanı & MVP' sekmesinden birbirini puanlayabilir.");
                 switchTab('dashboard');
             } catch (err) {
                 showToast("Maç kaydedilemedi: " + err.message);
@@ -2182,8 +2240,6 @@
         }
 
         window.onload = function() {
-            updateAttributeLabelsForForm();
-            updateSelfRatingPreview();
             initFirestoreListeners();
         };
     </script>
