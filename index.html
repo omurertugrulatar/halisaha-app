@@ -333,6 +333,12 @@
                             </select>
                         </div>
 
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Yaş</label>
+                            <input type="number" id="player-age" min="10" max="80" required placeholder="Örn: 27" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <p class="text-[10px] text-slate-500 mt-1">Takım dağılımında ortalama yaş dengesi için kullanılır.</p>
+                        </div>
+
                         <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-[11px] text-emerald-200 leading-relaxed">
                             <i class="fa-solid fa-circle-info mr-1"></i>
                             Rating girmenize gerek yok. Bu haftanın kadrosuna yazılan oyuncular birbirini puanlar; ortalama oy, maç sonrası verilen maç puanları ve gol/galibiyet/MVP performansı oyuncunun <strong>Gerçek Rating</strong>'ini oluşturur.
@@ -425,7 +431,7 @@
                         <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI Dengeli Kadro Kurucu
                         </h2>
-                        <p class="text-xs text-slate-400">Haftalık oy ortalaması, son maç puanları ve pozisyon dengesini baz alarak dengeli 2 takım kurar (her takıma 1 kaleci).</p>
+                        <p class="text-xs text-slate-400">Haftalık oy ortalaması, son maç puanları ve ortalama yaş dengesini baz alarak dengeli 2 takım kurar (her takıma 1 kaleci).</p>
                     </div>
 
                     <div class="flex items-center gap-3">
@@ -507,6 +513,7 @@
                                 <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                                     <div id="team-a-score-bar" class="bg-red-500 h-full" style="width: 50%;"></div>
                                 </div>
+                                <p class="text-[10px] text-slate-400 mt-1">Ort. yaş: <span id="team-a-avg-age" class="font-bold text-slate-200">-</span></p>
                             </div>
 
                             <div>
@@ -517,6 +524,7 @@
                                 <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                                     <div id="team-b-score-bar" class="bg-blue-500 h-full" style="width: 50%;"></div>
                                 </div>
+                                <p class="text-[10px] text-slate-400 mt-1">Ort. yaş: <span id="team-b-avg-age" class="font-bold text-slate-200">-</span></p>
                             </div>
                         </div>
 
@@ -984,6 +992,15 @@
             x.highRated = rated.length ? [...rated].sort((a, b) => b.tr.voteAvg - a.tr.voteAvg)[0] : null;
             x.lowRated = rated.length > 1 ? [...rated].sort((a, b) => a.tr.voteAvg - b.tr.voteAvg)[0] : null;
 
+            // Yaş verileri
+            const aged = players.filter(p => Number.isFinite(p.age));
+            x.oldest = aged.length > 1 ? [...aged].sort((a, b) => b.age - a.age)[0] : null;
+            x.youngest = aged.length > 1 ? [...aged].sort((a, b) => a.age - b.age)[0] : null;
+            if (x.oldest && x.youngest && (x.oldest.id === x.youngest.id || x.oldest.age === x.youngest.age)) { x.oldest = null; x.youngest = null; }
+            const ageAvgOf = (t) => { const k = t.filter(p => Number.isFinite(p.age)); return k.length ? k.reduce((s, p) => s + p.age, 0) / k.length : null; };
+            const ageA = ageAvgOf(currentTeamA), ageB = ageAvgOf(currentTeamB);
+            x.teamAgeGap = (ageA !== null && ageB !== null) ? Math.abs(ageA - ageB) : null;
+
             x.goals = players.reduce((s, p) => s + (p.goals || 0), 0);
             x.avg = x.n ? (x.goals / x.n).toFixed(1) : '0';
 
@@ -1052,6 +1069,7 @@
         // SEZON hakkında yorumlar (koşul sağlanırsa metin döner, yoksa null)
         const COMM_SEASON = {
             hoca: [
+                x => x.oldest && `${hl(x.oldest.name)} ${x.oldest.age} yaşında ama hâlâ aralara koşuyor! Bakın kardeşim, bacak yaşlanır, futbol zekâsı yaşlanmaz.`,
                 x => x.m && x.m.finalized === true && x.mvpName && `Maçın MVP'si arkadaşlarının puanıyla belli oldu: ${hl(x.mvpName)}. Bakın kardeşim, en doğru hakem sahada birlikte koşanların vicdanıdır.`,
                 x => x.topScorer && `Sezonun gol makinesi ${hl(x.topScorer.name)}: ${x.topScorer.goals} gol! Ceza sahasında yer açmayı, yer bulmayı ve gerektiğinde yere yatmayı biliyor kardeşim.`,
                 x => x.n > 0 && `Maç başına ortalama ${x.avg} gol... Bakın, bu halı saha değil, savunma felsefesinin cenaze töreni!`,
@@ -1069,17 +1087,20 @@
                 x => x.bench && `${hl(x.bench.name)} sezon boyu hiç forma giymedi! Bakın bakın, bu bir komplo mu yoksa dolabın şifresi mi unutuldu?!`
             ],
             analiz: [
+                x => x.teamAgeGap !== null && `Takımlar arası ortalama yaş farkı ${x.teamAgeGap.toFixed(1)} yıl; algoritma yaşı rating'in yanına ikinci denge kriteri olarak koydu. Çay faktörü: yüksek.`,
                 x => x.n > 0 && `Sezon verisi: ${x.n} maç, ${x.goals} gol, maç başına ${x.avg}. Bu oran halı saha standartlarının üzerinde; sistem "biraz savunma çalışın" uyarısı veriyor.`,
                 x => x.topScorer && `Gol dağılımında ${hl(x.topScorer.name)} ${x.topScorer.goals} golle zirvede; verimlilik grafiği "ben buradayım" diye bağırıyor.`,
                 x => x.highRated && x.lowRated && x.highRated.p.id !== x.lowRated.p.id && `Haftalık oylamada en yüksek ortalama ${hl(x.highRated.p.name)} (${x.highRated.tr.voteAvg}), en düşük ${hl(x.lowRated.p.name)} (${x.lowRated.tr.voteAvg}). Aradaki ${x.highRated.tr.voteAvg - x.lowRated.tr.voteAvg} puan, takım seçerken kavga çıkma riskini istatistiksel olarak anlamlı kılıyor.`
             ],
             spiker: [
+                x => x.youngest && `Genç yetenek ${hl(x.youngest.name)} sadece ${x.youngest.age} yaşında hocam; koştukça arkasında rüzgâr çıkıyor, kaleciler tedirgin!`,
                 x => x.m && x.m.finalized === false && `Hocam maç bitti ama iş bitmedi: puanlama sürüyor! Herkes birbirine not versin, MVP kim olacak merakla bekliyorum!`,
                 x => x.topScorer && `${hl(x.topScorer.name)}! ${x.topScorer.goals} gol hocam, yakarım bu ligi! Kaleciler onu görünce sigorta şirketini arıyor!`,
                 x => x.unbeaten && `${hl(x.unbeaten.name)} hiç yenilmedi hocam! Bu adam yenilgiyi sözlükte arasa bulamaz!`,
                 x => x.winless && `${hl(x.winless.name)} ${x.winless.matches} maçtır galibiyet bekliyor hocam, bu hafta Allah'ın izniyle bozarız bu laneti!`
             ],
             sakin: [
+                x => x.oldest && `Kardeşim ${hl(x.oldest.name)} ${x.oldest.age} yaşında; deneyim dediğin böyle bir şey, koşmak yerine doğru yerde durmak.`,
                 x => x.formStar && `${hl(x.formStar.p.name)} son maçlarda arkadaşlarından ortalama ${(x.formStar.tr.form / 10).toFixed(1)} puan almış; kardeşim bu çocuk sessiz sessiz işini yapıyor, helal olsun.`,
                 x => x.n > 0 && `Sezonda ${x.n} maç oynadık, ${x.goals} gol attık. Kardeşim, topun yuvarlak olduğunu bir kez daha gördük; gerisi detay.`,
                 x => x.mostLoser && `${hl(x.mostLoser.name)} ${x.mostLoser.losses} kez kaybetti ama sahada kalmaya devam ediyor. Bu adam karakter sahibi kardeşim.`
@@ -1108,7 +1129,7 @@
 
             // Veri değişmediyse ticker'ı yeniden kurma (animasyon başa sarmasın)
             const sig = JSON.stringify([
-                players.map(p => [p.id, p.goals, p.matches, p.wins, p.draws, p.losses, p.mvpCount, (p.peerAttributeVotes || []).length]),
+                players.map(p => [p.id, p.goals, p.matches, p.wins, p.draws, p.losses, p.mvpCount, p.age, (p.peerAttributeVotes || []).length]),
                 matches.length ? [matches[0].id, matches[0].teamAScore, matches[0].teamBScore, matches[0].mvp, matches[0].finalized, Object.keys(matches[0].playerScores || {}).length] : null
             ]);
             if (sig === lastTickerSig && container.innerHTML.trim()) return;
@@ -1152,15 +1173,20 @@
             const editId = document.getElementById('edit-player-id').value;
             const name = document.getElementById('player-name').value.trim();
             const position = document.getElementById('player-position').value;
+            const age = parseInt(document.getElementById('player-age').value, 10);
             if (!name) return;
+            if (isNaN(age) || age < 10 || age > 80) {
+                showToast("Lütfen 10-80 arasında geçerli bir yaş girin.");
+                return;
+            }
 
             try {
                 if (editId) {
-                    await db.collection('players').doc(editId).update({ name, position });
+                    await db.collection('players').doc(editId).update({ name, position, age });
                     showToast("Oyuncu güncellendi.");
                 } else {
                     await db.collection('players').add({
-                        name, position,
+                        name, position, age,
                         peerAttributeVotes: [],
                         matches: 0, goals: 0, wins: 0, draws: 0, losses: 0, mvpCount: 0,
                         selected: true
@@ -1181,6 +1207,7 @@
             document.getElementById('edit-player-id').value = player.id;
             document.getElementById('player-name').value = player.name;
             document.getElementById('player-position').value = player.position;
+            document.getElementById('player-age').value = Number.isFinite(player.age) ? player.age : '';
 
             document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-pen text-amber-400"></i> Oyuncu Düzenle`;
             document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Güncelle`;
@@ -1202,6 +1229,7 @@
             document.getElementById('edit-player-id').value = '';
             document.getElementById('player-name').value = '';
             document.getElementById('player-position').value = 'Orta Saha';
+            document.getElementById('player-age').value = '';
             document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Oyuncu Kaydı`;
             document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-check"></i> Kaydet`;
         }
@@ -1228,7 +1256,7 @@
                         </div>
                         <div>
                             <p class="text-xs font-bold text-white">${esc(p.name)}</p>
-                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)} • Oylama: <span class="text-amber-400">${tr.voteCount ? tr.voteAvg : '—'}</span> | Form: <span class="text-blue-400">${tr.form ?? '—'}</span></p>
+                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''} • Oylama: <span class="text-amber-400">${tr.voteCount ? tr.voteAvg : '—'}</span> | Form: <span class="text-blue-400">${tr.form ?? '—'}</span></p>
                             <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong></p>
                         </div>
                     </div>
@@ -1301,7 +1329,7 @@
 
             document.getElementById('detail-avatar').textContent = p.name.charAt(0);
             document.getElementById('detail-name').textContent = p.name;
-            document.getElementById('detail-position').textContent = p.position;
+            document.getElementById('detail-position').textContent = p.position + (Number.isFinite(p.age) ? ` • ${p.age} yaş` : '');
             document.getElementById('detail-true-rating').textContent = tr.trueRating;
             document.getElementById('detail-matches').textContent = p.matches || 0;
             document.getElementById('detail-goals').textContent = p.goals || 0;
@@ -1743,6 +1771,46 @@
             document.getElementById('selected-player-count').textContent = count;
         }
 
+        // Yaş etkeni: rating dengesi bozulmadan (ortalama rating farkı sınırı içinde) takımların ortalama yaşı yakınlaştırılır.
+        const AGE_WEIGHT = 1;        // 1 yıllık ortalama yaş farkı ≈ 1 rating puanı kadar "maliyet" (artırırsanız yaş daha etkili olur)
+        const MAX_RATING_GAP = 3;    // yaş için takas yaparken ortalama rating farkı en fazla bu kadar (veya başlangıç farkı) olabilir
+
+        function balanceByAge(teamA, teamB, lockedIds) {
+            const everyone = [...teamA, ...teamB];
+            const known = everyone.filter(p => Number.isFinite(p.age));
+            if (known.length < 2 || teamA.length === 0 || teamB.length === 0) return; // yaş verisi yoksa dokunma
+
+            const fill = known.reduce((s, p) => s + p.age, 0) / known.length; // yaşı girilmeyenler için ortalama
+            const ageOf = p => Number.isFinite(p.age) ? p.age : fill;
+            const rating = new Map(everyone.map(p => [p.id, calculateTrueRating(p).trueRating]));
+            const avg = (team, f) => team.reduce((s, p) => s + f(p), 0) / team.length;
+            const gaps = () => ({
+                r: Math.abs(avg(teamA, p => rating.get(p.id)) - avg(teamB, p => rating.get(p.id))),
+                a: Math.abs(avg(teamA, ageOf) - avg(teamB, ageOf))
+            });
+            const cost = g => g.r + AGE_WEIGHT * g.a;
+            const isGk = p => p.position === 'Kaleci';
+            const ratingLimit = Math.max(MAX_RATING_GAP, gaps().r);
+
+            for (let pass = 0; pass < 40; pass++) {
+                let best = null;
+                let bestCost = cost(gaps()) - 0.01;
+                for (let i = 0; i < teamA.length; i++) {
+                    if (lockedIds.has(teamA[i].id)) continue;
+                    for (let j = 0; j < teamB.length; j++) {
+                        if (lockedIds.has(teamB[j].id) || isGk(teamA[i]) !== isGk(teamB[j])) continue;
+                        [teamA[i], teamB[j]] = [teamB[j], teamA[i]];
+                        const g = gaps();
+                        const c = cost(g);
+                        [teamA[i], teamB[j]] = [teamB[j], teamA[i]];
+                        if (g.r <= ratingLimit && c < bestCost) { bestCost = c; best = [i, j]; }
+                    }
+                }
+                if (!best) break;
+                [teamA[best[0]], teamB[best[1]]] = [teamB[best[1]], teamA[best[0]]];
+            }
+        }
+
         function generateAITeams() {
             const activePlayers = players.filter(p => p.selected);
 
@@ -1788,6 +1856,9 @@
                 else teamB.push(p);
             });
 
+            // 3) Yaş dengesi: kaleciler sabit kalır, saha oyuncuları takas edilerek ortalama yaşlar yakınlaştırılır
+            balanceByAge(teamA, teamB, new Set(primaryGKs.map(p => p.id)));
+
             currentTeamA = teamA;
             currentTeamB = teamB;
 
@@ -1831,7 +1902,7 @@
                 card.className = 'bg-slate-900/90 border border-red-500/40 p-1.5 rounded-xl text-center shadow';
                 card.innerHTML = `
                     <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
-                    <p class="text-[10px] text-red-300 font-extrabold">${esc(p.position)} • ${tr}</p>
+                    <p class="text-[10px] text-red-300 font-extrabold">${esc(p.position)} • ${tr}${Number.isFinite(p.age) ? ' • ' + p.age + 'y' : ''}</p>
                 `;
                 pitchA.appendChild(card);
             });
@@ -1842,7 +1913,7 @@
                 card.className = 'bg-slate-900/90 border border-blue-500/40 p-1.5 rounded-xl text-center shadow';
                 card.innerHTML = `
                     <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
-                    <p class="text-[10px] text-blue-300 font-extrabold">${esc(p.position)} • ${tr}</p>
+                    <p class="text-[10px] text-blue-300 font-extrabold">${esc(p.position)} • ${tr}${Number.isFinite(p.age) ? ' • ' + p.age + 'y' : ''}</p>
                 `;
                 pitchB.appendChild(card);
             });
@@ -1868,6 +1939,19 @@
             document.getElementById('team-a-score-bar').style.width = `${pctA}%`;
             document.getElementById('team-b-score-bar').style.width = `${pctB}%`;
             document.getElementById('pitch-match-balance').textContent = `Güç Dengesi: %${pctA} vs %${pctB}`;
+
+            // Yaş dengesi
+            const ageAvg = (t) => { const k = t.filter(p => Number.isFinite(p.age)); return k.length ? k.reduce((s, p) => s + p.age, 0) / k.length : null; };
+            const aA = ageAvg(currentTeamA), aB = ageAvg(currentTeamB);
+            document.getElementById('team-a-avg-age').textContent = aA === null ? '-' : aA.toFixed(1);
+            document.getElementById('team-b-avg-age').textContent = aB === null ? '-' : aB.toFixed(1);
+
+            let verdict = `Ortalama rating farkı ${Math.abs(parseFloat(avgA) - parseFloat(avgB)).toFixed(1)} puan`;
+            if (aA !== null && aB !== null) verdict += `, ortalama yaş farkı ${Math.abs(aA - aB).toFixed(1)} yıl`;
+            verdict += '. Takımlar haftalık oy ortalaması ve son maç puanlarına göre kuruldu, ardından yaş dengesi gözetildi.';
+            const missingAge = [...currentTeamA, ...currentTeamB].filter(p => !Number.isFinite(p.age)).length;
+            if (missingAge > 0) verdict += ` ${missingAge} oyuncunun yaşı girilmemiş; yaş dengesinde bilinen yaşların ortalaması kullanıldı.`;
+            document.getElementById('ai-verdict-desc').textContent = verdict;
         }
 
         // MAÇ PUANLAMA & MVP (FIRESTORE)
