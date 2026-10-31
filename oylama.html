@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HalıSaha AI - Oylama</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pitch: {
+                            DEFAULT: '#10b981',
+                            dark: '#047857',
+                            lines: 'rgba(255, 255, 255, 0.4)'
+                        },
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b'
+                    },
+                    animation: {
+                        'ticker': 'ticker 35s linear infinite',
+                    },
+                    keyframes: {
+                        ticker: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-50%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .pitch-bg {
+            background: linear-gradient(to bottom, #065f46, #047857);
+            position: relative;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.6);
+        }
+        .pitch-lines {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            margin: 10px;
+            pointer-events: none;
+        }
+        .pitch-center-circle {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90px; height: 90px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+        }
+        .pitch-center-line {
+            position: absolute;
+            top: 50%; left: 10px; right: 10px;
+            height: 2px;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+        .pitch-box-top {
+            position: absolute;
+            top: 10px; left: 25%; right: 25%;
+            height: 55px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-top: none;
+        }
+        .pitch-box-bottom {
+            position: absolute;
+            bottom: 10px; left: 25%; right: 25%;
+            height: 55px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-bottom: none;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            animation: ticker 40s linear infinite;
+        }
+        .ticker-wrap:hover .ticker-move {
+            animation-play-state: paused;
+        }
+    </style>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col pb-8 antialiased selection:bg-emerald-500 selection:text-white">
+<script>
+/* Ekranda hata gösterici: sayfa/Firebase bozulursa kırmızı kutuda hata mesajı çıkar */
+(function(){
+  function show(msg){
+    var box=document.getElementById('__err_box');
+    if(!box){
+      box=document.createElement('div');
+      box.id='__err_box';
+      box.style.cssText='position:fixed;left:0;right:0;bottom:48px;z-index:99999;background:#7f1d1d;color:#fff;font:12px/1.4 monospace;padding:10px 14px;max-height:40vh;overflow:auto;white-space:pre-wrap';
+      (document.body||document.documentElement).appendChild(box);
+    }
+    box.textContent+=msg+'\n';
+  }
+  window.__showErr=show;
+  window.addEventListener('error',function(e){show('HATA: '+e.message+' (satır '+e.lineno+':'+e.colno+')');});
+  window.addEventListener('unhandledrejection',function(e){show('HATA (promise): '+(e.reason&&e.reason.message||e.reason));});
+})();
+</script>
+
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6">
+            <div class="flex items-center justify-between h-16 gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-900 font-black text-xl shadow-lg shadow-emerald-500/20"><i class="fa-solid fa-futbol"></i></div>
+                    <div>
+                        <span class="font-black text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-200">HalıSaha AI</span>
+                        <span class="text-[10px] block text-slate-400 font-semibold tracking-wider uppercase">Oylama</span>
+                    </div>
+                </div>
+                <nav class="flex items-center space-x-1">
+                    <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-emerald-400 bg-slate-800"><i class="fa-solid fa-user-pen"></i> <span>Haftalık Oylama</span></button>
+                    <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-award"></i> <span>Maç Puanı</span></button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-6">
+        <!-- TAB 3: SELF AND PEER EVALUATION -->
+        <section id="tab-evaluation" class="tab-content space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="mb-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-user-pen text-emerald-400"></i> Öz Değerlendirme & Akran Puanlaması
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">Bu haftanın kadrosuna yazılan oyuncular birbirini puanlar. Gelen oyların ortalaması 'Gerçek Rating'i oluşturur; admin rating girmez.</p>
+                    <p class="text-xs text-amber-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Her oyuncu bir değerlendirme döneminde yalnızca 1 kez akran değerlendirmesi yapabilir ve kaydedildikten sonra güncellenemez. Dönemler her Perşembe 00:01'de sıfırlanır.</p>
+                </div>
+
+                <!-- Step 1: Select Evaluator -->
+                <div id="eval-step-1" class="space-y-4">
+                    <label class="block text-sm font-medium text-slate-300">Oy kullanan oyuncuyu seçiniz:</label>
+                    <select id="eval-current-user" onchange="checkVoterEvalStatus()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        <option value="">-- Oyuncu Seçiniz --</option>
+                    </select>
+
+                    <p id="eval-voter-status" class="text-xs font-semibold min-h-[1rem]"></p>
+
+                    <div class="pt-4 flex justify-end">
+                        <button id="eval-step2-btn" onclick="goToEvalStep(2)" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
+                            Diğer Oyuncuları Puanla <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Peer Ratings -->
+                <div id="eval-step-2" class="hidden space-y-6">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
+                            <i class="fa-solid fa-users-gear"></i> Akran Değerlendirme Listesi
+                        </h3>
+                        <span class="text-xs text-amber-400 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i>Tüm nitelikler zorunlu (1-99)</span>
+                    </div>
+
+                    <div id="peer-ratings-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                        <!-- Dynamic Peer Items -->
+                    </div>
+
+                    <div class="pt-4 flex justify-between border-t border-slate-800">
+                        <button onclick="goToEvalStep(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-2.5 rounded-xl text-xs font-semibold">
+                            <i class="fa-solid fa-arrow-left"></i> Geri
+                        </button>
+                        <button onclick="submitEvaluation()" class="bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                            <i class="fa-solid fa-check"></i> Değerlendirmeleri Kaydet
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: MVP VOTING -->
+        <section id="tab-mvp-vote" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="mb-6">
+                    <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-award text-amber-400"></i> Maç Puanı &amp; MVP
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">Maç bittikten sonra her oyuncu, o maçta oynayan diğer oyunculara 1-10 arası puan verir. Ortalaması en yüksek oyuncu MVP olur; bu puanlar sonraki kadro dengesinde de kullanılır.</p>
+                </div>
+
+                <div id="mvp-locked-notice" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 text-center space-y-3">
+                    <i class="fa-solid fa-lock text-amber-400 text-3xl"></i>
+                    <h3 class="text-base font-bold text-white">Açık Maç Puanlaması Yok</h3>
+                    <p id="mr-locked-text" class="text-xs text-slate-300 max-w-md mx-auto"></p>
+                </div>
+
+                <div id="mvp-voting-area" class="space-y-6">
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <p id="mr-match-info" class="text-xs font-bold text-amber-300"></p>
+                        <label class="block text-xs font-semibold text-slate-300">Puan Veren Oyuncu:</label>
+                        <select id="mvp-voter-select" onchange="onMatchVoterChange()" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                            <option value="">-- Adınızı Seçin --</option>
+                        </select>
+                        <p id="mr-voter-status" class="text-xs font-semibold min-h-[1rem]"></p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Maçtaki Diğer Oyuncuları Puanlayın (1-10)</h3>
+                        <div id="mvp-nominees-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1"></div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-xs text-slate-400" id="total-votes-cast">Puanlayan: 0</span>
+                        <button id="mr-submit-btn" onclick="submitMatchRatings()" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-paper-plane"></i> Puanları Gönder
+                        </button>
+                    </div>
+                </div>
+
+                <div id="mr-results" class="hidden mt-6 space-y-3 border-t border-slate-800 pt-6">
+                    <h3 class="text-sm font-bold text-amber-300 flex items-center gap-2"><i class="fa-solid fa-crown"></i> <span id="mr-results-title">Son Sonuçlanan Maç</span></h3>
+                    <div id="mr-results-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </section>
+
+
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast-msg" class="fixed bottom-16 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 border border-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>
+        <span id="toast-text" class="text-sm font-medium">İşlem yapıldı.</span>
+    </div>
+
+    <script>
+        // -------------------------------------------------------------
+        // FIREBASE (Firestore) KURULUMU
+        // -------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyBC5anWNILz9VPS_ktAroINLf8W8MRNL7s",
+            authDomain: "halisahaai.firebaseapp.com",
+            databaseURL: "https://halisahaai-default-rtdb.firebaseio.com",
+            projectId: "halisahaai",
+            storageBucket: "halisahaai.firebasestorage.app",
+            messagingSenderId: "752014826496",
+            appId: "1:752014826496:web:925ed3ae6aa466b178cce5",
+            measurementId: "G-FK62FWPFR7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Oylama sayfası durumu (yalnızca okuma + kendi oyunu yazma)
+        let players = [];
+        let matches = [];
+        let matchRatings = [];
+        let voterEvalLog = {};
+        let currentTabId = 'evaluation';
+        let evalSubmitting = false;
+        let mrDraft = {};
+        let mrSubmitting = false;
+
+        function esc(v) {
+            return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        function reportErr(where, err) {
+            const msg = `Firestore (${where}): ${(err && err.code) || ''} ${(err && err.message) || err}`;
+            if (window.__showErr) window.__showErr(msg);
+        }
+
+        function matchTime(m) {
+            if (typeof m.ts === 'number') return m.ts;
+            if (m.timestamp && typeof m.timestamp.toMillis === 'function') return m.timestamp.toMillis();
+            return 0;
+        }
+
+        function getCurrentPeriodStart(now = new Date()) {
+            const THURSDAY = 4; // JS: 0=Pazar, 1=Pazartesi ... 4=Perşembe
+            const daysSinceThursday = (now.getDay() - THURSDAY + 7) % 7;
+
+            const candidate = new Date(now);
+            candidate.setDate(now.getDate() - daysSinceThursday);
+            candidate.setHours(0, 1, 0, 0);
+
+            // Eğer bugün Perşembe ama saat henüz 00:01'i geçmediyse, dönem aslında bir önceki hafta başladı
+            if (candidate.getTime() > now.getTime()) {
+                candidate.setDate(candidate.getDate() - 7);
+            }
+            return candidate;
+        }
+
+        function getVoterEvalStatus(voterId) {
+            const lastSubmittedAt = voterEvalLog[voterId];
+            const periodStart = getCurrentPeriodStart();
+
+            if (!lastSubmittedAt || lastSubmittedAt < periodStart.getTime()) {
+                return { canVote: true };
+            }
+
+            const nextPeriodStart = new Date(periodStart);
+            nextPeriodStart.setDate(nextPeriodStart.getDate() + 7);
+            const remainingMs = nextPeriodStart.getTime() - Date.now();
+            const remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+
+            return {
+                canVote: false,
+                remainingDays,
+                nextDateLabel: nextPeriodStart.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' 00:01'
+            };
+        }
+
+        const ATTR_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
+
+        const ATTR_SHORT_LABELS = {
+            Kaleci: { pace: 'ÇIKIŞ', shooting: 'REFLEKS', passing: 'AYAK', dribbling: 'ELKN', defending: 'POZ', physical: 'HAVA' },
+            default: { pace: 'HIZ', shooting: 'ŞUT', passing: 'PAS', dribbling: 'DRİP', defending: 'DEF', physical: 'FİZ' }
+        };
+
+        const ATTR_FULL_LABELS = {
+            Kaleci: {
+                pace: 'Çıkış Hızı (Rushing)',
+                shooting: 'Refleks (Reflexes)',
+                passing: 'Ayak Ustalığı (Kicking)',
+                dribbling: 'Elle Kontrol (Handling)',
+                defending: 'Pozisyon Alma (Positioning)',
+                physical: 'Hava Hakimiyeti (Aerial)'
+            },
+            default: {
+                pace: 'Hız (Pace)',
+                shooting: 'Şut (Shooting)',
+                passing: 'Pas (Passing)',
+                dribbling: 'Dripling (Dribbling)',
+                defending: 'Defans (Defending)',
+                physical: 'Fizik (Physical)'
+            }
+        };
+
+        // Verilen pozisyona uygun nitelik etiketlerini (kısa + tam) döndürür. Anahtarlar her pozisyon için aynıdır.
+        function getAttrMeta(position) {
+            const shortTable = ATTR_SHORT_LABELS[position] || ATTR_SHORT_LABELS.default;
+            const fullTable = ATTR_FULL_LABELS[position] || ATTR_FULL_LABELS.default;
+            return ATTR_KEYS.map(key => ({ key, label: shortTable[key], fullLabel: fullTable[key] }));
+        }
+
+        function populateUserDropdown() {
+            const select = document.getElementById('eval-current-user');
+            const prev = select.value; // anlık veri güncellemelerinde seçimi koru
+            select.innerHTML = '<option value="">-- Oyuncu Seçiniz --</option>';
+            players.filter(p => p.selected).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} (${p.position})`;
+                select.appendChild(opt);
+            });
+            if (prev && players.some(p => p.id === prev && p.selected)) select.value = prev;
+            checkVoterEvalStatus();
+        }
+
+        function checkVoterEvalStatus() {
+            const select = document.getElementById('eval-current-user');
+            const statusEl = document.getElementById('eval-voter-status');
+            const btn = document.getElementById('eval-step2-btn');
+            const voterId = select.value;
+
+            if (!voterId) {
+                statusEl.textContent = '';
+                btn.disabled = false;
+                return;
+            }
+
+            const status = getVoterEvalStatus(voterId);
+            if (status.canVote) {
+                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>Bu hafta için değerlendirme yapabilirsiniz.`;
+                btn.disabled = false;
+            } else {
+                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-red-400';
+                statusEl.innerHTML = `<i class="fa-solid fa-lock mr-1"></i>Bu hafta zaten değerlendirme yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel} (${status.remainingDays} gün sonra).`;
+                btn.disabled = true;
+            }
+        }
+
+        function goToEvalStep(step) {
+            const userSelect = document.getElementById('eval-current-user');
+            if (step === 2) {
+                if (!userSelect.value) {
+                    showToast("Lütfen önce oy kullanan kendi adınızı seçin!");
+                    return;
+                }
+
+                const voterId = userSelect.value;
+                const status = getVoterEvalStatus(voterId);
+                if (!status.canVote) {
+                    showToast(`Bu hafta zaten akran değerlendirmesi yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel}.`);
+                    checkVoterEvalStatus();
+                    return;
+                }
+            }
+
+            document.getElementById('eval-step-1').classList.add('hidden');
+            document.getElementById('eval-step-2').classList.add('hidden');
+            document.getElementById(`eval-step-${step}`).classList.remove('hidden');
+
+            if (step === 2) renderPeerRatingFields();
+        }
+
+        function renderPeerRatingFields() {
+            const container = document.getElementById('peer-ratings-list');
+            container.innerHTML = '';
+
+            const selectedId = document.getElementById('eval-current-user').value;
+            const peers = players.filter(p => p.id !== selectedId && p.selected);
+
+            peers.forEach(peer => {
+                const attrMeta = getAttrMeta(peer.position); // Kaleciyse kaleciye özgü nitelik etiketleri çıkar
+                const card = document.createElement('div');
+                card.dataset.peerCardId = peer.id;
+                card.className = 'bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2.5';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center text-xs border border-slate-700 shrink-0">
+                            ${esc(peer.name.charAt(0))}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">${esc(peer.name)}</p>
+                            <p class="text-[10px] text-slate-400">${esc(peer.position)}${peer.position === 'Kaleci' ? ' • Kaleci nitelikleri' : ''}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                        ${attrMeta.map(a => `
+                            <div>
+                                <label class="block text-[9px] text-slate-500 font-semibold mb-0.5 text-center" title="${a.fullLabel}">${a.label}</label>
+                                <input type="number" min="1" max="99" placeholder="—" data-peer-id="${peer.id}" data-attr-key="${a.key}" class="peer-attr-input w-full bg-slate-800 border border-slate-700 text-emerald-400 text-xs font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function getOpenMatch() {
+            return matches.find(m => m.finalized === false) || null;
+        }
+
+        function getMatchParticipantIds(m) {
+            return [...(m.teamAIds || []), ...(m.teamBIds || [])];
+        }
+
+        function getMatchParticipants(m) {
+            return getMatchParticipantIds(m).map(id => players.find(p => p.id === id)).filter(Boolean);
+        }
+
+        function onMatchVoterChange() {
+            mrDraft = {};
+            renderMVPVoteTab();
+        }
+
+        function renderMatchResults() {
+            const box = document.getElementById('mr-results');
+            const list = document.getElementById('mr-results-list');
+            const done = matches.find(m => m.finalized === true && m.playerScores && Object.keys(m.playerScores).length > 0);
+            if (!done) { box.classList.add('hidden'); return; }
+
+            const rows = Object.keys(done.playerScores)
+                .map(pid => ({ pid, ...done.playerScores[pid], p: players.find(p => p.id === pid) }))
+                .filter(r => r.p)
+                .sort((a, b) => b.avg - a.avg || b.count - a.count);
+
+            document.getElementById('mr-results-title').textContent = `Son Sonuçlanan Maç • ${done.date} • A ${done.teamAScore} - ${done.teamBScore} B`;
+            list.innerHTML = rows.map((r, i) => `
+                <div class="flex items-center justify-between p-2 rounded-xl border text-xs ${r.pid === done.mvpId ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900/60 border-slate-800'}">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold ${i === 0 ? 'text-amber-400' : 'text-slate-500'}">#${i + 1}</span>
+                        <span class="font-bold text-slate-200">${esc(r.p.name)}</span>
+                        ${r.pid === done.mvpId ? '<span class="text-[10px] font-black text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded">MVP</span>' : ''}
+                    </div>
+                    <span class="font-black text-amber-400">${r.avg.toFixed(2)} <span class="text-[10px] text-slate-500 font-semibold">(${r.count} puan)</span></span>
+                </div>`).join('');
+            box.classList.remove('hidden');
+        }
+
+        function renderMVPVoteTab() {
+            const lockedNotice = document.getElementById('mvp-locked-notice');
+            const votingArea = document.getElementById('mvp-voting-area');
+            renderMatchResults();
+
+            const open = getOpenMatch();
+            if (!open) {
+                lockedNotice.classList.remove('hidden');
+                votingArea.classList.add('hidden');
+                document.getElementById('mr-locked-text').textContent = matches.length
+                    ? 'Şu an puanlanacak açık bir maç yok. Yeni maç kaydedildiğinde puanlama burada otomatik açılır.'
+                    : 'Henüz oynanmış bir maç yok. Maç kaydedildikten sonra oyuncular birbirini burada puanlar.';
+                return;
+            }
+            lockedNotice.classList.add('hidden');
+            votingArea.classList.remove('hidden');
+
+            const participants = getMatchParticipants(open);
+            const total = getMatchParticipantIds(open).length;
+            const got = matchRatings.filter(r => r.matchId === open.id).length;
+            document.getElementById('mr-match-info').textContent = `Puanlanacak maç: ${open.date} • A ${open.teamAScore} - ${open.teamBScore} B`;
+            document.getElementById('total-votes-cast').textContent = `Puanlayan: ${got}/${total}`;
+
+            const select = document.getElementById('mvp-voter-select');
+            const prevVoter = select.value;
+            select.innerHTML = '<option value="">-- Adınızı Seçin --</option>';
+            participants.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                select.appendChild(opt);
+            });
+            if (prevVoter && participants.some(p => p.id === prevVoter)) select.value = prevVoter;
+            const voterId = select.value;
+
+            const status = document.getElementById('mr-voter-status');
+            const grid = document.getElementById('mvp-nominees-grid');
+            const submitBtn = document.getElementById('mr-submit-btn');
+
+            if (!voterId) {
+                status.className = 'text-xs font-semibold min-h-[1rem] text-slate-400';
+                status.textContent = 'Önce adınızı seçin.';
+                grid.innerHTML = '';
+                submitBtn.disabled = true;
+                return;
+            }
+
+            if (matchRatings.some(r => r.matchId === open.id && r.voterId === voterId)) {
+                status.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                status.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Bu maç için puanlarınızı gönderdiniz. Gönderilen puanlar güncellenemez.';
+                grid.innerHTML = '';
+                submitBtn.disabled = true;
+                return;
+            }
+
+            status.className = 'text-xs font-semibold min-h-[1rem] text-amber-400';
+            status.textContent = 'Diğer tüm oyuncuları 1-10 arası puanlayın (zorunlu). Gönderdikten sonra değiştirilemez.';
+            submitBtn.disabled = false;
+
+            grid.innerHTML = participants.filter(p => p.id !== voterId).map(p => `
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
+                    <div class="flex items-center space-x-3 min-w-0">
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-xs border border-slate-700">${esc(p.name.charAt(0))}</div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
+                            <p class="text-[10px] text-slate-400">${esc(p.position)}</p>
+                        </div>
+                    </div>
+                    <input type="number" min="1" max="10" step="0.5" placeholder="1-10" data-nominee-id="${p.id}" value="${mrDraft[p.id] ?? ''}"
+                        oninput="mrDraft['${p.id}'] = this.value"
+                        class="match-score-input w-16 shrink-0 bg-slate-800 border border-slate-700 text-amber-400 text-sm font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                </div>`).join('');
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast-msg');
+            document.getElementById('toast-text').textContent = text;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        async function submitEvaluation() {
+            if (evalSubmitting) return;
+            const voterId = document.getElementById('eval-current-user').value;
+            if (!voterId) {
+                showToast("Lütfen önce oy kullanan kendi adınızı seçin!");
+                goToEvalStep(1);
+                return;
+            }
+
+            // Güvenlik amaçlı ikinci kontrol: başka cihazdan oy kullanılmış olabilir
+            const status = getVoterEvalStatus(voterId);
+            if (!status.canVote) {
+                showToast(`Bu hafta zaten akran değerlendirmesi yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel}.`);
+                goToEvalStep(1);
+                checkVoterEvalStatus();
+                return;
+            }
+
+            const cards = document.querySelectorAll('#peer-ratings-list > div[data-peer-card-id]');
+            if (cards.length === 0) {
+                showToast("Puanlanacak oyuncu bulunamadı.");
+                return;
+            }
+
+            const votesByPeer = {};
+            const incompleteCards = [];
+
+            cards.forEach(card => {
+                card.classList.remove('border-red-500');
+                const peerId = card.dataset.peerCardId;
+                const values = {};
+                let complete = true;
+
+                card.querySelectorAll('.peer-attr-input').forEach(input => {
+                    const key = input.getAttribute('data-attr-key');
+                    const raw = input.value.trim();
+                    const num = parseInt(raw, 10);
+                    if (raw === '' || isNaN(num) || num < 1 || num > 99) complete = false;
+                    else values[key] = num;
+                });
+
+                if (complete) votesByPeer[peerId] = values;
+                else incompleteCards.push(card);
+            });
+
+            if (incompleteCards.length > 0) {
+                incompleteCards.forEach(card => card.classList.add('border-red-500'));
+                showToast(`Lütfen tüm oyuncular için 6 niteliğin tamamını (1-99) girin. ${incompleteCards.length} oyuncu eksik.`);
+                return;
+            }
+
+            evalSubmitting = true;
+            const period = getCurrentPeriodStart().getTime(); // bu oylar hangi haftaya ait
+            const voteTs = Date.now();
+            try {
+                const peerIds = Object.keys(votesByPeer);
+                await db.runTransaction(async tx => {
+                    // Kayıt numarası = oyuncu_dönem: aynı dönemde ikinci kez yazılamaz (güvenlik kuralları da engeller)
+                    const logRef = db.collection('eval_log').doc(`${voterId}_${period}`);
+                    const logSnap = await tx.get(logRef);
+                    if (logSnap.exists) throw new Error('Bu hafta zaten oy kullandınız.');
+
+                    const refs = peerIds.map(id => db.collection('players').doc(id));
+                    const snaps = await Promise.all(refs.map(r => tx.get(r)));
+                    snaps.forEach((snap, i) => {
+                        if (!snap.exists) return;
+                        const vals = votesByPeer[peerIds[i]];
+                        const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + vals[k], 0) / ATTR_KEYS.length);
+                        tx.update(refs[i], {
+                            peerAttributeVotes: [...(snap.data().peerAttributeVotes || []), { voterId, period, ts: voteTs, overall, ...vals }]
+                        });
+                    });
+                    tx.set(logRef, { voterId, period, ts: voteTs });
+                });
+
+                voterEvalLog[voterId] = voteTs;
+                showToast("Oylarınız kaydedildi, teşekkürler! Bir sonraki Perşembe 00:01'e kadar tekrar oy kullanamazsınız.");
+                checkVoterEvalStatus();
+                goToEvalStep(1);
+            } catch (err) {
+                showToast("Kayıt hatası: " + err.message);
+                reportErr('evaluation', err);
+            } finally {
+                evalSubmitting = false;
+            }
+        }
+
+        async function submitMatchRatings() {
+            if (mrSubmitting) return;
+            const open = getOpenMatch();
+            if (!open) { showToast("Puanlanacak açık bir maç yok."); return; }
+
+            const voterId = document.getElementById('mvp-voter-select').value;
+            const ids = getMatchParticipantIds(open);
+            if (!voterId || !ids.includes(voterId)) { showToast("Lütfen maçta oynayan kendi adınızı seçin."); return; }
+            if (matchRatings.some(r => r.matchId === open.id && r.voterId === voterId)) {
+                showToast("Bu maç için zaten puan verdiniz.");
+                return;
+            }
+
+            const scores = {};
+            let bad = 0;
+            document.querySelectorAll('#mvp-nominees-grid .match-score-input').forEach(input => {
+                input.classList.remove('border-red-500');
+                const raw = String(input.value).trim();
+                const n = parseFloat(raw);
+                if (raw === '' || isNaN(n) || n < 1 || n > 10) {
+                    bad++;
+                    input.classList.add('border-red-500');
+                } else {
+                    scores[input.getAttribute('data-nominee-id')] = n;
+                }
+            });
+            if (bad > 0 || Object.keys(scores).length !== ids.length - 1) {
+                showToast("Lütfen maçtaki diğer tüm oyuncuları 1-10 arasında puanlayın.");
+                return;
+            }
+
+            mrSubmitting = true;
+            try {
+                const ref = db.collection('match_ratings').doc(`${open.id}_${voterId}`);
+                await db.runTransaction(async tx => {
+                    const s = await tx.get(ref);
+                    if (s.exists) throw new Error('Bu maç için zaten puan verdiniz.');
+                    tx.set(ref, { matchId: open.id, voterId, scores, ts: Date.now() });
+                });
+                mrDraft = {};
+
+                showToast("Puanlarınız kaydedildi, teşekkürler! MVP, tüm oyuncular puanlayınca açıklanır.");
+            } catch (err) {
+                showToast("Kayıt hatası: " + err.message);
+                reportErr('match_ratings', err);
+            } finally {
+                mrSubmitting = false;
+            }
+        }
+
+        function initFirestoreListeners() {
+            db.collection('players').onSnapshot(snap => {
+                players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderCurrentTab();
+            }, err => reportErr('players', err));
+
+            db.collection('matches').onSnapshot(snap => {
+                matches = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => matchTime(b) - matchTime(a));
+                renderCurrentTab();
+            }, err => reportErr('matches', err));
+
+            db.collection('match_ratings').onSnapshot(snap => {
+                matchRatings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderCurrentTab();
+            }, err => reportErr('match_ratings', err));
+
+            db.collection('eval_log').onSnapshot(snap => {
+                voterEvalLog = {};
+                snap.forEach(d => {
+                    const v = d.data();
+                    const id = v.voterId || d.id;
+                    voterEvalLog[id] = Math.max(voterEvalLog[id] || 0, v.ts || 0);
+                });
+                checkVoterEvalStatus();
+            }, err => reportErr('eval_log', err));
+        }
+
+        function renderCurrentTab() {
+            if (currentTabId === 'evaluation') populateUserDropdown();
+            else renderMVPVoteTab();
+        }
+
+        function switchTab(tabId) {
+            currentTabId = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-emerald-400', 'bg-slate-800');
+                btn.classList.add('text-slate-300');
+            });
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('text-emerald-400', 'bg-slate-800');
+                activeBtn.classList.remove('text-slate-300');
+            }
+            renderCurrentTab();
+        }
+
+        window.onload = function() {
+            switchTab('evaluation');
+            initFirestoreListeners();
+        };
+    </script>
+</body>
+</html>
