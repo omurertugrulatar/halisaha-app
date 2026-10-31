@@ -154,6 +154,7 @@
                         <i class="fa-solid fa-user-pen text-emerald-400"></i> Öz Değerlendirme & Akran Puanlaması
                     </h2>
                     <p class="text-sm text-slate-400 mt-1">Bu haftanın kadrosuna yazılan oyuncular birbirini puanlar. Gelen oyların ortalaması 'Gerçek Rating'i oluşturur; admin rating girmez.</p>
+                    <p id="eval-squad-info" class="text-xs text-slate-400 mt-2 leading-relaxed"></p>
                     <p class="text-xs text-amber-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Her oyuncu bir değerlendirme döneminde yalnızca 1 kez akran değerlendirmesi yapabilir ve kaydedildikten sonra güncellenemez. Dönemler her Perşembe 00:01'de sıfırlanır.</p>
                 </div>
 
@@ -375,6 +376,11 @@
                 select.appendChild(opt);
             });
             if (prev && players.some(p => p.id === prev && p.selected)) select.value = prev;
+
+            const squad = players.filter(p => p.selected);
+            document.getElementById('eval-squad-info').innerHTML = squad.length
+                ? `<span class="text-slate-300 font-semibold">Bu haftanın kadrosu (${squad.length}):</span> ` + squad.map(p => esc(p.name)).join(', ')
+                : 'Bu haftanın kadrosu henüz yönetici tarafından açıklanmadı.';
             checkVoterEvalStatus();
         }
 

@@ -170,6 +170,9 @@
                     <button onclick="switchTab('players')" id="nav-players" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
                         <i class="fa-solid fa-users-gear"></i> Oyuncular
                     </button>
+                    <button onclick="switchTab('squad')" id="nav-squad" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-clipboard-user"></i> Haftalık Kadro
+                    </button>
                     <button onclick="switchTab('generator')" id="nav-generator" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> AI Kadro
                     </button>
@@ -199,6 +202,9 @@
             </button>
             <button onclick="switchTab('players')" class="text-slate-300 flex flex-col items-center gap-1">
                 <i class="fa-solid fa-users-gear text-sm"></i> Oyuncu
+            </button>
+            <button onclick="switchTab('squad')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-clipboard-user text-sm"></i> Kadro
             </button>
             <button onclick="switchTab('generator')" class="text-emerald-400 flex flex-col items-center gap-1 font-bold">
                 <i class="fa-solid fa-wand-magic-sparkles text-sm"></i> AI Kadro
@@ -389,6 +395,42 @@
             </div>
         </section>
 
+        <!-- TAB: HAFTALIK KADRO (oylama kadrosu) -->
+        <section id="tab-squad" class="tab-content hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-5">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-user text-emerald-400"></i> Haftanın Kadrosu
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1 max-w-2xl">Bu hafta oynayacak <strong class="text-slate-200">2 kaleci + 12 saha oyuncusunu</strong> seçin. Yalnızca seçilen oyuncular oylama sayfasında birbirini puanlar ve takımlar bu kadrodan kurulur. Gelemeyen oyuncunun yerine başka birini seçmeniz yeterli.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
+                        <button onclick="loadLastMatchSquad()" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs px-3 py-2 rounded-xl border border-slate-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Son Maçın Kadrosunu Yükle
+                        </button>
+                        <button onclick="clearSquad()" class="bg-slate-800 hover:bg-red-600/80 text-slate-300 hover:text-white font-bold text-xs px-3 py-2 rounded-xl border border-slate-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-eraser"></i> Kadroyu Temizle
+                        </button>
+                    </div>
+                </div>
+
+                <div id="squad-counters" class="flex flex-wrap gap-2"></div>
+                <p id="squad-warning" class="text-xs font-semibold min-h-[1rem]"></p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Kaleciler</h3>
+                        <div id="squad-gk-list" class="space-y-2"></div>
+                    </div>
+                    <div class="lg:col-span-2 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Saha Oyuncuları</h3>
+                        <div id="squad-field-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- TAB 4: AI TEAM GENERATOR -->
         <section id="tab-generator" class="tab-content hidden space-y-6">
             <div class="glass-panel p-6 rounded-2xl border border-slate-700">
@@ -407,19 +449,13 @@
                     </div>
                 </div>
 
-                <!-- Squad Selection Checkboxes -->
+                <!-- Haftanın kadrosu (özet; düzenleme "Haftalık Kadro" sekmesinde) -->
                 <div class="mt-6 pt-4 border-t border-slate-800">
                     <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bu Haftanın Kadrosu - Kadroya Yazılanlar (<span id="selected-player-count">0</span> Oyuncu)</span>
-                        <div class="space-x-2">
-                            <button onclick="toggleAllPlayers(true)" class="text-xs text-emerald-400 hover:underline">Tümünü Seç</button>
-                            <span class="text-slate-600">•</span>
-                            <button onclick="toggleAllPlayers(false)" class="text-xs text-slate-400 hover:underline">Temizle</button>
-                        </div>
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bu Haftanın Kadrosu (<span id="selected-player-count">0</span> Oyuncu)</span>
+                        <button onclick="switchTab('squad')" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-pen mr-1"></i>Kadroyu Düzenle</button>
                     </div>
-                    <div id="player-checkbox-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                        <!-- Dynamic Checkboxes -->
-                    </div>
+                    <div id="player-checkbox-grid" class="flex flex-wrap gap-2"></div>
                     <p id="gk-balance-warning" class="text-[11px] text-amber-400 font-semibold mt-3 hidden"></p>
                 </div>
             </div>
@@ -713,6 +749,7 @@
             switch (currentTabId) {
                 case 'dashboard': renderDashboard(); break;
                 case 'players': renderPlayerManagement(); break;
+                case 'squad': renderSquadTab(); break;
                 case 'generator': renderGeneratorControls(); break;
                 case 'admin': renderAdminRows(); break;
             }
@@ -843,6 +880,7 @@
 
             if (tabId === 'dashboard') renderDashboard();
             if (tabId === 'players') renderPlayerManagement();
+            if (tabId === 'squad') renderSquadTab();
             if (tabId === 'generator') renderGeneratorControls();
             if (tabId === 'admin') renderAdminRows();
         }
@@ -1093,9 +1131,9 @@
                         name, position, age,
                         peerAttributeVotes: [],
                         matches: 0, goals: 0, wins: 0, draws: 0, losses: 0, mvpCount: 0,
-                        selected: true
+                        selected: false   // haftalık kadroya yönetici seçer
                     });
-                    showToast("Oyuncu eklendi. Rating'i kadrodaki oyuncuların oylarından otomatik oluşacak.");
+                    showToast("Oyuncu eklendi. Haftalık kadroya almak için 'Haftalık Kadro' sekmesini kullanın.");
                 }
                 resetPlayerForm();
             } catch (err) {
@@ -1437,26 +1475,86 @@
             updateCommentatorTicker();
         }
 
-        // AI TEAM GENERATOR
-        function renderGeneratorControls() {
-            const grid = document.getElementById('player-checkbox-grid');
-            grid.innerHTML = '';
+        // -------------------------------------------------------------
+        // HAFTALIK KADRO (oylama kadrosu): yönetici her hafta oynayacak oyuncuları seçer
+        // -------------------------------------------------------------
+        const SQUAD_GK = 2;      // her hafta oynayan kaleci sayısı
+        const SQUAD_FIELD = 12;  // her hafta oynayan saha oyuncusu sayısı
 
-            players.forEach(p => {
-                const tr = calculateTrueRating(p).trueRating;
-                const label = document.createElement('label');
-                label.className = `flex items-center space-x-2 p-2 rounded-xl border cursor-pointer transition-all ${
-                    p.selected ? 'bg-emerald-500/10 border-emerald-500/40 text-white' : 'bg-slate-900/50 border-slate-800 text-slate-400'
-                }`;
-                label.innerHTML = `
-                    <input type="checkbox" ${p.selected ? 'checked' : ''} onchange="togglePlayerSelection('${p.id}', this.checked)" class="accent-emerald-500 rounded">
-                    <div class="truncate text-xs font-semibold">
-                        <span>${esc(p.name)}</span>
-                        <span class="text-[10px] text-emerald-400 block">${esc(p.position)} (${tr})</span>
+        function renderSquadTab() {
+            const sel = players.filter(p => p.selected);
+            const gk = sel.filter(p => p.position === 'Kaleci').length;
+            const field = sel.length - gk;
+
+            const chip = (label, n, target) => {
+                const cls = n === target ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                    : (n > target ? 'bg-red-500/15 text-red-300 border-red-500/40' : 'bg-amber-500/15 text-amber-300 border-amber-500/40');
+                return `<span class="px-3 py-1 rounded-full border text-xs font-bold ${cls}">${label}: ${n}/${target}</span>`;
+            };
+            document.getElementById('squad-counters').innerHTML =
+                chip('Kaleci', gk, SQUAD_GK) + chip('Saha', field, SQUAD_FIELD) + chip('Toplam', sel.length, SQUAD_GK + SQUAD_FIELD);
+
+            const warn = [];
+            if (gk > SQUAD_GK) warn.push(`${gk - SQUAD_GK} kaleci fazla`);
+            if (gk < SQUAD_GK) warn.push(`${SQUAD_GK - gk} kaleci eksik`);
+            if (field > SQUAD_FIELD) warn.push(`${field - SQUAD_FIELD} saha oyuncusu fazla`);
+            if (field < SQUAD_FIELD) warn.push(`${SQUAD_FIELD - field} saha oyuncusu eksik`);
+            const w = document.getElementById('squad-warning');
+            if (warn.length) {
+                w.className = 'text-xs font-semibold min-h-[1rem] text-amber-400';
+                w.textContent = 'Kadro tamamlanmamış: ' + warn.join(', ') + '. (Yine de bu kadroyla devam edebilirsiniz.)';
+            } else {
+                w.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                w.textContent = `Kadro tamam: oylama ve takım kurulumu bu ${SQUAD_GK + SQUAD_FIELD} oyuncuyla yapılır.`;
+            }
+
+            const lastIds = new Set(matches[0] ? getMatchParticipantIds(matches[0]) : []);
+            const sorted = [...players].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+            const card = p => `
+                <label class="flex items-center justify-between gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${p.selected ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-slate-900/50 border-slate-800 hover:border-slate-600'}">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <input type="checkbox" ${p.selected ? 'checked' : ''} onchange="togglePlayerSelection('${p.id}', this.checked)" class="accent-emerald-500 w-4 h-4 shrink-0">
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-white truncate">${esc(p.name)}${lastIds.has(p.id) ? ' <span class="text-[9px] font-semibold text-slate-400 bg-slate-800 rounded px-1 py-0.5 align-middle">son maç</span>' : ''}</p>
+                            <p class="text-[10px] text-slate-400">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''}</p>
+                        </div>
                     </div>
-                `;
-                grid.appendChild(label);
-            });
+                    <span class="text-xs font-black ${p.selected ? 'text-emerald-300' : 'text-slate-500'}">${calculateTrueRating(p).trueRating}</span>
+                </label>`;
+            const empty = t => `<p class="text-xs text-slate-500 italic">${t}</p>`;
+            const gks = sorted.filter(p => p.position === 'Kaleci');
+            const fld = sorted.filter(p => p.position !== 'Kaleci');
+            document.getElementById('squad-gk-list').innerHTML = gks.length ? gks.map(card).join('') : empty('Kayıtlı kaleci yok.');
+            document.getElementById('squad-field-list').innerHTML = fld.length ? fld.map(card).join('') : empty('Kayıtlı saha oyuncusu yok.');
+        }
+
+        // Son oynanan maçın kadrosunu başlangıç olarak yükler; gelemeyenleri çıkarıp yerine yenisini seçersiniz
+        async function loadLastMatchSquad() {
+            const m = matches[0];
+            const ids = new Set(m ? getMatchParticipantIds(m) : []);
+            if (ids.size === 0) { showToast("Yüklenecek bir önceki maç kadrosu bulunamadı."); return; }
+            try {
+                const batch = db.batch();
+                players.forEach(p => batch.update(db.collection('players').doc(p.id), { selected: ids.has(p.id) }));
+                await batch.commit();
+                showToast("Son maçın kadrosu yüklendi. Gelemeyenleri çıkarıp yerine yenilerini seçin.");
+            } catch (err) {
+                showToast("Kadro yüklenemedi: " + err.message);
+                reportErr('squad.load', err);
+            }
+        }
+
+        function clearSquad() {
+            if (players.some(p => p.selected) && confirm("Haftanın kadrosu temizlensin mi?")) toggleAllPlayers(false);
+        }
+
+        // AI TEAM GENERATOR
+function renderGeneratorControls() {
+            const grid = document.getElementById('player-checkbox-grid');
+            const squad = players.filter(p => p.selected);
+            grid.innerHTML = squad.length
+                ? squad.map(p => `<span class="px-2.5 py-1 rounded-lg border text-[11px] font-semibold ${p.position === 'Kaleci' ? 'bg-amber-500/10 border-amber-500/40 text-amber-200' : 'bg-emerald-500/10 border-emerald-500/40 text-slate-100'}">${esc(p.name)} <span class="opacity-60">${esc(p.position)}</span></span>`).join('')
+                : '<span class="text-xs text-slate-500 italic">Henüz kadro seçilmedi. "Kadroyu Düzenle" ile 2 kaleci + 12 saha oyuncusu seçin.</span>';
 
             updateSelectedCount();
             generateAITeams();
