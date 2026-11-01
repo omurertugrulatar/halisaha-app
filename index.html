@@ -429,6 +429,32 @@
                     </div>
                 </div>
             </div>
+            <div class="glass-panel p-6 rounded-2xl border border-red-500/30 space-y-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-red-400"></i> Oylama Yönetimi
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Seçilen oyları kalıcı olarak siler. Bu işlem geri alınamaz.</p>
+                </div>
+                <p id="reset-stats" class="text-xs text-slate-300"></p>
+                <div class="space-y-2.5 text-xs text-slate-200">
+                    <label class="flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" id="reset-opt-votes" checked class="accent-red-500 mt-0.5">
+                        <span><strong>Haftalık rating oyları</strong> ve oy kilitleri: herkes yeniden oy kullanabilir, ratingler varsayılan 70'e döner.</span>
+                    </label>
+                    <label class="flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" id="reset-opt-match" checked class="accent-red-500 mt-0.5">
+                        <span><strong>Maç puanları ve MVP sonuçları:</strong> maç sonrası puanlar, form ve MVP sayaçları sıfırlanır.</span>
+                    </label>
+                    <label class="flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" id="reset-opt-reopen" class="accent-red-500 mt-0.5">
+                        <span>Son maçın puanlamasını yeniden aç: oyuncular o maçı baştan puanlar (yalnızca "Maç puanları" seçiliyken).</span>
+                    </label>
+                </div>
+                <button onclick="resetVotes()" class="bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-trash"></i> Seçili Oyları Sıfırla
+                </button>
+            </div>
         </section>
 
         <!-- TAB 4: AI TEAM GENERATOR -->
@@ -1526,6 +1552,7 @@
             const fld = sorted.filter(p => p.position !== 'Kaleci');
             document.getElementById('squad-gk-list').innerHTML = gks.length ? gks.map(card).join('') : empty('Kayıtlı kaleci yok.');
             document.getElementById('squad-field-list').innerHTML = fld.length ? fld.map(card).join('') : empty('Kayıtlı saha oyuncusu yok.');
+            updateResetStats();
         }
 
         // Son oynanan maçın kadrosunu başlangıç olarak yükler; gelemeyenleri çıkarıp yerine yenisini seçersiniz
@@ -1546,6 +1573,90 @@
 
         function clearSquad() {
             if (players.some(p => p.selected) && confirm("Haftanın kadrosu temizlensin mi?")) toggleAllPlayers(false);
+        }
+
+        // -------------------------------------------------------------
+        // OYLAMA SIFIRLAMA (yalnızca yönetici; güvenlik kuralları da bunu zorunlu kılar)
+        // -------------------------------------------------------------
+        function updateResetStats() {
+            const el = document.getElementById('reset-stats');
+            if (!el) return;
+            const total = players.reduce((s, p) => s + (p.peerAttributeVotes || []).length, 0);
+            const voters = new Set();
+            players.forEach(p => (p.peerAttributeVotes || []).forEach(v => voters.add(v.voterId)));
+            el.textContent = `Şu an kayıtlı: ${total} rating oyu (${voters.size} farklı oy veren) ve ${matchRatings.length} maç puanı kaydı.`;
+        }
+
+        // Firestore toplu yazma sınırı (500) için parçalara bölerek uygular
+        async function commitChunked(ops) {
+            for (let i = 0; i < ops.length; i += 400) {
+                const batch = db.batch();
+                ops.slice(i, i + 400).forEach(fn => fn(batch));
+                await batch.commit();
+            }
+        }
+
+        async function resetVotes() {
+            const doVotes = document.getElementById('reset-opt-votes').checked;
+            const doMatch = document.getElementById('reset-opt-match').checked;
+            const reopen = doMatch && document.getElementById('reset-opt-reopen').checked;
+            if (!doVotes && !doMatch) { showToast("Sıfırlanacak bir seçenek işaretleyin."); return; }
+
+            const what = [];
+            if (doVotes) what.push('haftalık rating oyları');
+            if (doMatch) what.push('maç puanları ve MVP sonuçları');
+            const typed = prompt(`Şunlar KALICI olarak silinecek: ${what.join(' + ')}.\n\nOnaylamak için SIFIRLA yazın:`);
+            if (typed === null || typed.trim().toLocaleUpperCase('tr') !== 'SIFIRLA' && typed.trim().toUpperCase() !== 'SIFIRLA') {
+                showToast("Sıfırlama iptal edildi.");
+                return;
+            }
+
+            try {
+                const ops = [];
+                const del = firebase.firestore.FieldValue.delete();
+                let nLogs = 0, nRatings = 0;
+
+                if (doVotes) {
+                    players.forEach(p => {
+                        const upd = {};
+                        if ((p.peerAttributeVotes || []).length) upd.peerAttributeVotes = [];
+                        if (Array.isArray(p.peerRatings) && p.peerRatings.length) upd.peerRatings = [];
+                        if (Object.keys(upd).length) ops.push(b => b.update(db.collection('players').doc(p.id), upd));
+                    });
+                    const logs = await db.collection('eval_log').get();
+                    logs.forEach(d => { nLogs++; ops.push(b => b.delete(d.ref || db.collection('eval_log').doc(d.id))); });
+                }
+
+                if (doMatch) {
+                    const rs = await db.collection('match_ratings').get();
+                    rs.forEach(d => { nRatings++; ops.push(b => b.delete(d.ref || db.collection('match_ratings').doc(d.id))); });
+
+                    players.forEach(p => {
+                        if ((p.mvpCount || 0) > 0) ops.push(b => b.update(db.collection('players').doc(p.id), { mvpCount: 0 }));
+                    });
+
+                    const lastId = matches[0] ? matches[0].id : null;
+                    matches.forEach(m => {
+                        const upd = {};
+                        const fallback = (m.scorers && m.scorers[0] && m.scorers[0].name) || 'Belirtilmedi';
+                        if (m.playerScores && Object.keys(m.playerScores).length) upd.playerScores = {};
+                        if (m.mvpId) { upd.mvpId = del; upd.mvp = fallback; }
+                        if (reopen && m.id === lastId && getMatchParticipantIds(m).length > 0 && m.finalized !== false) {
+                            upd.finalized = false;
+                            upd.playerScores = {};
+                            upd.mvp = fallback;
+                            if (m.mvpId) upd.mvpId = del;
+                        }
+                        if (Object.keys(upd).length) ops.push(b => b.update(db.collection('matches').doc(m.id), upd));
+                    });
+                }
+
+                await commitChunked(ops);
+                showToast(`Oylar sıfırlandı (${ops.length} kayıt güncellendi/silindi).`);
+            } catch (err) {
+                showToast("Sıfırlama başarısız: " + err.message);
+                reportErr('votes.reset', err);
+            }
         }
 
         // AI TEAM GENERATOR
