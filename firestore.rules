@@ -1,38 +1,57 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // SENIN_GMAIL@gmail.com yerine kendi Google adresinizi yazın
-    function admin() {
+
+    // Yönetici: Google ile giriş yapan, e-postası doğrulanmış tek hesap.
+    // 'BURAYA_GMAIL_ADRESINIZ' yerine kendi Gmail adresinizi KÜÇÜK HARFLE yazın.
+    function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == "SENIN_GMAIL@gmail.com"
-        && request.auth.token.email_verified == true;
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'BURAYA_GMAIL_ADRESINIZ';
     }
-    match /grup/veri {
+
+    // Yönetici doğrulaması: yönetici sayfası girişte bu belgeyi okumayı dener; yalnızca yönetici okuyabilir.
+    match /admin_check/{id} {
+      allow read: if isAdmin();
+    }
+
+    // Oyuncular: herkes okuyabilir; ekleme/silme/düzenleme yalnızca yönetici.
+    // Oylayanlar yalnızca 'peerAttributeVotes' listesine TEK yeni oy ekleyebilir.
+    match /players/{id} {
       allow read: if true;
-      allow write: if admin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['peerAttributeVotes'])
+        && request.resource.data.peerAttributeVotes is list
+        && request.resource.data.peerAttributeVotes.size() ==
+           (('peerAttributeVotes' in resource.data) ? resource.data.peerAttributeVotes.size() : 0) + 1
+      );
     }
-    match /oylar/{id} {
-      allow read, delete: if admin();
-      allow create, update: if request.auth != null
-        && request.resource.data.keys().hasOnly(['mac','oyuncu','oy','ts'])
-        && request.resource.data.keys().hasAll(['mac','oyuncu','oy','ts'])
-        && request.resource.data.mac is string
-        && request.resource.data.oyuncu is string
-        && request.resource.data.oy is string
-        && request.resource.data.ts is number
-        && request.resource.data.oyuncu != request.resource.data.oy
-        && id == request.resource.data.mac + '_' + request.resource.data.oyuncu;
+
+    // Maçlar: herkes okur, yalnızca yönetici yazar
+    match /matches/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
-    match /puanlar/{id} {
-      allow read, delete: if admin();
-      allow create, update: if request.auth != null
-        && request.resource.data.keys().hasOnly(['rater','r','ts'])
-        && request.resource.data.keys().hasAll(['rater','r','ts'])
-        && request.resource.data.rater is string
-        && request.resource.data.r is map
-        && request.resource.data.r.size() <= 40
-        && request.resource.data.ts is number
-        && id == request.resource.data.rater;
+
+    // Maç puanları: oylayanlar yalnızca yeni kayıt oluşturabilir
+    match /match_ratings/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['matchId', 'voterId', 'scores', 'ts']);
+      allow update, delete: if isAdmin();
+    }
+
+    // Haftalık oy kilidi: yalnızca oluşturulabilir
+    match /eval_log/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['voterId', 'period', 'ts']);
+      allow update, delete: if isAdmin();
+    }
+
+    // Ayarlar (rating oylaması turu açık/kapalı): herkes okur, yalnızca yönetici yazar
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }
