@@ -270,7 +270,7 @@
                                 <h2 class="text-lg font-bold text-white flex items-center gap-2">
                                     <i class="fa-solid fa-ranking-star text-amber-400"></i> Oyuncu Liderlik ve Gerçek Rating Tablosu
                                 </h2>
-                                <p class="text-xs text-slate-400">Gerçek Rating: haftalık oy ortalaması (%60) + son 3 maç puanı (%40) + gol / galibiyet / MVP bonusu</p>
+                                <p class="text-xs text-slate-400">Gerçek Rating: rating oylaması + maç puanı formu (en fazla %50) + gol / galibiyet / MVP bonusu</p>
                             </div>
                         </div>
 
@@ -365,7 +365,7 @@
 
                         <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-[11px] text-emerald-200 leading-relaxed">
                             <i class="fa-solid fa-circle-info mr-1"></i>
-                            Rating girmenize gerek yok. Bu haftanın kadrosuna yazılan oyuncular birbirini puanlar; ortalama oy, maç sonrası verilen maç puanları ve gol/galibiyet/MVP performansı oyuncunun <strong>Gerçek Rating</strong>'ini oluşturur.
+                            Rating girmenize gerek yok. Rating oylaması sizin açtığınız turlarla alınır: kadrodaki oyuncular birbirini puanlar. Her maç sonrası verilen 1-10 puanlar ve gol/galibiyet/MVP performansı da oyuncunun <strong>Gerçek Rating</strong>'ini zamanla günceller.
                         </div>
 
                         <div class="pt-3 flex gap-2">
@@ -429,6 +429,30 @@
                     </div>
                 </div>
             </div>
+            <div class="glass-panel p-6 rounded-2xl border border-emerald-500/30 space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-star-half-stroke text-emerald-400"></i> Rating Oylaması
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1 max-w-2xl">Ratingler her hafta değil, ihtiyaç duyduğunuzda alınır. Yeni tur başlattığınızda kadrodaki oyuncular birbirini 6 nitelikten puanlar. Önceki turlar silinmez, azalan ağırlıkla hesaba katılır. Maç sonrası puanlar ratingi ayrıca zamanla günceller.</p>
+                    </div>
+                    <span id="rating-round-status" class="shrink-0 text-xs font-black px-3 py-1 rounded-full border"></span>
+                </div>
+                <p id="rating-round-info" class="text-xs text-slate-300"></p>
+                <div class="flex flex-wrap gap-2">
+                    <button id="rr-start-btn" onclick="startRatingRound()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-play"></i> <span id="rr-start-label">Yeni Rating Turu Başlat</span>
+                    </button>
+                    <button id="rr-close-btn" onclick="closeRatingRound()" class="bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-lock"></i> Rating Oylamasını Kapat
+                    </button>
+                    <button id="rr-reopen-btn" onclick="reopenRatingRound()" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left"></i> Aynı Turu Tekrar Aç
+                    </button>
+                </div>
+            </div>
+
             <div class="glass-panel p-6 rounded-2xl border border-red-500/30 space-y-4">
                 <div>
                     <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
@@ -440,7 +464,7 @@
                 <div class="space-y-2.5 text-xs text-slate-200">
                     <label class="flex items-start gap-2 cursor-pointer">
                         <input type="checkbox" id="reset-opt-votes" checked class="accent-red-500 mt-0.5">
-                        <span><strong>Haftalık rating oyları</strong> ve oy kilitleri: herkes yeniden oy kullanabilir, ratingler varsayılan 70'e döner.</span>
+                        <span><strong>Rating oyları</strong> ve oy kilitleri: tüm turlar silinir, ratingler varsayılan 70'e döner.</span>
                     </label>
                     <label class="flex items-start gap-2 cursor-pointer">
                         <input type="checkbox" id="reset-opt-match" checked class="accent-red-500 mt-0.5">
@@ -465,7 +489,7 @@
                         <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI Dengeli Kadro Kurucu
                         </h2>
-                        <p class="text-xs text-slate-400">Haftalık oy ortalaması, son maç puanları ve ortalama yaş dengesini baz alarak dengeli 2 takım kurar (her takıma 1 kaleci).</p>
+                        <p class="text-xs text-slate-400">Rating oylaması, maç puanı formu ve ortalama yaş dengesini baz alarak dengeli 2 takım kurar (her takıma 1 kaleci).</p>
                     </div>
 
                     <div class="flex items-center gap-3">
@@ -728,6 +752,8 @@
         // Tüm veriler Firestore'dan canlı gelir (herkes aynı veriyi görür)
         let players = [];
         let matches = [];
+        let ratingRound = { open: false, roundId: 0 };   // rating oylaması turu (Firestore: settings/rating_round)
+        let evalLog = [];                                 // rating turlarında oy kullananlar (Firestore: eval_log)
         let matchRatings = [];          // Maç sonrası oyuncuların birbirine verdiği puanlar (Firestore: match_ratings)
 
         let currentTeamA = [];
@@ -767,6 +793,17 @@
                 matchRatings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderCurrentTab();
             }, err => reportErr('match_ratings', err));
+
+            db.collection('settings').doc('rating_round').onSnapshot(doc => {
+                const d = doc.exists ? doc.data() : {};
+                ratingRound = { open: !!d.open, roundId: d.roundId || 0, openedAt: d.openedAt || 0 };
+                renderCurrentTab();
+            }, err => reportErr('settings', err));
+
+            db.collection('eval_log').onSnapshot(snap => {
+                evalLog = snap.docs.map(d => d.data());
+                renderCurrentTab();
+            }, err => reportErr('eval_log', err));
         }
 
         // Veri değişince yalnızca açık sekmeyi yeniden çizer (yazılmakta olan alanları bozmamak için)
@@ -799,78 +836,72 @@
             }
         }
 
-        // İçinde bulunulan değerlendirme döneminin başlangıcını hesaplar.
-        // Dönemler her Perşembe 00:01'de sıfırlanır (bir önceki Perşembe 00:01 - bir sonraki Perşembe 00:00:59 arası tek dönemdir).
-        function getCurrentPeriodStart(now = new Date()) {
-            const THURSDAY = 4; // JS: 0=Pazar, 1=Pazartesi ... 4=Perşembe
-            const daysSinceThursday = (now.getDay() - THURSDAY + 7) % 7;
+        // Rating oyları "tur" halinde alınır (yönetici yeni tur başlatır). Eski turlar silinmez, her yeni tur
+        // bir öncekine göre ağırlıkla ROUND_DECAY kat daha önemlidir; böylece kısmi katılımlı bir tur ratingi sarsmaz.
+        const ROUND_DECAY = 0.6;
 
-            const candidate = new Date(now);
-            candidate.setDate(now.getDate() - daysSinceThursday);
-            candidate.setHours(0, 1, 0, 0);
-
-            // Eğer bugün Perşembe ama saat henüz 00:01'i geçmediyse, dönem aslında bir önceki hafta başladı
-            if (candidate.getTime() > now.getTime()) {
-                candidate.setDate(candidate.getDate() - 7);
-            }
-            return candidate;
-        }
-
-        // Geçerli değerlendirme dönemine (Perşembe 00:01'de sıfırlanan hafta) ait oyların ortalamasını verir.
-        // Bu hafta oy yoksa en son oy verilen önceki dönem kullanılır; hiç oy yoksa varsayılan 70 uygulanır.
         function getVoteStats(player) {
-            const votes = player.peerAttributeVotes || [];
-            const periodNow = getCurrentPeriodStart().getTime();
+            const votes = (player.peerAttributeVotes || []).filter(v => v && ATTR_KEYS.some(k => typeof v[k] === 'number'));
 
-            let chosen = votes.filter(v => (v.period || 0) === periodNow);
-            let scope = 'week';
-            if (chosen.length === 0 && votes.length > 0) {
-                const lastPeriod = Math.max(...votes.map(v => v.period || 0));
-                chosen = votes.filter(v => (v.period || 0) === lastPeriod);
-                scope = lastPeriod ? 'previous' : 'legacy';
-            }
-
-            if (chosen.length === 0) {
+            if (votes.length === 0) {
                 // Eski sürümden kalan tek puanlı oylar (varsa)
                 const legacy = (player.peerRatings || []).filter(n => typeof n === 'number');
                 if (legacy.length) {
                     const avg = Math.round(legacy.reduce((a, b) => a + b, 0) / legacy.length);
                     const attrs = {};
                     ATTR_KEYS.forEach(k => { attrs[k] = avg; });
-                    return { count: legacy.length, overall: avg, attrs, scope: 'legacy' };
+                    return { count: legacy.length, overall: avg, attrs, rounds: 0, scope: 'legacy' };
                 }
-                return { count: 0, overall: null, attrs: null, scope: 'none' };
+                return { count: 0, overall: null, attrs: null, rounds: 0, scope: 'none' };
             }
+
+            const rounds = [...new Set(votes.map(v => v.period || 0))].sort((a, b) => b - a); // yeniden eskiye
+            const weightOf = v => Math.pow(ROUND_DECAY, rounds.indexOf(v.period || 0));
 
             const attrs = {};
             ATTR_KEYS.forEach(k => {
-                const vals = chosen.map(v => v[k]).filter(n => typeof n === 'number' && !isNaN(n));
-                attrs[k] = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 70;
+                let sum = 0, wsum = 0;
+                votes.forEach(v => {
+                    if (typeof v[k] === 'number') { const w = weightOf(v); sum += v[k] * w; wsum += w; }
+                });
+                attrs[k] = wsum ? Math.round(sum / wsum) : 70;
             });
             const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + attrs[k], 0) / ATTR_KEYS.length);
-            return { count: chosen.length, overall, attrs, scope };
+            return { count: votes.length, overall, attrs, rounds: rounds.length, scope: 'rounds' };
         }
 
-        // Güncel form: son 3 maçta arkadaşlardan gelen maç puanı ortalaması (1-10 puan x 10 = 10-100 ölçeği)
-        function getFormScore(playerId) {
-            const scores = [];
-            for (const m of matches) { // matches yeniden eskiye sıralı
-                const s = m.playerScores && m.playerScores[playerId];
-                if (s && typeof s.avg === 'number') scores.push(s.avg);
-                if (scores.length >= 3) break;
+        // Maç puanı formu: tüm maçlardaki arkadaş puanlarının (1-10 x 10) üstel hareketli ortalaması.
+        // Yeni maçlar daha ağır basar; maç sayısı arttıkça formun rating içindeki payı da artar (en fazla %50).
+        const FORM_ALPHA = 0.4;
+        const FORM_WEIGHT_PER_MATCH = 0.15;
+        const FORM_MAX_WEIGHT = 0.5;
+
+        function getFormInfo(playerId) {
+            let ema = null, n = 0;
+            for (let i = matches.length - 1; i >= 0; i--) { // eskiden yeniye
+                const s = matches[i].playerScores && matches[i].playerScores[playerId];
+                if (s && typeof s.avg === 'number') {
+                    const v = s.avg * 10;
+                    ema = ema === null ? v : FORM_ALPHA * v + (1 - FORM_ALPHA) * ema;
+                    n++;
+                }
             }
-            if (!scores.length) return null;
-            return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10);
+            return { form: ema === null ? null : Math.round(ema), n };
         }
 
-        // Gerçek Rating: haftalık oy ortalaması (%60) + son maç puanları (%40) + gol/galibiyet/MVP bonusu
-        // Admin rating girmez; her şey kadrodaki oyuncuların oylarından çıkar.
+        function getFormScore(playerId) {
+            return getFormInfo(playerId).form;
+        }
+
+        // Gerçek Rating: rating oylaması + maç puanı formu + gol/galibiyet/MVP bonusu
+        // Admin rating girmez; her şey kadrodaki oyuncuların oylarından ve maç sonrası puanlarından çıkar.
         function calculateTrueRating(player) {
             const vs = getVoteStats(player);
             const voteAvg = vs.overall !== null ? vs.overall : 70;
-            const form = getFormScore(player.id);
+            const fi = getFormInfo(player.id);
+            const formWeight = fi.form === null ? 0 : Math.min(FORM_MAX_WEIGHT, fi.n * FORM_WEIGHT_PER_MATCH);
 
-            const base = form === null ? voteAvg : (voteAvg * 0.6 + form * 0.4);
+            const base = voteAvg * (1 - formWeight) + (fi.form === null ? 0 : fi.form * formWeight);
 
             const goalBonus = Math.min((player.goals || 0) * 0.5, 5);
             const winBonus = Math.min((player.wins || 0) * 0.4, 4);
@@ -881,7 +912,9 @@
             return {
                 trueRating: finalRating,
                 voteAvg,
-                form,
+                form: fi.form,
+                formMatches: fi.n,
+                formWeight,
                 voteCount: vs.count,
                 voteScope: vs.scope,
                 peerAvg: voteAvg
@@ -951,7 +984,7 @@
             x.bench = x.n > 0 ? (players.find(p => (p.matches || 0) === 0) || null) : null;
             x.gk = players.filter(p => p.position === 'Kaleci').sort((a, b) => (b.matches || 0) - (a.matches || 0))[0] || null;
 
-            // Güncel form (son maç puanları) ve haftalık oy dağılımı
+            // Güncel form (maç puanları) ve rating oyu dağılımı
             const formed = withTr.filter(({ tr }) => tr.form !== null);
             x.formStar = formed.length ? [...formed].sort((a, b) => b.tr.form - a.tr.form)[0] : null;
             x.formSlump = formed.length > 1 ? [...formed].sort((a, b) => a.tr.form - b.tr.form)[0] : null;
@@ -1058,7 +1091,7 @@
                 x => x.teamAgeGap !== null && `Takımlar arası ortalama yaş farkı ${x.teamAgeGap.toFixed(1)} yıl; algoritma yaşı rating'in yanına ikinci denge kriteri olarak koydu. Çay faktörü: yüksek.`,
                 x => x.n > 0 && `Sezon verisi: ${x.n} maç, ${x.goals} gol, maç başına ${x.avg}. Bu oran halı saha standartlarının üzerinde; sistem "biraz savunma çalışın" uyarısı veriyor.`,
                 x => x.topScorer && `Gol dağılımında ${hl(x.topScorer.name)} ${x.topScorer.goals} golle zirvede; verimlilik grafiği "ben buradayım" diye bağırıyor.`,
-                x => x.highRated && x.lowRated && x.highRated.p.id !== x.lowRated.p.id && `Haftalık oylamada en yüksek ortalama ${hl(x.highRated.p.name)} (${x.highRated.tr.voteAvg}), en düşük ${hl(x.lowRated.p.name)} (${x.lowRated.tr.voteAvg}). Aradaki ${x.highRated.tr.voteAvg - x.lowRated.tr.voteAvg} puan, takım seçerken kavga çıkma riskini istatistiksel olarak anlamlı kılıyor.`
+                x => x.highRated && x.lowRated && x.highRated.p.id !== x.lowRated.p.id && `Rating oylamasında en yüksek ortalama ${hl(x.highRated.p.name)} (${x.highRated.tr.voteAvg}), en düşük ${hl(x.lowRated.p.name)} (${x.lowRated.tr.voteAvg}). Aradaki ${x.highRated.tr.voteAvg - x.lowRated.tr.voteAvg} puan, takım seçerken kavga çıkma riskini istatistiksel olarak anlamlı kılıyor.`
             ],
             spiker: [
                 x => x.youngest && `Genç yetenek ${hl(x.youngest.name)} sadece ${x.youngest.age} yaşında hocam; koştukça arkasında rüzgâr çıkıyor, kaleciler tedirgin!`,
@@ -1280,11 +1313,11 @@
             return ATTR_KEYS.map(key => ({ key, label: shortTable[key], fullLabel: fullTable[key] }));
         }
 
-        // Radar nitelikleri yalnızca oylardan gelir (haftalık oy ortalaması); oy yoksa varsayılan 70
+        // Radar nitelikleri yalnızca oylardan gelir (tur ağırlıklı oy ortalaması); oy yoksa varsayılan 70
         function getEffectiveAttributes(player) {
             const vs = getVoteStats(player);
             const values = vs.attrs || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
-            return { values, hasPeerVotes: vs.count > 0, count: vs.count, scope: vs.scope };
+            return { values, hasPeerVotes: vs.count > 0, count: vs.count, scope: vs.scope, rounds: vs.rounds || 0 };
         }
 
         function openPlayerDetail(id) {
@@ -1310,9 +1343,8 @@
 
             const noteEl = document.getElementById('detail-radar-note');
             if (noteEl) {
-                const scopeTxt = eff.scope === 'week' ? 'Bu haftanın' : (eff.scope === 'previous' ? 'Geçen haftanın' : 'Eski sürümün');
                 noteEl.textContent = eff.hasPeerVotes
-                    ? `${scopeTxt} ${eff.count} oyunun ortalaması` + (tr.form !== null ? ` • Son maç formu: ${(tr.form / 10).toFixed(1)}/10` : '')
+                    ? `${eff.count} oyun ağırlıklı ortalaması` + (eff.rounds > 1 ? ` (${eff.rounds} tur)` : '') + (tr.form !== null ? ` • Maç formu: ${(tr.form / 10).toFixed(1)}/10 (${tr.formMatches} maç)` : '')
                     : 'Henüz oylama yok — varsayılan değerler gösteriliyor';
             }
 
@@ -1553,6 +1585,7 @@
             document.getElementById('squad-gk-list').innerHTML = gks.length ? gks.map(card).join('') : empty('Kayıtlı kaleci yok.');
             document.getElementById('squad-field-list').innerHTML = fld.length ? fld.map(card).join('') : empty('Kayıtlı saha oyuncusu yok.');
             updateResetStats();
+            renderRatingRoundCard();
         }
 
         // Son oynanan maçın kadrosunu başlangıç olarak yükler; gelemeyenleri çıkarıp yerine yenisini seçersiniz
@@ -1573,6 +1606,69 @@
 
         function clearSquad() {
             if (players.some(p => p.selected) && confirm("Haftanın kadrosu temizlensin mi?")) toggleAllPlayers(false);
+        }
+
+        // -------------------------------------------------------------
+        // RATING OYLAMASI TURU (yönetici açar/kapatır)
+        // -------------------------------------------------------------
+        function renderRatingRoundCard() {
+            const st = document.getElementById('rating-round-status');
+            if (!st) return;
+            const squadN = players.filter(p => p.selected).length;
+            const hasRound = ratingRound.roundId > 0;
+            const voters = new Set(evalLog.filter(l => l.period === ratingRound.roundId).map(l => l.voterId));
+
+            if (ratingRound.open) {
+                st.className = 'shrink-0 text-xs font-black px-3 py-1 rounded-full border bg-emerald-500/15 text-emerald-300 border-emerald-500/40';
+                st.textContent = '● AÇIK';
+            } else {
+                st.className = 'shrink-0 text-xs font-black px-3 py-1 rounded-full border bg-slate-700/40 text-slate-300 border-slate-600';
+                st.textContent = '● KAPALI';
+            }
+
+            const when = hasRound ? new Date(ratingRound.openedAt || ratingRound.roundId).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+            document.getElementById('rating-round-info').textContent = hasRound
+                ? `Son tur: ${when} • Oy veren: ${voters.size}/${squadN} (kadro)`
+                : 'Henüz rating turu başlatılmadı. İlk ratingleri almak için yeni tur başlatın.';
+
+            document.getElementById('rr-close-btn').classList.toggle('hidden', !ratingRound.open);
+            document.getElementById('rr-reopen-btn').classList.toggle('hidden', ratingRound.open || !hasRound);
+            document.getElementById('rr-start-label').textContent = (ratingRound.open ? 'Yeni Tur Başlat (mevcut turu kapatır)' : 'Yeni Rating Turu Başlat');
+        }
+
+        async function startRatingRound() {
+            if (ratingRound.open && !confirm("Açık bir rating turu var. Yeni tur başlatılırsa herkes yeniden oy kullanabilir; önceki tur silinmez ama ağırlığı azalır. Devam edilsin mi?")) return;
+            try {
+                const now = Date.now();
+                await db.collection('settings').doc('rating_round').set({ open: true, roundId: now, openedAt: now });
+                showToast("Yeni rating turu başlatıldı. Oylama sayfası açıldı.");
+            } catch (err) {
+                showToast("Tur başlatılamadı: " + err.message);
+                reportErr('rating.start', err);
+            }
+        }
+
+        async function closeRatingRound() {
+            const squadN = players.filter(p => p.selected).length;
+            const voted = new Set(evalLog.filter(l => l.period === ratingRound.roundId).map(l => l.voterId)).size;
+            if (voted < squadN && !confirm(`Kadrodan ${voted}/${squadN} oyuncu oy kullandı. Yine de oylama kapatılsın mı?`)) return;
+            try {
+                await db.collection('settings').doc('rating_round').update({ open: false, closedAt: Date.now() });
+                showToast("Rating oylaması kapatıldı.");
+            } catch (err) {
+                showToast("Kapatılamadı: " + err.message);
+                reportErr('rating.close', err);
+            }
+        }
+
+        async function reopenRatingRound() {
+            try {
+                await db.collection('settings').doc('rating_round').update({ open: true });
+                showToast("Son tur yeniden açıldı. Oy kullanmamış oyuncular oy verebilir.");
+            } catch (err) {
+                showToast("Açılamadı: " + err.message);
+                reportErr('rating.reopen', err);
+            }
         }
 
         // -------------------------------------------------------------
@@ -1603,7 +1699,7 @@
             if (!doVotes && !doMatch) { showToast("Sıfırlanacak bir seçenek işaretleyin."); return; }
 
             const what = [];
-            if (doVotes) what.push('haftalık rating oyları');
+            if (doVotes) what.push('rating oyları (tüm turlar)');
             if (doMatch) what.push('maç puanları ve MVP sonuçları');
             const typed = prompt(`Şunlar KALICI olarak silinecek: ${what.join(' + ')}.\n\nOnaylamak için SIFIRLA yazın:`);
             if (typed === null || typed.trim().toLocaleUpperCase('tr') !== 'SIFIRLA' && typed.trim().toUpperCase() !== 'SIFIRLA') {
@@ -1873,7 +1969,7 @@ function renderGeneratorControls() {
 
             let verdict = `Ortalama rating farkı ${Math.abs(parseFloat(avgA) - parseFloat(avgB)).toFixed(1)} puan`;
             if (aA !== null && aB !== null) verdict += `, ortalama yaş farkı ${Math.abs(aA - aB).toFixed(1)} yıl`;
-            verdict += '. Takımlar haftalık oy ortalaması ve son maç puanlarına göre kuruldu, ardından yaş dengesi gözetildi.';
+            verdict += '. Takımlar rating oylaması ve maç puanı formuna göre kuruldu, ardından yaş dengesi gözetildi.';
             const missingAge = [...currentTeamA, ...currentTeamB].filter(p => !Number.isFinite(p.age)).length;
             if (missingAge > 0) verdict += ` ${missingAge} oyuncunun yaşı girilmemiş; yaş dengesinde bilinen yaşların ortalaması kullanıldı.`;
             document.getElementById('ai-verdict-desc').textContent = verdict;

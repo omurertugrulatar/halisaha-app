@@ -138,7 +138,7 @@
                     </div>
                 </div>
                 <nav class="flex items-center space-x-1">
-                    <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-emerald-400 bg-slate-800"><i class="fa-solid fa-user-pen"></i> <span>Haftalık Oylama</span></button>
+                    <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-emerald-400 bg-slate-800"><i class="fa-solid fa-user-pen"></i> <span>Rating Oylaması</span></button>
                     <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-award"></i> <span>Maç Puanı</span></button>
                 </nav>
             </div>
@@ -153,9 +153,9 @@
                     <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
                         <i class="fa-solid fa-user-pen text-emerald-400"></i> Öz Değerlendirme & Akran Puanlaması
                     </h2>
-                    <p class="text-sm text-slate-400 mt-1">Bu haftanın kadrosuna yazılan oyuncular birbirini puanlar. Gelen oyların ortalaması 'Gerçek Rating'i oluşturur; admin rating girmez.</p>
+                    <p class="text-sm text-slate-400 mt-1">Rating oylaması yönetici tarafından ihtiyaç olduğunda açılır. Kadrodaki oyuncular birbirini puanlar; ortalama 'Gerçek Rating'i oluşturur.</p>
                     <p id="eval-squad-info" class="text-xs text-slate-400 mt-2 leading-relaxed"></p>
-                    <p class="text-xs text-amber-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Her oyuncu bir değerlendirme döneminde yalnızca 1 kez akran değerlendirmesi yapabilir ve kaydedildikten sonra güncellenemez. Dönemler her Perşembe 00:01'de sıfırlanır.</p>
+                    <p class="text-xs text-amber-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Her rating turunda yalnızca 1 kez oy kullanabilirsiniz; gönderilen oylar güncellenemez.</p>
                 </div>
 
                 <!-- Step 1: Select Evaluator -->
@@ -276,7 +276,8 @@
         let players = [];
         let matches = [];
         let matchRatings = [];
-        let voterEvalLog = {};
+        let ratingRound = { open: false, roundId: 0 };   // yönetici rating turunu açar/kapatır
+        let evalLogIds = new Set();                       // oy kullananlar: 'oyuncu_tur' kayıt numaraları
         let currentTabId = 'evaluation';
         let evalSubmitting = false;
         let mrDraft = {};
@@ -297,39 +298,10 @@
             return 0;
         }
 
-        function getCurrentPeriodStart(now = new Date()) {
-            const THURSDAY = 4; // JS: 0=Pazar, 1=Pazartesi ... 4=Perşembe
-            const daysSinceThursday = (now.getDay() - THURSDAY + 7) % 7;
-
-            const candidate = new Date(now);
-            candidate.setDate(now.getDate() - daysSinceThursday);
-            candidate.setHours(0, 1, 0, 0);
-
-            // Eğer bugün Perşembe ama saat henüz 00:01'i geçmediyse, dönem aslında bir önceki hafta başladı
-            if (candidate.getTime() > now.getTime()) {
-                candidate.setDate(candidate.getDate() - 7);
-            }
-            return candidate;
-        }
-
-        function getVoterEvalStatus(voterId) {
-            const lastSubmittedAt = voterEvalLog[voterId];
-            const periodStart = getCurrentPeriodStart();
-
-            if (!lastSubmittedAt || lastSubmittedAt < periodStart.getTime()) {
-                return { canVote: true };
-            }
-
-            const nextPeriodStart = new Date(periodStart);
-            nextPeriodStart.setDate(nextPeriodStart.getDate() + 7);
-            const remainingMs = nextPeriodStart.getTime() - Date.now();
-            const remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
-
-            return {
-                canVote: false,
-                remainingDays,
-                nextDateLabel: nextPeriodStart.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' 00:01'
-            };
+function getVoterEvalStatus(voterId) {
+            if (!ratingRound.open) return { canVote: false, closed: true };
+            const voted = voterId ? evalLogIds.has(`${voterId}_${ratingRound.roundId}`) : false;
+            return { canVote: !voted, closed: false, voted };
         }
 
         const ATTR_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
@@ -384,14 +356,22 @@
             checkVoterEvalStatus();
         }
 
-        function checkVoterEvalStatus() {
+function checkVoterEvalStatus() {
             const select = document.getElementById('eval-current-user');
             const statusEl = document.getElementById('eval-voter-status');
             const btn = document.getElementById('eval-step2-btn');
             const voterId = select.value;
 
+            if (!ratingRound.open) {
+                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-amber-400';
+                statusEl.innerHTML = '<i class="fa-solid fa-lock mr-1"></i>Rating oylaması şu an kapalı. Yönetici yeni bir tur başlattığında burada açılır.';
+                btn.disabled = true;
+                return;
+            }
+
             if (!voterId) {
-                statusEl.textContent = '';
+                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Rating oylaması açık. Adınızı seçip oy kullanın.';
                 btn.disabled = false;
                 return;
             }
@@ -399,27 +379,29 @@
             const status = getVoterEvalStatus(voterId);
             if (status.canVote) {
                 statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
-                statusEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>Bu hafta için değerlendirme yapabilirsiniz.`;
+                statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Bu turda oy kullanabilirsiniz.';
                 btn.disabled = false;
             } else {
                 statusEl.className = 'text-xs font-semibold min-h-[1rem] text-red-400';
-                statusEl.innerHTML = `<i class="fa-solid fa-lock mr-1"></i>Bu hafta zaten değerlendirme yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel} (${status.remainingDays} gün sonra).`;
+                statusEl.innerHTML = '<i class="fa-solid fa-lock mr-1"></i>Bu turda zaten oy kullandınız. Gönderilen oylar güncellenemez; yeni tur açılınca tekrar oy verebilirsiniz.';
                 btn.disabled = true;
             }
         }
 
-        function goToEvalStep(step) {
+function goToEvalStep(step) {
             const userSelect = document.getElementById('eval-current-user');
             if (step === 2) {
+                if (!ratingRound.open) {
+                    showToast("Rating oylaması şu an kapalı.");
+                    checkVoterEvalStatus();
+                    return;
+                }
                 if (!userSelect.value) {
                     showToast("Lütfen önce oy kullanan kendi adınızı seçin!");
                     return;
                 }
-
-                const voterId = userSelect.value;
-                const status = getVoterEvalStatus(voterId);
-                if (!status.canVote) {
-                    showToast(`Bu hafta zaten akran değerlendirmesi yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel}.`);
+                if (!getVoterEvalStatus(userSelect.value).canVote) {
+                    showToast("Bu turda zaten oy kullandınız.");
                     checkVoterEvalStatus();
                     return;
                 }
@@ -603,7 +585,7 @@
             // Güvenlik amaçlı ikinci kontrol: başka cihazdan oy kullanılmış olabilir
             const status = getVoterEvalStatus(voterId);
             if (!status.canVote) {
-                showToast(`Bu hafta zaten akran değerlendirmesi yaptınız. Tekrar oy kullanabileceğiniz tarih: ${status.nextDateLabel}.`);
+                showToast(status.closed ? "Rating oylaması kapalı." : "Bu turda zaten oy kullandınız.");
                 goToEvalStep(1);
                 checkVoterEvalStatus();
                 return;
@@ -643,7 +625,7 @@
             }
 
             evalSubmitting = true;
-            const period = getCurrentPeriodStart().getTime(); // bu oylar hangi haftaya ait
+            const period = ratingRound.roundId; // bu oylar hangi rating turuna ait
             const voteTs = Date.now();
             try {
                 const peerIds = Object.keys(votesByPeer);
@@ -651,7 +633,7 @@
                     // Kayıt numarası = oyuncu_dönem: aynı dönemde ikinci kez yazılamaz (güvenlik kuralları da engeller)
                     const logRef = db.collection('eval_log').doc(`${voterId}_${period}`);
                     const logSnap = await tx.get(logRef);
-                    if (logSnap.exists) throw new Error('Bu hafta zaten oy kullandınız.');
+                    if (logSnap.exists) throw new Error('Bu turda zaten oy kullandınız.');
 
                     const refs = peerIds.map(id => db.collection('players').doc(id));
                     const snaps = await Promise.all(refs.map(r => tx.get(r)));
@@ -666,8 +648,8 @@
                     tx.set(logRef, { voterId, period, ts: voteTs });
                 });
 
-                voterEvalLog[voterId] = voteTs;
-                showToast("Oylarınız kaydedildi, teşekkürler! Bir sonraki Perşembe 00:01'e kadar tekrar oy kullanamazsınız.");
+                evalLogIds.add(`${voterId}_${period}`);
+                showToast("Oylarınız kaydedildi, teşekkürler!");
                 checkVoterEvalStatus();
                 goToEvalStep(1);
             } catch (err) {
@@ -744,13 +726,14 @@
                 renderCurrentTab();
             }, err => reportErr('match_ratings', err));
 
+            db.collection('settings').doc('rating_round').onSnapshot(doc => {
+                const d = doc.exists ? doc.data() : {};
+                ratingRound = { open: !!d.open, roundId: d.roundId || 0 };
+                checkVoterEvalStatus();
+            }, err => reportErr('settings', err));
+
             db.collection('eval_log').onSnapshot(snap => {
-                voterEvalLog = {};
-                snap.forEach(d => {
-                    const v = d.data();
-                    const id = v.voterId || d.id;
-                    voterEvalLog[id] = Math.max(voterEvalLog[id] || 0, v.ts || 0);
-                });
+                evalLogIds = new Set(snap.docs.map(d => d.id));
                 checkVoterEvalStatus();
             }, err => reportErr('eval_log', err));
         }
