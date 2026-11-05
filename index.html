@@ -173,6 +173,9 @@
                     <button onclick="switchTab('squad')" id="nav-squad" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
                         <i class="fa-solid fa-clipboard-user"></i> Haftalık Kadro
                     </button>
+                    <button onclick="switchTab('votes')" id="nav-votes" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-list-check"></i> Oy Durumu
+                    </button>
                     <button onclick="switchTab('generator')" id="nav-generator" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> AI Kadro
                     </button>
@@ -205,6 +208,9 @@
             </button>
             <button onclick="switchTab('squad')" class="text-slate-300 flex flex-col items-center gap-1">
                 <i class="fa-solid fa-clipboard-user text-sm"></i> Kadro
+            </button>
+            <button onclick="switchTab('votes')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-list-check text-sm"></i> Oylar
             </button>
             <button onclick="switchTab('generator')" class="text-emerald-400 flex flex-col items-center gap-1 font-bold">
                 <i class="fa-solid fa-wand-magic-sparkles text-sm"></i> AI Kadro
@@ -270,7 +276,7 @@
                                 <h2 class="text-lg font-bold text-white flex items-center gap-2">
                                     <i class="fa-solid fa-ranking-star text-amber-400"></i> Oyuncu Liderlik ve Gerçek Rating Tablosu
                                 </h2>
-                                <p class="text-xs text-slate-400">Gerçek Rating: rating oylaması + maç puanı formu (en fazla %50) + gol / galibiyet / MVP bonusu</p>
+                                <p class="text-xs text-slate-400">Gerçek Rating: rating oylaması (uç oylar hariç) + maç puanı formu (en fazla %50) + gol / galibiyet / MVP bonusu</p>
                             </div>
                         </div>
 
@@ -435,7 +441,7 @@
                         <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
                             <i class="fa-solid fa-star-half-stroke text-emerald-400"></i> Rating Oylaması
                         </h2>
-                        <p class="text-xs text-slate-400 mt-1 max-w-2xl">Ratingler her hafta değil, ihtiyaç duyduğunuzda alınır. Yeni tur başlattığınızda kadrodaki oyuncular birbirini 6 nitelikten puanlar. Önceki turlar silinmez, azalan ağırlıkla hesaba katılır. Maç sonrası puanlar ratingi ayrıca zamanla günceller.</p>
+                        <p class="text-xs text-slate-400 mt-1 max-w-2xl">Ratingler her hafta değil, ihtiyaç duyduğunuzda alınır. Yeni tur başlattığınızda kadrodaki oyuncular birbirini 6 nitelikten puanlar. Her nitelikte en yüksek ve en düşük oy çıkarılarak ortalama alınır (en az 3 oy gerekir). Önceki turlar silinmez, azalan ağırlıkla hesaba katılır. Maç sonrası puanlar ratingi ayrıca zamanla günceller.</p>
                     </div>
                     <span id="rating-round-status" class="shrink-0 text-xs font-black px-3 py-1 rounded-full border"></span>
                 </div>
@@ -478,6 +484,56 @@
                 <button onclick="resetVotes()" class="bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
                     <i class="fa-solid fa-trash"></i> Seçili Oyları Sıfırla
                 </button>
+            </div>
+        </section>
+
+        <!-- TAB: OY DURUMU -->
+        <section id="tab-votes" class="tab-content hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-star-half-stroke text-emerald-400"></i> Rating Oylaması: Oy Durumu</h2>
+                        <p id="vs-rating-info" class="text-xs text-slate-400 mt-1"></p>
+                    </div>
+                    <span id="vs-rating-chip" class="shrink-0 text-xs font-black px-3 py-1 rounded-full border"></span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="vs-rating-bar" class="bg-emerald-500 h-full transition-all" style="width: 0%;"></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">Oy Kullananlar (<span id="vs-rating-done-count">0</span>)</h3>
+                        <div id="vs-rating-done" class="space-y-1.5"></div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xs font-bold text-amber-300 uppercase tracking-wider">Henüz Kullanmayanlar (<span id="vs-rating-todo-count">0</span>)</h3>
+                            <button onclick="copyPending('rating')" class="text-[10px] font-bold text-emerald-300 hover:underline"><i class="fa-regular fa-copy mr-1"></i>Listeyi Kopyala</button>
+                        </div>
+                        <div id="vs-rating-todo" class="space-y-1.5"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-futbol text-emerald-400"></i> Maç Puanı: Oy Durumu</h2>
+                        <p id="vs-match-info" class="text-xs text-slate-400 mt-1"></p>
+                    </div>
+                    <span id="vs-match-chip" class="shrink-0 text-xs font-black px-3 py-1 rounded-full border"></span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="vs-match-bar" class="bg-emerald-500 h-full transition-all" style="width: 0%;"></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">Oy Kullananlar (<span id="vs-match-done-count">0</span>)</h3>
+                        <div id="vs-match-done" class="space-y-1.5"></div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xs font-bold text-amber-300 uppercase tracking-wider">Henüz Kullanmayanlar (<span id="vs-match-todo-count">0</span>)</h3>
+                            <button onclick="copyPending('match')" class="text-[10px] font-bold text-emerald-300 hover:underline"><i class="fa-regular fa-copy mr-1"></i>Listeyi Kopyala</button>
+                        </div>
+                        <div id="vs-match-todo" class="space-y-1.5"></div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -813,6 +869,7 @@
                 case 'dashboard': renderDashboard(); break;
                 case 'players': renderPlayerManagement(); break;
                 case 'squad': renderSquadTab(); break;
+                case 'votes': renderVotesTab(); break;
                 case 'generator': renderGeneratorControls(); break;
                 case 'admin': renderAdminRows(); break;
             }
@@ -839,8 +896,9 @@
         // Rating oyları "tur" halinde alınır (yönetici yeni tur başlatır). Eski turlar silinmez, her yeni tur
         // bir öncekine göre ağırlıkla ROUND_DECAY kat daha önemlidir; böylece kısmi katılımlı bir tur ratingi sarsmaz.
         const ROUND_DECAY = 0.6;
+        const TRIM_MIN_VOTES = 3; // bir turda bir nitelik için en az bu kadar oy varsa en yüksek ve en düşük oy çıkarılır
 
-        function getVoteStats(player) {
+function getVoteStats(player) {
             const votes = (player.peerAttributeVotes || []).filter(v => v && ATTR_KEYS.some(k => typeof v[k] === 'number'));
 
             if (votes.length === 0) {
@@ -850,24 +908,33 @@
                     const avg = Math.round(legacy.reduce((a, b) => a + b, 0) / legacy.length);
                     const attrs = {};
                     ATTR_KEYS.forEach(k => { attrs[k] = avg; });
-                    return { count: legacy.length, overall: avg, attrs, rounds: 0, scope: 'legacy' };
+                    return { count: legacy.length, overall: avg, attrs, rounds: 0, scope: 'legacy', trimmed: false };
                 }
-                return { count: 0, overall: null, attrs: null, rounds: 0, scope: 'none' };
+                return { count: 0, overall: null, attrs: null, rounds: 0, scope: 'none', trimmed: false };
             }
 
             const rounds = [...new Set(votes.map(v => v.period || 0))].sort((a, b) => b - a); // yeniden eskiye
-            const weightOf = v => Math.pow(ROUND_DECAY, rounds.indexOf(v.period || 0));
+            let trimmedAny = false;
 
+            // Her nitelik için: tur içinde en yüksek ve en düşük oyu çıkar (en az 3 oy varsa), kalanların ortalamasını al;
+            // turları yenilik (ROUND_DECAY) ve oy sayısı ağırlığıyla birleştir.
             const attrs = {};
             ATTR_KEYS.forEach(k => {
                 let sum = 0, wsum = 0;
-                votes.forEach(v => {
-                    if (typeof v[k] === 'number') { const w = weightOf(v); sum += v[k] * w; wsum += w; }
+                rounds.forEach((r, rank) => {
+                    let vals = votes.filter(v => (v.period || 0) === r && typeof v[k] === 'number').map(v => v[k]).sort((a, b) => a - b);
+                    if (vals.length === 0) return;
+                    const n = vals.length;
+                    if (n >= TRIM_MIN_VOTES) { vals = vals.slice(1, -1); trimmedAny = true; }
+                    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                    const w = Math.pow(ROUND_DECAY, rank) * n;
+                    sum += mean * w;
+                    wsum += w;
                 });
                 attrs[k] = wsum ? Math.round(sum / wsum) : 70;
             });
             const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + attrs[k], 0) / ATTR_KEYS.length);
-            return { count: votes.length, overall, attrs, rounds: rounds.length, scope: 'rounds' };
+            return { count: votes.length, overall, attrs, rounds: rounds.length, scope: 'rounds', trimmed: trimmedAny };
         }
 
         // Maç puanı formu: tüm maçlardaki arkadaş puanlarının (1-10 x 10) üstel hareketli ortalaması.
@@ -940,6 +1007,7 @@
             if (tabId === 'dashboard') renderDashboard();
             if (tabId === 'players') renderPlayerManagement();
             if (tabId === 'squad') renderSquadTab();
+            if (tabId === 'votes') renderVotesTab();
             if (tabId === 'generator') renderGeneratorControls();
             if (tabId === 'admin') renderAdminRows();
         }
@@ -1317,7 +1385,7 @@
         function getEffectiveAttributes(player) {
             const vs = getVoteStats(player);
             const values = vs.attrs || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
-            return { values, hasPeerVotes: vs.count > 0, count: vs.count, scope: vs.scope, rounds: vs.rounds || 0 };
+            return { values, hasPeerVotes: vs.count > 0, count: vs.count, scope: vs.scope, rounds: vs.rounds || 0, trimmed: !!vs.trimmed };
         }
 
         function openPlayerDetail(id) {
@@ -1344,7 +1412,7 @@
             const noteEl = document.getElementById('detail-radar-note');
             if (noteEl) {
                 noteEl.textContent = eff.hasPeerVotes
-                    ? `${eff.count} oyun ağırlıklı ortalaması` + (eff.rounds > 1 ? ` (${eff.rounds} tur)` : '') + (tr.form !== null ? ` • Maç formu: ${(tr.form / 10).toFixed(1)}/10 (${tr.formMatches} maç)` : '')
+                    ? `${eff.count} oyun ağırlıklı ortalaması` + (eff.rounds > 1 ? ` (${eff.rounds} tur)` : '') + (eff.trimmed ? ' • uç oylar çıkarıldı' : '') + (tr.form !== null ? ` • Maç formu: ${(tr.form / 10).toFixed(1)}/10 (${tr.formMatches} maç)` : '')
                     : 'Henüz oylama yok — varsayılan değerler gösteriliyor';
             }
 
@@ -1611,6 +1679,88 @@
 
         function clearSquad() {
             if (players.some(p => p.selected) && confirm("Haftanın kadrosu temizlensin mi?")) toggleAllPlayers(false);
+        }
+
+        // -------------------------------------------------------------
+        // OY DURUMU: kim oy kullandı, kim kullanmadı
+        // -------------------------------------------------------------
+        const pendingNames = { rating: [], match: [] };
+
+        function fmtVoteTime(ts) {
+            return ts ? new Date(ts).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+        }
+
+        function renderVoteList(prefix, doneRows, todoRows, total, chipText, chipCls, infoText) {
+            const row = (name, right, tone) => `<div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border text-xs ${tone}"><span class="font-semibold truncate">${esc(name)}</span><span class="text-[10px] opacity-70 shrink-0">${right}</span></div>`;
+            const doneTone = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-100';
+            const todoTone = 'bg-amber-500/10 border-amber-500/30 text-amber-100';
+            document.getElementById(`vs-${prefix}-done`).innerHTML = doneRows.length
+                ? doneRows.map(r => row(r.name, r.right, doneTone)).join('')
+                : '<p class="text-xs text-slate-500 italic">Henüz oy kullanan yok.</p>';
+            document.getElementById(`vs-${prefix}-todo`).innerHTML = todoRows.length
+                ? todoRows.map(r => row(r.name, r.right, todoTone)).join('')
+                : '<p class="text-xs text-emerald-400 italic">Herkes oy kullandı.</p>';
+            document.getElementById(`vs-${prefix}-done-count`).textContent = doneRows.length;
+            document.getElementById(`vs-${prefix}-todo-count`).textContent = todoRows.length;
+            const doneInGroup = doneRows.filter(r => !r.outside).length;
+            document.getElementById(`vs-${prefix}-bar`).style.width = (total ? Math.round(doneInGroup / total * 100) : 0) + '%';
+            const chip = document.getElementById(`vs-${prefix}-chip`);
+            chip.className = 'shrink-0 text-xs font-black px-3 py-1 rounded-full border ' + chipCls;
+            chip.textContent = chipText;
+            document.getElementById(`vs-${prefix}-info`).textContent = infoText;
+            pendingNames[prefix] = todoRows.map(r => r.name);
+        }
+
+        function renderVotesTab() {
+            const byName = (a, b) => a.name.localeCompare(b.name, 'tr');
+            const open = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40';
+            const closed = 'bg-slate-700/40 text-slate-300 border-slate-600';
+
+            // ---- Rating oylaması (kadro = oy verecek/oy alacak oyuncular)
+            const squad = players.filter(p => p.selected);
+            const hasRound = ratingRound.roundId > 0;
+            const votedAt = new Map();
+            if (hasRound) evalLog.filter(l => l.period === ratingRound.roundId).forEach(l => votedAt.set(l.voterId, l.ts));
+            const inSquad = new Set(squad.map(p => p.id));
+            const doneR = [...votedAt.entries()]
+                .map(([id, ts]) => ({ p: players.find(p => p.id === id), ts }))
+                .filter(x => x.p)
+                .sort((a, b) => a.ts - b.ts)
+                .map(x => ({ name: x.p.name, right: fmtVoteTime(x.ts) + (inSquad.has(x.p.id) ? '' : ' • kadroda değil'), outside: !inSquad.has(x.p.id) }));
+            const todoR = squad.filter(p => !votedAt.has(p.id)).sort(byName).map(p => ({ name: p.name, right: p.position }));
+            const doneCount = doneR.filter(r => !r.outside).length;
+            renderVoteList('rating', doneR, todoR, squad.length,
+                !hasRound ? 'TUR YOK' : (ratingRound.open ? '● AÇIK' : '● KAPALI'), ratingRound.open ? open : closed,
+                !hasRound ? 'Henüz rating turu başlatılmadı.'
+                    : `Son tur: ${new Date(ratingRound.openedAt || ratingRound.roundId).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} • Kadrodan ${doneCount}/${squad.length} oyuncu oy kullandı`);
+
+            // ---- Maç puanı (açık maç, yoksa son maç)
+            const target = getOpenMatch() || matches.find(m => getMatchParticipantIds(m).length > 0) || null;
+            if (!target) {
+                renderVoteList('match', [], [], 0, 'MAÇ YOK', closed, 'Henüz kadro bilgisi olan bir maç kaydı yok.');
+                return;
+            }
+            const parts = getMatchParticipants(target);
+            const ratedAt = new Map();
+            matchRatings.filter(r => r.matchId === target.id).forEach(r => ratedAt.set(r.voterId, r.ts));
+            const doneM = parts.filter(p => ratedAt.has(p.id)).sort((a, b) => ratedAt.get(a.id) - ratedAt.get(b.id)).map(p => ({ name: p.name, right: fmtVoteTime(ratedAt.get(p.id)) }));
+            const todoM = parts.filter(p => !ratedAt.has(p.id)).sort(byName).map(p => ({ name: p.name, right: p.position }));
+            const isOpen = target.finalized === false;
+            renderVoteList('match', doneM, todoM, parts.length,
+                isOpen ? '● PUANLAMA AÇIK' : 'KAPANDI', isOpen ? open : closed,
+                `${target.date} • A ${target.teamAScore} - ${target.teamBScore} B • ${doneM.length}/${parts.length} oyuncu puan verdi` + (isOpen ? '' : ' (bu maçın puanlaması kapandı)'));
+        }
+
+        // Oy kullanmayanların adlarını WhatsApp vb. için kopyalar
+        function copyPending(kind) {
+            const names = pendingNames[kind] || [];
+            if (!names.length) { showToast('Herkes oy kullanmış, kopyalanacak isim yok.'); return; }
+            const url = new URL('oylama.html', location.href).href;
+            const title = kind === 'rating' ? 'Rating oylaması' : 'Maç puanlaması';
+            const text = `${title} için henüz oy kullanmayanlar: ${names.join(', ')}.\nOylama linki: ${url}`;
+            const done = () => showToast('Liste kopyalandı.');
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(() => prompt('Kopyalayın:', text));
+            else prompt('Kopyalayın:', text);
         }
 
         // -------------------------------------------------------------
