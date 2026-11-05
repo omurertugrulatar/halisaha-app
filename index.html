@@ -1521,9 +1521,14 @@
                             </div>
                             ${scorers ? `<span class="text-[10px] text-slate-500 block mt-1 truncate">⚽ ${scorers}</span>` : ''}
                         </div>
-                        <div class="text-right shrink-0">
-                            <span class="text-[10px] text-amber-400 font-bold block">MVP</span>
-                            <span class="font-bold text-slate-200">${m.finalized === false ? '<span class="text-slate-400 italic font-semibold">Puanlama sürüyor…</span>' : esc(m.mvp)}</span>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <div class="text-right">
+                                <span class="text-[10px] text-amber-400 font-bold block">MVP</span>
+                                <span class="font-bold text-slate-200">${m.finalized === false ? '<span class="text-slate-400 italic font-semibold">Puanlama sürüyor…</span>' : esc(m.mvp)}</span>
+                            </div>
+                            <button onclick="deleteMatch('${m.id}')" class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Maç kaydını sil">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
                         </div>
                     `;
                     matchContainer.appendChild(card);
@@ -1668,6 +1673,64 @@
             } catch (err) {
                 showToast("Açılamadı: " + err.message);
                 reportErr('rating.reopen', err);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // MAÇ KAYDI SİLME (yalnızca yönetici): oyuncu istatistiklerini geri alır ve maç puanlarını siler
+        // -------------------------------------------------------------
+        async function deleteMatch(matchId) {
+            const m = matches.find(x => x.id === matchId);
+            if (!m) { showToast("Maç bulunamadı."); return; }
+
+            const ids = getMatchParticipantIds(m);
+            const hasRoster = ids.length > 0;
+            const label = `${m.date} • A ${m.teamAScore} - ${m.teamBScore} B`;
+            const msg = hasRoster
+                ? `${label} maçı silinsin mi?\n\nOyuncuların bu maçtan gelen maç, gol, galibiyet/beraberlik/mağlubiyet ve MVP kayıtları geri alınacak; maç puanları da silinecek. Bu işlem geri alınamaz.`
+                : `${label} maçı silinsin mi?\n\nBu eski maçın kadro bilgisi kayıtlı olmadığı için oyuncu istatistikleri (maç, gol, G/B/M) geri ALINAMAZ; yalnızca maç kaydı ve puanları silinir. Bu işlem geri alınamaz.`;
+            if (!confirm(msg)) return;
+
+            try {
+                const ops = [];
+                let reverted = 0;
+
+                if (hasRoster) {
+                    const result = m.result || (m.teamAScore > m.teamBScore ? 'A' : (m.teamBScore > m.teamAScore ? 'B' : 'DRAW'));
+                    const sideA = new Set(m.teamAIds || []);
+                    const participants = players.filter(p => ids.includes(p.id));
+                    const names = new Map();
+                    participants.forEach(p => names.set(p.name, (names.get(p.name) || 0) + 1));
+
+                    participants.forEach(p => {
+                        const side = sideA.has(p.id) ? 'A' : 'B';
+                        const outcome = result === 'DRAW' ? 'draws' : (result === side ? 'wins' : 'losses');
+                        // Gol: yeni kayıtlarda kimlikle, eski kayıtlarda (adı tekilse) isimle
+                        let goals = 0;
+                        if (m.goalsById) goals = m.goalsById[p.id] || 0;
+                        else if (names.get(p.name) === 1) goals = (m.scorers || []).filter(s => s.name === p.name).reduce((s, x) => s + x.goals, 0);
+
+                        const upd = {
+                            matches: Math.max(0, (p.matches || 0) - 1),
+                            [outcome]: Math.max(0, (p[outcome] || 0) - 1)
+                        };
+                        if (goals > 0) upd.goals = Math.max(0, (p.goals || 0) - goals);
+                        if (m.mvpId && m.mvpId === p.id) upd.mvpCount = Math.max(0, (p.mvpCount || 0) - 1);
+                        ops.push(b => b.update(db.collection('players').doc(p.id), upd));
+                        reverted++;
+                    });
+                }
+
+                // Bu maçın puanları
+                const rs = await db.collection('match_ratings').where('matchId', '==', m.id).get();
+                rs.forEach(d => ops.push(b => b.delete(d.ref || db.collection('match_ratings').doc(d.id))));
+
+                ops.push(b => b.delete(db.collection('matches').doc(m.id)));
+                await commitChunked(ops);
+                showToast(hasRoster ? `Maç silindi; ${reverted} oyuncunun istatistiği geri alındı.` : "Maç kaydı silindi.");
+            } catch (err) {
+                showToast("Maç silinemedi: " + err.message);
+                reportErr('match.delete', err);
             }
         }
 
@@ -2146,6 +2209,7 @@ function renderGeneratorControls() {
                 result,
                 mvp: topScorer,
                 scorers,
+                goalsById: Object.fromEntries(Object.entries(goalsById).filter(([, g]) => g > 0)),
                 teamANames: currentTeamA.map(p => p.name),
                 teamBNames: currentTeamB.map(p => p.name),
                 teamAIds: currentTeamA.map(p => p.id),
