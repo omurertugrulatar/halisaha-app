@@ -174,7 +174,10 @@
                         <i class="fa-solid fa-clipboard-user"></i> Haftalık Kadro
                     </button>
                     <button onclick="switchTab('votes')" id="nav-votes" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
-                        <i class="fa-solid fa-list-check"></i> Oy Durumu
+                        <i class="fa-solid fa-list-check"></i> Oylar
+                    </button>
+                    <button onclick="switchTab('report')" id="nav-report" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-ranking-star"></i> Maç Karnesi
                     </button>
                     <button onclick="switchTab('generator')" id="nav-generator" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> AI Kadro
@@ -211,6 +214,9 @@
             </button>
             <button onclick="switchTab('votes')" class="text-slate-300 flex flex-col items-center gap-1">
                 <i class="fa-solid fa-list-check text-sm"></i> Oylar
+            </button>
+            <button onclick="switchTab('report')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-ranking-star text-sm"></i> Karne
             </button>
             <button onclick="switchTab('generator')" class="text-emerald-400 flex flex-col items-center gap-1 font-bold">
                 <i class="fa-solid fa-wand-magic-sparkles text-sm"></i> AI Kadro
@@ -489,6 +495,12 @@
 
         <!-- TAB: OY DURUMU -->
         <section id="tab-votes" class="tab-content hidden space-y-6">
+            <div class="flex flex-wrap gap-2">
+                <button id="vsubbtn-status" onclick="setVotesSub('status')" class="px-3 py-1.5 rounded-lg text-xs font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/50">Durum</button>
+                <button id="vsubbtn-rating" onclick="setVotesSub('rating')" class="px-3 py-1.5 rounded-lg text-xs font-bold border bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700">Gönderilen Rating Oyları</button>
+                <button id="vsubbtn-match" onclick="setVotesSub('match')" class="px-3 py-1.5 rounded-lg text-xs font-bold border bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700">Gönderilen Maç Puanları (MVP)</button>
+            </div>
+            <div id="vsub-status" class="space-y-6">
             <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
                 <div class="flex items-start justify-between gap-3">
                     <div>
@@ -534,6 +546,57 @@
                         <div id="vs-match-todo" class="space-y-1.5"></div>
                     </div>
                 </div>
+            </div>
+            </div>
+
+            <div id="vsub-rating" class="hidden space-y-4">
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-star-half-stroke text-emerald-400"></i> Gönderilen Rating Oyları</h2>
+                        <p class="text-xs text-slate-400 mt-1">Kimin kime hangi nitelikten kaç puan verdiğini görün. "Oyuncuya göre" görünümünde ortalamadan çıkarılan en yüksek ve en düşük oylar üstü çizili gösterilir.</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tur</label>
+                            <select id="sub-round-select" onchange="renderRatingSubmissions()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Görünüm</label>
+                            <select id="sub-rating-view" onchange="renderRatingSubmissions()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <option value="voter">Oy verene göre</option>
+                                <option value="player">Oyuncuya göre (uç oylar işaretli)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p id="sub-rating-summary" class="text-xs text-slate-300"></p>
+                    <div id="sub-rating-list" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <div id="vsub-match" class="hidden space-y-4">
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-futbol text-emerald-400"></i> Gönderilen Maç Puanları (MVP oylaması)</h2>
+                        <p class="text-xs text-slate-400 mt-1">Satırdaki oyuncunun sütundaki oyuncuya verdiği 1-10 puan. Altta her oyuncunun aldığı ortalama görünür; en yüksek ortalama MVP'dir.</p>
+                    </div>
+                    <div class="max-w-md">
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Maç</label>
+                        <select id="sub-match-select" onchange="renderMatchSubmissions()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"></select>
+                    </div>
+                    <p id="sub-match-summary" class="text-xs text-slate-300"></p>
+                    <div id="sub-match-table" class="overflow-x-auto"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: MAÇ KARNESİ -->
+        <section id="tab-report" class="tab-content hidden space-y-6">
+            <div class="max-w-4xl mx-auto w-full space-y-4">
+                <div class="max-w-md">
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Maç</label>
+                    <select id="report-match-select" onchange="renderReportTab()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"></select>
+                </div>
+                <div id="report-card"></div>
             </div>
         </section>
 
@@ -870,6 +933,7 @@
                 case 'players': renderPlayerManagement(); break;
                 case 'squad': renderSquadTab(); break;
                 case 'votes': renderVotesTab(); break;
+                case 'report': renderReportTab(); break;
                 case 'generator': renderGeneratorControls(); break;
                 case 'admin': renderAdminRows(); break;
             }
@@ -1008,6 +1072,7 @@ function getVoteStats(player) {
             if (tabId === 'players') renderPlayerManagement();
             if (tabId === 'squad') renderSquadTab();
             if (tabId === 'votes') renderVotesTab();
+            if (tabId === 'report') renderReportTab();
             if (tabId === 'generator') renderGeneratorControls();
             if (tabId === 'admin') renderAdminRows();
         }
@@ -1682,6 +1747,350 @@ function getVoteStats(player) {
         }
 
         // -------------------------------------------------------------
+        // GÖNDERİLEN OYLAR (rating oyları ve maç puanları ayrıntısı)
+        // -------------------------------------------------------------
+        let votesSub = 'status';
+        let subRoundSel = '';
+        let subMatchSel = '';
+
+        const pName = id => { const p = players.find(x => x.id === id); return p ? p.name : '(silinmiş oyuncu)'; };
+
+        function setVotesSub(name) {
+            votesSub = name;
+            ['status', 'rating', 'match'].forEach(k => {
+                document.getElementById('vsub-' + k).classList.toggle('hidden', k !== name);
+                document.getElementById('vsubbtn-' + k).className = 'px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ' +
+                    (k === name ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700');
+            });
+            renderVotesTab();
+        }
+
+        function renderVotesTab() {
+            renderVotesStatus();
+            if (votesSub === 'rating') renderRatingSubmissions();
+            if (votesSub === 'match') renderMatchSubmissions();
+        }
+
+        function openDetailKeys(container) {
+            return new Set([...container.querySelectorAll('details[open]')].map(d => d.dataset.key));
+        }
+
+        function overallOfVote(v) {
+            if (typeof v.overall === 'number') return v.overall;
+            const k = ATTR_KEYS.filter(x => typeof v[x] === 'number');
+            return k.length ? Math.round(k.reduce((s, x) => s + v[x], 0) / k.length) : '-';
+        }
+
+        function renderRatingSubmissions() {
+            const all = [];
+            players.forEach(t => (t.peerAttributeVotes || []).forEach(v => { if (v) all.push({ ...v, targetId: t.id }); }));
+
+            const sel = document.getElementById('sub-round-select');
+            const periods = [...new Set(all.map(v => v.period || 0))].sort((a, b) => b - a);
+            const prev = sel.value || subRoundSel;
+            sel.innerHTML = periods.map(pr => {
+                const voters = new Set(all.filter(v => (v.period || 0) === pr).map(v => v.voterId)).size;
+                const label = pr > 0 ? new Date(pr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' turu' : 'Eski oylar (tur bilgisi yok)';
+                return `<option value="${pr}">${label} • ${voters} oy veren${pr === ratingRound.roundId && ratingRound.open ? ' • AÇIK' : ''}</option>`;
+            }).join('');
+
+            const summary = document.getElementById('sub-rating-summary');
+            const listEl = document.getElementById('sub-rating-list');
+            if (!periods.length) {
+                summary.textContent = 'Henüz gönderilmiş rating oyu yok.';
+                listEl.innerHTML = '';
+                return;
+            }
+            const want = periods.map(String).includes(String(prev)) ? String(prev) : String(periods.includes(ratingRound.roundId) ? ratingRound.roundId : periods[0]);
+            sel.value = want;
+            subRoundSel = want;
+
+            const votes = all.filter(v => (v.period || 0) === Number(want));
+            const view = document.getElementById('sub-rating-view').value;
+            summary.textContent = `${votes.length} oy • ${new Set(votes.map(v => v.voterId)).size} oy veren • ${new Set(votes.map(v => v.targetId)).size} oyuncu puan aldı`;
+
+            const open = openDetailKeys(listEl);
+            const chips = (v, pos) => getAttrMeta(pos).map(a => `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px]" title="${a.fullLabel}"><span class="text-slate-400">${a.label}</span><span class="font-bold text-slate-100">${v[a.key] ?? '-'}</span></span>`).join('');
+            const byName = (a, b) => a.localeCompare(b, 'tr');
+
+            if (view === 'voter') {
+                const groups = new Map();
+                votes.forEach(v => { if (!groups.has(v.voterId)) groups.set(v.voterId, []); groups.get(v.voterId).push(v); });
+                listEl.innerHTML = [...groups.entries()].sort((a, b) => byName(pName(a[0]), pName(b[0]))).map(([vid, list]) => {
+                    const key = 'v:' + vid;
+                    const nums = list.map(overallOfVote).filter(n => typeof n === 'number');
+                    const avg = nums.length ? Math.round(nums.reduce((s, n) => s + n, 0) / nums.length) : '-';
+                    const ts = Math.min(...list.map(v => v.ts || Infinity));
+                    const rows = list.sort((a, b) => byName(pName(a.targetId), pName(b.targetId))).map(v => {
+                        const t = players.find(p => p.id === v.targetId);
+                        return `<div class="flex flex-wrap items-center gap-2 py-1.5 border-t border-slate-800">
+                            <span class="w-32 text-xs font-bold text-white truncate">${esc(pName(v.targetId))}</span>
+                            <div class="flex flex-wrap gap-1">${chips(v, t ? t.position : '')}</div>
+                            <span class="ml-auto text-xs font-black text-emerald-300">${overallOfVote(v)}</span>
+                        </div>`;
+                    }).join('');
+                    return `<details data-key="${key}" ${open.has(key) ? 'open' : ''} class="rounded-xl border border-slate-800 bg-slate-900/60">
+                        <summary class="cursor-pointer px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span class="font-bold text-white">${esc(pName(vid))}</span>
+                            <span class="text-slate-400">${list.length} oyuncuya puan verdi • verdiği ort. <span class="text-emerald-300 font-bold">${avg}</span>${isFinite(ts) ? ' • ' + fmtVoteTime(ts) : ''}</span>
+                        </summary>
+                        <div class="px-3 pb-2">${rows}</div>
+                    </details>`;
+                }).join('');
+            } else {
+                const groups = new Map();
+                votes.forEach(v => { if (!groups.has(v.targetId)) groups.set(v.targetId, []); groups.get(v.targetId).push(v); });
+                listEl.innerHTML = [...groups.entries()].sort((a, b) => byName(pName(a[0]), pName(b[0]))).map(([tid, list]) => {
+                    const key = 'p:' + tid;
+                    const t = players.find(p => p.id === tid);
+                    const meta = getAttrMeta(t ? t.position : '');
+
+                    // Her nitelikte ortalamadan çıkarılan en düşük ve en yüksek oyu belirle (en az TRIM_MIN_VOTES oy varsa)
+                    const trimmed = new Set(); // "oyVerenId|nitelik"
+                    const means = {};
+                    meta.forEach(a => {
+                        const arr = list.filter(v => typeof v[a.key] === 'number');
+                        let kept = arr;
+                        if (arr.length >= TRIM_MIN_VOTES) {
+                            let mn = arr[0], mx = arr[0];
+                            arr.forEach(v => { if (v[a.key] < mn[a.key]) mn = v; if (v[a.key] > mx[a.key]) mx = v; });
+                            if (mn !== mx) {
+                                trimmed.add(mn.voterId + '|' + a.key);
+                                trimmed.add(mx.voterId + '|' + a.key);
+                                kept = arr.filter(v => v !== mn && v !== mx);
+                            } else {
+                                kept = arr.slice(1, -1);
+                            }
+                        }
+                        means[a.key] = kept.length ? Math.round(kept.reduce((s, v) => s + v[a.key], 0) / kept.length) : null;
+                    });
+                    const meanVals = meta.map(a => means[a.key]).filter(n => n !== null);
+                    const overall = meanVals.length ? Math.round(meanVals.reduce((s, n) => s + n, 0) / meanVals.length) : '-';
+
+                    const head = meta.map(a => `<th class="px-2 py-1.5 text-center text-[10px] text-slate-400 font-bold" title="${a.fullLabel}">${a.label}</th>`).join('');
+                    const body = list.sort((a, b) => byName(pName(a.voterId), pName(b.voterId))).map(v => `
+                        <tr class="border-t border-slate-800">
+                            <td class="px-2 py-1.5 text-xs font-semibold text-slate-200 whitespace-nowrap">${esc(pName(v.voterId))}</td>
+                            ${meta.map(a => {
+                                const isTrim = trimmed.has(v.voterId + '|' + a.key);
+                                return `<td class="px-2 py-1.5 text-center text-xs ${isTrim ? 'line-through text-red-400/70' : 'font-bold text-slate-100'}" ${isTrim ? 'title="Ortalamadan çıkarıldı"' : ''}>${v[a.key] ?? '-'}</td>`;
+                            }).join('')}
+                            <td class="px-2 py-1.5 text-center text-xs font-black text-emerald-300">${overallOfVote(v)}</td>
+                        </tr>`).join('');
+                    const foot = `<tr class="border-t-2 border-emerald-500/30 bg-emerald-500/5">
+                        <td class="px-2 py-1.5 text-[10px] font-black text-emerald-300 whitespace-nowrap">Kırpılmış ort.</td>
+                        ${meta.map(a => `<td class="px-2 py-1.5 text-center text-xs font-black text-emerald-300">${means[a.key] ?? '-'}</td>`).join('')}
+                        <td class="px-2 py-1.5 text-center text-xs font-black text-emerald-200">${overall}</td>
+                    </tr>`;
+                    return `<details data-key="${key}" ${open.has(key) ? 'open' : ''} class="rounded-xl border border-slate-800 bg-slate-900/60">
+                        <summary class="cursor-pointer px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span class="font-bold text-white">${esc(pName(tid))}</span>
+                            <span class="text-slate-400">${list.length} oy aldı • kırpılmış ort. <span class="text-emerald-300 font-bold">${overall}</span></span>
+                        </summary>
+                        <div class="px-3 pb-3 overflow-x-auto">
+                            <table class="w-full text-left"><thead><tr><th class="px-2 py-1.5 text-[10px] text-slate-400 font-bold">Oy veren</th>${head}<th class="px-2 py-1.5 text-center text-[10px] text-slate-400 font-bold">Ort.</th></tr></thead><tbody>${body}${foot}</tbody></table>
+                        </div>
+                    </details>`;
+                }).join('');
+            }
+        }
+
+        function scoreCellClass(v) {
+            return v >= 8 ? 'bg-emerald-500/25 text-emerald-200' : v >= 6.5 ? 'bg-lime-500/20 text-lime-200' : v >= 5 ? 'bg-amber-500/20 text-amber-200' : 'bg-red-500/20 text-red-200';
+        }
+
+        function renderMatchSubmissions() {
+            const sel = document.getElementById('sub-match-select');
+            const list = matches.filter(m => getMatchParticipantIds(m).length > 0);
+            const prev = sel.value || subMatchSel;
+            sel.innerHTML = list.map(m => {
+                const got = matchRatings.filter(r => r.matchId === m.id).length;
+                return `<option value="${m.id}">${esc(m.date)} • A ${m.teamAScore} - ${m.teamBScore} B • ${got}/${getMatchParticipantIds(m).length} puan${m.finalized === false ? ' • AÇIK' : ''}</option>`;
+            }).join('');
+
+            const summary = document.getElementById('sub-match-summary');
+            const table = document.getElementById('sub-match-table');
+            if (!list.length) {
+                summary.textContent = 'Kadro bilgisi olan bir maç kaydı yok.';
+                table.innerHTML = '';
+                return;
+            }
+            const openM = getOpenMatch();
+            const want = list.some(m => m.id === prev) ? prev : ((openM && list.some(m => m.id === openM.id)) ? openM.id : list[0].id);
+            sel.value = want;
+            subMatchSel = want;
+
+            const m = list.find(x => x.id === want);
+            const parts = [...(m.teamAIds || []).map(id => ({ id, team: 'A' })), ...(m.teamBIds || []).map(id => ({ id, team: 'B' }))]
+                .map(x => ({ ...x, p: players.find(p => p.id === x.id) })).filter(x => x.p);
+            const byVoter = new Map();
+            matchRatings.filter(r => r.matchId === m.id).forEach(r => byVoter.set(r.voterId, r.scores || {}));
+
+            const avgOf = pid => {
+                const vals = [];
+                byVoter.forEach((sc, v) => { if (v !== pid && typeof sc[pid] === 'number') vals.push(sc[pid]); });
+                return { avg: vals.length ? vals.reduce((s, n) => s + n, 0) / vals.length : null, n: vals.length };
+            };
+            const stats = new Map(parts.map(x => [x.id, avgOf(x.id)]));
+            let mvpId = m.finalized === false ? null : (m.mvpId || null);
+            if (!mvpId) {
+                const best = [...stats.entries()].filter(([, s]) => s.avg !== null).sort((a, b) => b[1].avg - a[1].avg || b[1].n - a[1].n)[0];
+                mvpId = best ? best[0] : null;
+            }
+            summary.textContent = `${byVoter.size}/${parts.length} oyuncu puan verdi` + (m.finalized === false ? ' • puanlama açık (MVP geçici)' : ' • puanlama kapandı');
+
+            const dot = t => `<span class="inline-block w-2 h-2 rounded-full ${t === 'A' ? 'bg-red-500' : 'bg-blue-500'} mr-1.5"></span>`;
+            const head = parts.map(x => `<th class="px-1.5 py-2 text-[10px] font-bold text-center ${x.id === mvpId ? 'text-amber-300' : 'text-slate-300'}" title="${esc(x.p.name)}"><div class="max-w-[64px] truncate mx-auto">${x.id === mvpId ? '<i class="fa-solid fa-crown mr-0.5"></i>' : ''}${esc(x.p.name)}</div><div class="${x.team === 'A' ? 'text-red-400' : 'text-blue-400'} text-[9px]">${x.team}</div></th>`).join('');
+            const rows = parts.map(v => {
+                const sc = byVoter.get(v.id);
+                return `<tr class="border-t border-slate-800 ${sc ? '' : 'opacity-60'}">
+                    <td class="px-2 py-1.5 text-xs font-semibold text-slate-200 whitespace-nowrap">${dot(v.team)}${esc(v.p.name)}${sc ? '' : ' <span class="text-[9px] text-amber-400">(vermedi)</span>'}</td>
+                    ${parts.map(t => {
+                        if (t.id === v.id) return '<td class="px-1.5 py-1.5 text-center text-slate-700 text-xs">—</td>';
+                        const val = sc ? sc[t.id] : undefined;
+                        return typeof val === 'number'
+                            ? `<td class="px-1 py-1"><div class="rounded-md text-center text-xs font-black py-1 ${scoreCellClass(val)}">${Number.isInteger(val) ? val : val.toFixed(1)}</div></td>`
+                            : '<td class="px-1.5 py-1.5 text-center text-slate-700 text-xs">·</td>';
+                    }).join('')}
+                </tr>`;
+            }).join('');
+            const foot = `<tr class="border-t-2 border-emerald-500/30 bg-emerald-500/5">
+                <td class="px-2 py-2 text-[10px] font-black text-emerald-300 whitespace-nowrap">Ortalama (aldığı puan)</td>
+                ${parts.map(t => { const s = stats.get(t.id); return `<td class="px-1.5 py-2 text-center text-xs font-black ${t.id === mvpId ? 'text-amber-300' : 'text-emerald-300'}">${s.avg === null ? '—' : s.avg.toFixed(2)}<div class="text-[9px] font-normal text-slate-500">${s.n} puan</div></td>`; }).join('')}
+            </tr>`;
+            table.innerHTML = `<table class="w-full text-left"><thead><tr><th class="px-2 py-2 text-[10px] text-slate-400 font-bold">Puan veren ↓ / Alan →</th>${head}</tr></thead><tbody>${rows}${foot}</tbody></table>`;
+        }
+
+        // -------------------------------------------------------------
+        // MAÇ KARNESİ: maç puanlarını takımlara ayırıp 10 üzerinden gösteren görsel
+        // -------------------------------------------------------------
+        function getMatchScoreMap(m) {
+            if (m.playerScores && Object.keys(m.playerScores).length > 0) return { scores: m.playerScores, provisional: false };
+            const agg = {};
+            matchRatings.filter(r => r.matchId === m.id).forEach(r => {
+                Object.keys(r.scores || {}).forEach(pid => {
+                    const v = Number(r.scores[pid]);
+                    if (isNaN(v)) return;
+                    const a = agg[pid] || (agg[pid] = { sum: 0, count: 0 });
+                    a.sum += v;
+                    a.count++;
+                });
+            });
+            const scores = {};
+            Object.keys(agg).forEach(pid => { scores[pid] = { avg: Math.round(agg[pid].sum / agg[pid].count * 100) / 100, count: agg[pid].count }; });
+            return { scores, provisional: m.finalized === false };
+        }
+
+        function buildMatchReportHTML(m) {
+            const { scores, provisional } = getMatchScoreMap(m);
+            const nameGoals = name => ((m.scorers || []).filter(s => s.name === name).reduce((s, x) => s + (x.goals || 0), 0));
+            const mk = ids => (ids || [])
+                .map(id => players.find(p => p.id === id))
+                .filter(Boolean)
+                .map(p => ({ p, sc: scores[p.id] || null, goals: m.goalsById ? (m.goalsById[p.id] || 0) : nameGoals(p.name) }))
+                .sort((a, b) => (b.sc ? b.sc.avg : -1) - (a.sc ? a.sc.avg : -1) || a.p.name.localeCompare(b.p.name, 'tr'));
+            const A = mk(m.teamAIds), B = mk(m.teamBIds);
+
+            const scored = [...A, ...B].filter(r => r.sc);
+            let mvpId = provisional ? null : (m.mvpId || null);
+            if (!mvpId && scored.length) mvpId = [...scored].sort((a, b) => b.sc.avg - a.sc.avg || b.sc.count - a.sc.count)[0].p.id;
+            const mvpRow = scored.find(r => r.p.id === mvpId) || null;
+
+            const teamAvg = rows => { const k = rows.filter(r => r.sc); return k.length ? k.reduce((s, r) => s + r.sc.avg, 0) / k.length : null; };
+            const tone = v => v >= 8 ? { bar: 'from-emerald-400 to-teal-400', text: 'text-emerald-300' }
+                : v >= 6.5 ? { bar: 'from-lime-400 to-emerald-400', text: 'text-lime-300' }
+                : v >= 5 ? { bar: 'from-amber-400 to-yellow-400', text: 'text-amber-300' }
+                : { bar: 'from-orange-500 to-red-500', text: 'text-red-300' };
+
+            const row = (r, i) => {
+                const t = r.sc ? tone(r.sc.avg) : null;
+                const isMvp = r.p.id === mvpId;
+                return `
+                <div class="rounded-xl border p-2.5 ${isMvp ? 'bg-amber-500/10 border-amber-400/50' : 'bg-slate-900/70 border-slate-800'}">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-5 text-[11px] font-black ${i === 0 && r.sc ? 'text-amber-300' : 'text-slate-500'}">#${i + 1}</span>
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-emerald-400">${esc(r.p.name.charAt(0))}</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="text-xs font-bold text-white truncate">${esc(r.p.name)}</span>
+                                ${isMvp ? '<i class="fa-solid fa-crown text-amber-300 text-[11px]" title="Maçın adamı"></i>' : ''}
+                                ${r.goals > 0 ? `<span class="text-[10px] font-bold text-slate-200 shrink-0" title="Gol">⚽${r.goals > 1 ? ' x' + r.goals : ''}</span>` : ''}
+                            </div>
+                            <div class="text-[10px] text-slate-400">${esc(r.p.position)}${r.sc ? ' • ' + r.sc.count + ' puan' : ''}</div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            ${r.sc ? `<span class="text-lg font-black ${t.text}">${r.sc.avg.toFixed(1)}</span><span class="text-[10px] text-slate-500">/10</span>` : '<span class="text-sm font-bold text-slate-600">—</span>'}
+                        </div>
+                    </div>
+                    <div class="mt-2 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        ${r.sc ? `<div class="h-full rounded-full bg-gradient-to-r ${t.bar}" style="width: ${Math.max(4, Math.min(100, r.sc.avg * 10))}%;"></div>` : ''}
+                    </div>
+                </div>`;
+            };
+
+            const panel = (title, accent, border, rows, won) => {
+                const avg = teamAvg(rows);
+                return `
+                <div class="rounded-2xl border ${border} bg-slate-950/40 p-3 space-y-2">
+                    <div class="flex items-center justify-between px-1 pb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-sm ${accent}">${title}</span>
+                            ${won ? '<span class="text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">GALİP</span>' : ''}
+                        </div>
+                        <span class="text-[11px] text-slate-400">Takım ort. <span class="font-black text-slate-100">${avg === null ? '—' : avg.toFixed(1)}</span><span class="text-slate-500">/10</span></span>
+                    </div>
+                    ${rows.length ? rows.map(row).join('') : '<p class="text-xs text-slate-500 italic px-1">Kadro bilgisi yok.</p>'}
+                </div>`;
+            };
+
+            const sA = m.teamAScore || 0, sB = m.teamBScore || 0;
+            return `
+            <div class="rounded-2xl overflow-hidden border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 shadow-xl">
+                <div class="p-5 text-center">
+                    <p class="text-[10px] tracking-[0.35em] text-emerald-400 font-black">MAÇ KARNESİ</p>
+                    <p class="text-xs text-slate-400 mt-1">${esc(m.date)}</p>
+                    <div class="flex items-center justify-center gap-4 mt-3">
+                        <span class="text-red-400 font-black text-sm">TAKIM A</span>
+                        <span class="text-4xl font-black text-white tracking-tight">${sA} <span class="text-slate-600">-</span> ${sB}</span>
+                        <span class="text-blue-400 font-black text-sm">TAKIM B</span>
+                    </div>
+                    ${provisional ? '<p class="mt-3 inline-block text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/40 rounded-full px-3 py-1">Puanlama sürüyor • geçici ortalamalar</p>' : ''}
+                </div>
+                ${mvpRow ? `
+                <div class="mx-4 sm:mx-5 mb-4 rounded-xl p-3 bg-gradient-to-r from-amber-500/20 via-yellow-400/10 to-amber-500/20 border border-amber-400/40 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-crown text-amber-300 text-2xl"></i>
+                    <div class="text-center">
+                        <p class="text-[10px] text-amber-300 font-black tracking-[0.25em]">${provisional ? 'ŞU AN ÖNDE' : 'MAÇIN ADAMI'}</p>
+                        <p class="text-sm font-black text-white">${esc(mvpRow.p.name)} <span class="text-amber-300">${mvpRow.sc.avg.toFixed(1)}<span class="text-[10px] text-amber-200/70">/10</span></span></p>
+                    </div>
+                </div>` : ''}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 px-3 sm:px-4 pb-4">
+                    ${panel('TAKIM A', 'text-red-400', 'border-red-500/30', A, sA > sB)}
+                    ${panel('TAKIM B', 'text-blue-400', 'border-blue-500/30', B, sB > sA)}
+                </div>
+                <p class="px-5 pb-4 text-center text-[10px] text-slate-500">Puanlar, maçta oynayan oyuncuların birbirine verdiği 1-10 arası puanların ortalamasıdır.</p>
+            </div>`;
+        }
+
+        let reportSel = '';
+
+        function renderReportTab() {
+            const sel = document.getElementById('report-match-select');
+            const card = document.getElementById('report-card');
+            const list = matches.filter(m => getMatchParticipantIds(m).length > 0);
+            const prev = sel.value || reportSel;
+            sel.innerHTML = list.map(m => `<option value="${m.id}">${esc(m.date)} • A ${m.teamAScore} - ${m.teamBScore} B${m.finalized === false ? ' • puanlama açık (geçici)' : ''}</option>`).join('');
+            if (!list.length) {
+                card.innerHTML = '<p class="text-sm text-slate-400 italic text-center py-10">Kadro bilgisi olan bir maç kaydı yok. Maç kaydedildiğinde karnesi burada görünür.</p>';
+                return;
+            }
+            const want = list.some(m => m.id === prev) ? prev : list[0].id;
+            sel.value = want;
+            reportSel = want;
+            card.innerHTML = buildMatchReportHTML(list.find(m => m.id === want));
+        }
+
+        // -------------------------------------------------------------
         // OY DURUMU: kim oy kullandı, kim kullanmadı
         // -------------------------------------------------------------
         const pendingNames = { rating: [], match: [] };
@@ -1711,7 +2120,7 @@ function getVoteStats(player) {
             pendingNames[prefix] = todoRows.map(r => r.name);
         }
 
-        function renderVotesTab() {
+        function renderVotesStatus() {
             const byName = (a, b) => a.name.localeCompare(b.name, 'tr');
             const open = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40';
             const closed = 'bg-slate-700/40 text-slate-300 border-slate-600';
