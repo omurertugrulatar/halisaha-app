@@ -483,6 +483,10 @@
                         <span><strong>Maç puanları ve MVP sonuçları:</strong> maç sonrası puanlar, form ve MVP sayaçları sıfırlanır.</span>
                     </label>
                     <label class="flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" id="reset-opt-adjust" class="accent-red-500 mt-0.5">
+                        <span>Yönetici rating ayarlarını (artı/eksi puanlar) da sil.</span>
+                    </label>
+                    <label class="flex items-start gap-2 cursor-pointer">
                         <input type="checkbox" id="reset-opt-reopen" class="accent-red-500 mt-0.5">
                         <span>Son maçın puanlamasını yeniden aç: oyuncular o maçı baştan puanlar (yalnızca "Maç puanları" seçiliyken).</span>
                     </label>
@@ -1051,10 +1055,13 @@ function getVoteStats(player) {
             const winBonus = Math.min((player.wins || 0) * 0.4, 4);
             const mvpBonus = (player.mvpCount || 0) * 1.5;
 
-            const finalRating = Math.min(Math.round(base + goalBonus + winBonus + mvpBonus), 99);
+            // Yönetici ayarı: oy manipülasyonlarını dengelemek için elle eklenen artı/eksi puan
+            const adj = Number.isFinite(player.ratingAdjust) ? player.ratingAdjust : 0;
+            const finalRating = Math.max(1, Math.min(Math.round(base + goalBonus + winBonus + mvpBonus + adj), 99));
 
             return {
                 trueRating: finalRating,
+                adjust: adj,
                 voteAvg,
                 form: fi.form,
                 formMatches: fi.n,
@@ -1381,6 +1388,46 @@ function getVoteStats(player) {
             document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-check"></i> Kaydet`;
         }
 
+        // -------------------------------------------------------------
+        // YÖNETİCİ RATING AYARI: oy manipülasyonuna karşı bir oyuncunun ratingini artır/azalt
+        // -------------------------------------------------------------
+        const RATING_ADJ_LIMIT = 20; // en fazla ± bu kadar puan
+
+        async function setRatingAdjust(id, value) {
+            const p = players.find(x => x.id === id);
+            if (!p) return;
+            const cur = Number.isFinite(p.ratingAdjust) ? p.ratingAdjust : 0;
+            const next = Math.max(-RATING_ADJ_LIMIT, Math.min(RATING_ADJ_LIMIT, Math.round(value)));
+            if (next === cur) {
+                if (Math.abs(value) > RATING_ADJ_LIMIT) showToast(`En fazla ±${RATING_ADJ_LIMIT} puan ayar yapılabilir.`);
+                return;
+            }
+            try {
+                await db.collection('players').doc(id).update({ ratingAdjust: next });
+            } catch (err) {
+                showToast("Ayar kaydedilemedi: " + err.message);
+                reportErr('rating.adjust', err);
+            }
+        }
+
+        function adjustRating(id, delta, reset) {
+            const p = players.find(x => x.id === id);
+            if (!p) return;
+            const cur = Number.isFinite(p.ratingAdjust) ? p.ratingAdjust : 0;
+            return setRatingAdjust(id, reset ? 0 : cur + delta);
+        }
+
+        function promptRatingAdjust(id) {
+            const p = players.find(x => x.id === id);
+            if (!p) return;
+            const cur = Number.isFinite(p.ratingAdjust) ? p.ratingAdjust : 0;
+            const v = prompt(`${p.name} için yönetici rating ayarı (−${RATING_ADJ_LIMIT} ile +${RATING_ADJ_LIMIT} arası, 0 = ayar yok):`, cur);
+            if (v === null) return;
+            const n = parseInt(String(v).replace('−', '-').trim(), 10);
+            if (isNaN(n)) { showToast("Geçerli bir sayı girin."); return; }
+            return setRatingAdjust(id, n);
+        }
+
         function renderPlayerManagement() {
             document.getElementById('player-list-count').textContent = `${players.length} Oyuncu`;
             const grid = document.getElementById('players-card-grid');
@@ -1404,7 +1451,13 @@ function getVoteStats(player) {
                         <div>
                             <p class="text-xs font-bold text-white">${esc(p.name)}</p>
                             <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''} • Oylama: <span class="text-amber-400">${tr.voteCount ? tr.voteAvg : '—'}</span> | Form: <span class="text-blue-400">${tr.form ?? '—'}</span></p>
-                            <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong></p>
+                            <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong>${tr.adjust ? ` <span class="${tr.adjust > 0 ? 'text-emerald-400' : 'text-red-400'}">(ayar ${tr.adjust > 0 ? '+' : ''}${tr.adjust})</span>` : ''}</p>
+                            <div class="flex items-center gap-1 mt-1.5" onclick="event.stopPropagation()">
+                                <button onclick="adjustRating('${p.id}', -1)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-red-500/30 border border-slate-700 text-red-300 font-black text-sm leading-none" title="Ratingi 1 puan azalt">−</button>
+                                <button onclick="promptRatingAdjust('${p.id}')" class="px-2 h-6 rounded-md bg-slate-800 border border-slate-700 text-[11px] font-bold ${tr.adjust > 0 ? 'text-emerald-300' : (tr.adjust < 0 ? 'text-red-300' : 'text-slate-400')}" title="Ayarı elle gir">${tr.adjust > 0 ? '+' : ''}${tr.adjust}</button>
+                                <button onclick="adjustRating('${p.id}', 1)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-emerald-500/30 border border-slate-700 text-emerald-300 font-black text-sm leading-none" title="Ratingi 1 puan artır">+</button>
+                                ${tr.adjust ? `<button onclick="adjustRating('${p.id}', 0, true)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs leading-none" title="Ayarı kaldır"><i class="fa-solid fa-rotate-left"></i></button>` : ''}
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center space-x-1" onclick="event.stopPropagation()">
@@ -1489,9 +1542,9 @@ function getVoteStats(player) {
 
             const noteEl = document.getElementById('detail-radar-note');
             if (noteEl) {
-                noteEl.textContent = eff.hasPeerVotes
+                noteEl.textContent = (tr.adjust ? `Yönetici ayarı: ${tr.adjust > 0 ? '+' : ''}${tr.adjust} • ` : '') + (eff.hasPeerVotes
                     ? `${eff.count} oyun ağırlıklı ortalaması` + (eff.rounds > 1 ? ` (${eff.rounds} tur)` : '') + (eff.trimmed ? ' • uç oylar çıkarıldı' : '') + (tr.form !== null ? ` • Maç formu: ${(tr.form / 10).toFixed(1)}/10 (${tr.formMatches} maç)` : '')
-                    : 'Henüz oylama yok — varsayılan değerler gösteriliyor';
+                    : 'Henüz oylama yok — varsayılan değerler gösteriliyor');
             }
 
             document.getElementById('detail-attr-list').innerHTML = attrMeta.map(a => `
@@ -1612,7 +1665,7 @@ function getVoteStats(player) {
                             <span class="text-red-400 font-bold">${player.losses || 0}</span>
                         </td>
                         <td class="py-3 px-2 text-center font-bold text-purple-400 text-xs">${player.mvpCount || 0}</td>
-                        <td class="py-3 px-2 text-right font-black text-emerald-400 text-sm">${trStats.trueRating}</td>
+                        <td class="py-3 px-2 text-right font-black text-emerald-400 text-sm">${trStats.trueRating}${trStats.adjust ? ` <span class="text-[10px] font-bold ${trStats.adjust > 0 ? 'text-emerald-300' : 'text-red-300'}">(${trStats.adjust > 0 ? '+' : ''}${trStats.adjust})</span>` : ''}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -2482,11 +2535,13 @@ function renderRatingSubmissions() {
             const doVotes = document.getElementById('reset-opt-votes').checked;
             const doMatch = document.getElementById('reset-opt-match').checked;
             const reopen = doMatch && document.getElementById('reset-opt-reopen').checked;
-            if (!doVotes && !doMatch) { showToast("Sıfırlanacak bir seçenek işaretleyin."); return; }
+            const doAdjust = document.getElementById('reset-opt-adjust').checked;
+            if (!doVotes && !doMatch && !doAdjust) { showToast("Sıfırlanacak bir seçenek işaretleyin."); return; }
 
             const what = [];
             if (doVotes) what.push('rating oyları (tüm turlar)');
             if (doMatch) what.push('maç puanları ve MVP sonuçları');
+            if (doAdjust) what.push('yönetici rating ayarları');
             const typed = prompt(`Şunlar KALICI olarak silinecek: ${what.join(' + ')}.\n\nOnaylamak için SIFIRLA yazın:`);
             if (typed === null || typed.trim().toLocaleUpperCase('tr') !== 'SIFIRLA' && typed.trim().toUpperCase() !== 'SIFIRLA') {
                 showToast("Sıfırlama iptal edildi.");
@@ -2497,6 +2552,12 @@ function renderRatingSubmissions() {
                 const ops = [];
                 const del = firebase.firestore.FieldValue.delete();
                 let nLogs = 0, nRatings = 0;
+
+                if (doAdjust) {
+                    players.forEach(p => {
+                        if (Number.isFinite(p.ratingAdjust) && p.ratingAdjust !== 0) ops.push(b => b.update(db.collection('players').doc(p.id), { ratingAdjust: 0 }));
+                    });
+                }
 
                 if (doVotes) {
                     players.forEach(p => {
