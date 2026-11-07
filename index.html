@@ -610,7 +610,7 @@
                         <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI Dengeli Kadro Kurucu
                         </h2>
-                        <p class="text-xs text-slate-400">Rating oylaması, maç puanı formu ve ortalama yaş dengesini baz alarak dengeli 2 takım kurar (her takıma 1 kaleci).</p>
+                        <p class="text-xs text-slate-400">Rating, galibiyet sayısı, maç puanı formu, mevki dağılımı ve yaş dengesini birlikte gözeterek dengeli 2 takım kurar (her takıma 1 kaleci).</p>
                     </div>
 
                     <div class="flex items-center gap-3">
@@ -704,8 +704,13 @@
                         <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1">
                             <p class="font-semibold text-emerald-400">Algoritma Değerlendirmesi:</p>
                             <p id="ai-verdict-desc" class="leading-relaxed text-[11px] text-slate-300">
-                                Kadrodaki oyuncuların öz ve akran puanları dengelenerek oluşturulmuştur.
+                                Kadrodaki oyuncuların puanları dengelenerek oluşturulmuştur.
                             </p>
+                        </div>
+
+                        <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
+                            <p class="font-semibold text-emerald-400 text-xs mb-2">Denge Tablosu</p>
+                            <div id="balance-table" class="overflow-x-auto"></div>
                         </div>
                     </div>
 
@@ -2574,44 +2579,138 @@ function renderGeneratorControls() {
             document.getElementById('selected-player-count').textContent = count;
         }
 
-        // Yaş etkeni: rating dengesi bozulmadan (ortalama rating farkı sınırı içinde) takımların ortalama yaşı yakınlaştırılır.
-        const AGE_WEIGHT = 1;        // 1 yıllık ortalama yaş farkı ≈ 1 rating puanı kadar "maliyet" (artırırsanız yaş daha etkili olur)
-        const MAX_RATING_GAP = 3;    // yaş için takas yaparken ortalama rating farkı en fazla bu kadar (veya başlangıç farkı) olabilir
+        // -------------------------------------------------------------
+        // TAKIM OPTİMİZASYONU: rating, galibiyet, form, mevki ve yaş dengesi birlikte gözetilir
+        // -------------------------------------------------------------
+        // Ağırlıklar: "1 birim fark" ne kadar önemli (rating farkı = 1 puan baz alınır). Büyütürseniz o ölçüt daha çok gözetilir.
+        const BAL = {
+            rating: 3,         // takımların ortalama rating farkı (puan)
+            ratingSoftCap: 3,  // bu farkın üstü ağır cezalandırılır
+            wins: 3,           // ortalama galibiyet sayısı farkı
+            form: 1,           // ortalama form farkı (10-100 ölçeği)
+            posCount: 6,       // bir mevkideki oyuncu sayısı farkı (tek sayıda kaçınılmaz fark hariç)
+            posRating: 1,      // aynı mevkideki oyuncuların ortalama rating farkı
+            age: 1             // ortalama yaş farkı (yıl)
+        };
+        const BRUTE_FORCE_MAX = 16; // hareketli oyuncu sayısı (kaleciler hariç) bu değere kadar tüm bölünmeler denenir (en iyi sonuç); üstünde hızlı takas yöntemi kullanılır
+        let optCache = { sig: '', A: [], B: [] }; // aynı veriyle tekrar tekrar hesaplamamak için
 
-        function balanceByAge(teamA, teamB, lockedIds) {
+        function optimizeTeams(teamA, teamB, lockedIds) {
             const everyone = [...teamA, ...teamB];
+            if (everyone.length < 4) return;
+            const mean = arr => arr.reduce((s, n) => s + n, 0) / arr.length;
+
             const known = everyone.filter(p => Number.isFinite(p.age));
-            if (known.length < 2 || teamA.length === 0 || teamB.length === 0) return; // yaş verisi yoksa dokunma
+            const useAge = known.length >= 2;
+            const ageFill = useAge ? mean(known.map(p => p.age)) : 0;
 
-            const fill = known.reduce((s, p) => s + p.age, 0) / known.length; // yaşı girilmeyenler için ortalama
-            const ageOf = p => Number.isFinite(p.age) ? p.age : fill;
-            const rating = new Map(everyone.map(p => [p.id, calculateTrueRating(p).trueRating]));
-            const avg = (team, f) => team.reduce((s, p) => s + f(p), 0) / team.length;
-            const gaps = () => ({
-                r: Math.abs(avg(teamA, p => rating.get(p.id)) - avg(teamB, p => rating.get(p.id))),
-                a: Math.abs(avg(teamA, ageOf) - avg(teamB, ageOf))
-            });
-            const cost = g => g.r + AGE_WEIGHT * g.a;
-            const isGk = p => p.position === 'Kaleci';
-            const ratingLimit = Math.max(MAX_RATING_GAP, gaps().r);
+            const forms = everyone.map(p => getFormInfo(p.id).form);
+            const knownForms = forms.filter(v => v !== null);
+            const useForm = knownForms.length >= 2;
+            const formFill = useForm ? mean(knownForms) : 0;
 
-            for (let pass = 0; pass < 40; pass++) {
-                let best = null;
-                let bestCost = cost(gaps()) - 0.01;
-                for (let i = 0; i < teamA.length; i++) {
-                    if (lockedIds.has(teamA[i].id)) continue;
-                    for (let j = 0; j < teamB.length; j++) {
-                        if (lockedIds.has(teamB[j].id) || isGk(teamA[i]) !== isGk(teamB[j])) continue;
-                        [teamA[i], teamB[j]] = [teamB[j], teamA[i]];
-                        const g = gaps();
-                        const c = cost(g);
-                        [teamA[i], teamB[j]] = [teamB[j], teamA[i]];
-                        if (g.r <= ratingLimit && c < bestCost) { bestCost = c; best = [i, j]; }
-                    }
-                }
-                if (!best) break;
-                [teamA[best[0]], teamB[best[1]]] = [teamB[best[1]], teamA[best[0]]];
+            const useWins = everyone.some(p => (p.wins || 0) > 0);
+            const posList = [...new Set(everyone.map(p => p.position))];
+
+            const feat = new Map(everyone.map((p, i) => [p.id, {
+                r: calculateTrueRating(p).trueRating,
+                age: Number.isFinite(p.age) ? p.age : ageFill,
+                win: p.wins || 0,
+                form: forms[i] === null ? formFill : forms[i],
+                pos: posList.indexOf(p.position)
+            }]));
+
+            // Aynı girdilerle (oyuncular, puanlar, ağırlıklar) tekrar hesaplama
+            const sig = JSON.stringify([
+                [...lockedIds].sort(), BAL,
+                everyone.map(p => { const x = feat.get(p.id); return [p.id, x.r, x.age, x.win, x.form, x.pos]; }).sort((a, b) => a[0] < b[0] ? -1 : 1),
+                teamA.map(p => p.id).sort()
+            ]);
+            if (sig === optCache.sig) {
+                const byId = new Map(everyone.map(p => [p.id, p]));
+                teamA.length = 0; teamA.push(...optCache.A.map(id => byId.get(id)));
+                teamB.length = 0; teamB.push(...optCache.B.map(id => byId.get(id)));
+                return;
             }
+
+            const nPos = posList.length;
+            const cost = (A, B) => {
+                let ra = 0, rb = 0, aa = 0, ab = 0, wa = 0, wb = 0, fa = 0, fb = 0;
+                const ca = new Array(nPos).fill(0), cb = new Array(nPos).fill(0);
+                const sa = new Array(nPos).fill(0), sb = new Array(nPos).fill(0);
+                for (const p of A) { const x = feat.get(p.id); ra += x.r; aa += x.age; wa += x.win; fa += x.form; ca[x.pos]++; sa[x.pos] += x.r; }
+                for (const p of B) { const x = feat.get(p.id); rb += x.r; ab += x.age; wb += x.win; fb += x.form; cb[x.pos]++; sb[x.pos] += x.r; }
+                const nA = A.length, nB = B.length;
+                const rGap = Math.abs(ra / nA - rb / nB);
+                let c = BAL.rating * rGap;
+                if (rGap > BAL.ratingSoftCap) c += (rGap - BAL.ratingSoftCap) * 10;
+                if (useAge) c += BAL.age * Math.abs(aa / nA - ab / nB);
+                if (useWins) c += BAL.wins * Math.abs(wa / nA - wb / nB);
+                if (useForm) c += BAL.form * Math.abs(fa / nA - fb / nB);
+                let imb = 0, prSum = 0, prN = 0;
+                for (let i = 0; i < nPos; i++) {
+                    imb += Math.max(0, Math.abs(ca[i] - cb[i]) - ((ca[i] + cb[i]) % 2));
+                    if (ca[i] && cb[i]) { prSum += Math.abs(sa[i] / ca[i] - sb[i] / cb[i]); prN++; }
+                }
+                return c + BAL.posCount * imb + (prN ? BAL.posRating * prSum / prN : 0);
+            };
+
+            const fixedA = teamA.filter(p => lockedIds.has(p.id));
+            const fixedB = teamB.filter(p => lockedIds.has(p.id));
+            const movable = everyone.filter(p => !lockedIds.has(p.id));
+            const m = movable.length;
+            const N = everyone.length;
+            const sizesA = N % 2 === 0 ? [N / 2] : [(N - 1) / 2, (N + 1) / 2];
+
+            let bestA = [...teamA], bestB = [...teamB];
+            let bestCost = Math.abs(teamA.length - teamB.length) <= 1 ? cost(teamA, teamB) : Infinity;
+
+            if (m <= BRUTE_FORCE_MAX) {
+                // Tüm olası bölünmeleri dene, en düşük maliyetliyi seç
+                for (const sizeA of sizesA) {
+                    const k = sizeA - fixedA.length;
+                    if (k < 0 || k > m) continue;
+                    const pick = [];
+                    const walk = (start, left) => {
+                        if (left === 0) {
+                            const inA = new Set(pick);
+                            const A = [...fixedA, ...pick.map(i => movable[i])];
+                            const B = [...fixedB, ...movable.filter((_, i) => !inA.has(i))];
+                            const c = cost(A, B);
+                            if (c < bestCost - 1e-9) { bestCost = c; bestA = A; bestB = B; }
+                            return;
+                        }
+                        for (let i = start; i <= m - left; i++) { pick.push(i); walk(i + 1, left - 1); pick.pop(); }
+                    };
+                    walk(0, k);
+                }
+            } else {
+                // Çok kalabalık kadro: en iyi takas (tepe tırmanma)
+                let A = [...teamA], B = [...teamB];
+                if (Math.abs(A.length - B.length) > 1) return;
+                let cur = cost(A, B);
+                for (let pass = 0; pass < 60; pass++) {
+                    let best = null, bc = cur - 1e-9;
+                    for (let i = 0; i < A.length; i++) {
+                        if (lockedIds.has(A[i].id)) continue;
+                        for (let j = 0; j < B.length; j++) {
+                            if (lockedIds.has(B[j].id)) continue;
+                            [A[i], B[j]] = [B[j], A[i]];
+                            const c = cost(A, B);
+                            [A[i], B[j]] = [B[j], A[i]];
+                            if (c < bc) { bc = c; best = [i, j]; }
+                        }
+                    }
+                    if (!best) break;
+                    [A[best[0]], B[best[1]]] = [B[best[1]], A[best[0]]];
+                    cur = bc;
+                }
+                bestA = A; bestB = B;
+            }
+
+            teamA.length = 0; teamA.push(...bestA);
+            teamB.length = 0; teamB.push(...bestB);
+            optCache = { sig, A: bestA.map(p => p.id), B: bestB.map(p => p.id) };
         }
 
         function generateAITeams() {
@@ -2659,8 +2758,8 @@ function renderGeneratorControls() {
                 else teamB.push(p);
             });
 
-            // 3) Yaş dengesi: kaleciler sabit kalır, saha oyuncuları takas edilerek ortalama yaşlar yakınlaştırılır
-            balanceByAge(teamA, teamB, new Set(primaryGKs.map(p => p.id)));
+            // 3) Optimizasyon: kaleciler sabit kalır; rating, galibiyet, form, mevki ve yaş dengesi birlikte gözetilerek en iyi bölünme seçilir
+            optimizeTeams(teamA, teamB, new Set(primaryGKs.map(p => p.id)));
 
             currentTeamA = teamA;
             currentTeamB = teamB;
@@ -2751,10 +2850,42 @@ function renderGeneratorControls() {
 
             let verdict = `Ortalama rating farkı ${Math.abs(parseFloat(avgA) - parseFloat(avgB)).toFixed(1)} puan`;
             if (aA !== null && aB !== null) verdict += `, ortalama yaş farkı ${Math.abs(aA - aB).toFixed(1)} yıl`;
-            verdict += '. Takımlar rating oylaması ve maç puanı formuna göre kuruldu, ardından yaş dengesi gözetildi.';
+            verdict += '. Takımlar rating, galibiyet sayısı, form, mevki dağılımı ve yaş dengesi birlikte gözetilerek kuruldu (ayrıntı aşağıdaki tabloda).';
             const missingAge = [...currentTeamA, ...currentTeamB].filter(p => !Number.isFinite(p.age)).length;
             if (missingAge > 0) verdict += ` ${missingAge} oyuncunun yaşı girilmemiş; yaş dengesinde bilinen yaşların ortalaması kullanıldı.`;
             document.getElementById('ai-verdict-desc').textContent = verdict;
+            renderBalanceTable();
+        }
+
+        // Takımlar arasındaki dengeyi ölçüt ölçüt gösterir
+        function renderBalanceTable() {
+            const el = document.getElementById('balance-table');
+            if (!el) return;
+            const A = currentTeamA, B = currentTeamB;
+            if (!A.length || !B.length) { el.innerHTML = '<p class="text-[11px] text-slate-500 italic">Takımlar kurulunca görünür.</p>'; return; }
+            const avg = (team, f) => { const v = team.map(f).filter(n => n !== null && n !== undefined && !isNaN(n)); return v.length ? v.reduce((s, n) => s + n, 0) / v.length : null; };
+            const metrics = [
+                { label: 'Ort. rating', f: p => calculateTrueRating(p).trueRating, d: 1, ok: 1.5 },
+                { label: 'Ort. galibiyet', f: p => p.wins || 0, d: 1, ok: 0.8 },
+                { label: 'Ort. form (10 üzerinden)', f: p => { const x = getFormInfo(p.id).form; return x === null ? null : x / 10; }, d: 1, ok: 0.5 },
+                { label: 'Ort. yaş', f: p => Number.isFinite(p.age) ? p.age : null, d: 1, ok: 2 }
+            ];
+            const rows = metrics.map(mt => {
+                const a = avg(A, mt.f), b = avg(B, mt.f);
+                const diff = (a === null || b === null) ? null : Math.abs(a - b);
+                const cls = diff === null ? 'text-slate-500' : (diff <= mt.ok ? 'text-emerald-300' : 'text-amber-300');
+                return `<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${mt.label}</td><td class="py-1 px-2 text-center text-red-300 font-bold">${a === null ? '—' : a.toFixed(mt.d)}</td><td class="py-1 px-2 text-center text-blue-300 font-bold">${b === null ? '—' : b.toFixed(mt.d)}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff === null ? '—' : diff.toFixed(mt.d)}</td></tr>`;
+            });
+            const order = ['Kaleci', 'Defans', 'Orta Saha', 'Forvet'];
+            const found = [...new Set([...A, ...B].map(p => p.position))];
+            const positions = [...order.filter(x => found.includes(x)), ...found.filter(x => !order.includes(x))];
+            positions.forEach(pos => {
+                const a = A.filter(p => p.position === pos).length, b = B.filter(p => p.position === pos).length;
+                const diff = Math.abs(a - b);
+                const cls = diff <= ((a + b) % 2) ? 'text-emerald-300' : 'text-amber-300';
+                rows.push(`<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${esc(pos)} sayısı</td><td class="py-1 px-2 text-center text-red-300 font-bold">${a}</td><td class="py-1 px-2 text-center text-blue-300 font-bold">${b}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff}</td></tr>`);
+            });
+            el.innerHTML = `<table class="w-full text-[11px]"><thead><tr class="text-slate-500"><th class="text-left font-semibold pb-1">Ölçüt</th><th class="font-semibold pb-1 text-red-400">A</th><th class="font-semibold pb-1 text-blue-400">B</th><th class="font-semibold pb-1">Fark</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
         }
 
         // MAÇ PUANLAMA & MVP (FIRESTORE)
