@@ -1466,7 +1466,7 @@ function getVoteStats(player) {
                         </div>
                         <div>
                             <p class="text-xs font-bold text-white">${esc(p.name)}</p>
-                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''}${p.pin ? ' • Şifre: <span class="text-white font-bold">' + p.pin + '</span>' : ''} • Oylama: <span class="text-amber-400">${tr.voteCount ? tr.voteAvg : '—'}</span> | Form: <span class="text-blue-400">${tr.form ?? '—'}</span></p>
+                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)}${p.pin ? ' • Şifre: <span class="text-white font-bold">' + p.pin + '</span>' : ''} • Oylama: <span class="text-amber-400">${tr.voteCount ? tr.voteAvg : '—'}</span> | Form: <span class="text-blue-400">${tr.form ?? '—'}</span></p>
                             <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong>${tr.adjust ? ` <span class="${tr.adjust > 0 ? 'text-emerald-400' : 'text-red-400'}">(ayar ${tr.adjust > 0 ? '+' : ''}${tr.adjust})</span>` : ''}</p>
                             <div class="flex items-center gap-1 mt-1.5" onclick="event.stopPropagation()">
                                 <button onclick="adjustRating('${p.id}', -1)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-red-500/30 border border-slate-700 text-red-300 font-black text-sm leading-none" title="Ratingi 1 puan azalt">−</button>
@@ -1794,7 +1794,7 @@ function getVoteStats(player) {
                         <input type="checkbox" ${p.selected ? 'checked' : ''} onchange="togglePlayerSelection('${p.id}', this.checked)" class="accent-emerald-500 w-4 h-4 shrink-0">
                         <div class="min-w-0">
                             <p class="text-xs font-bold text-white truncate">${esc(p.name)}${lastIds.has(p.id) ? ' <span class="text-[9px] font-semibold text-slate-400 bg-slate-800 rounded px-1 py-0.5 align-middle">son maç</span>' : ''}</p>
-                            <p class="text-[10px] text-slate-400">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''}${p.pin ? ' • Şifre: <span class="text-white font-bold">' + p.pin + '</span>' : ''}</p>
+                            <p class="text-[10px] text-slate-400">${esc(p.position)}${p.pin ? ' • Şifre: <span class="text-white font-bold">' + p.pin + '</span>' : ''}</p>
                         </div>
                     </div>
                     <span class="text-xs font-black ${p.selected ? 'text-emerald-300' : 'text-slate-500'}">${calculateTrueRating(p).trueRating}</span>
@@ -2874,27 +2874,55 @@ function renderGeneratorControls() {
 
             pitchA.innerHTML = '';
             pitchB.innerHTML = '';
+            
+            const createFutCard = (p, tr, team) => {
+                const isRed = team === 'red';
+                const fromColor = isRed ? 'from-red-400 via-red-600 to-red-900' : 'from-blue-400 via-blue-600 to-blue-900';
+                const overlayColor = isRed ? 'from-red-900/60' : 'from-blue-900/60';
+                const textColor = isRed ? 'text-red-200' : 'text-blue-200';
+                const borderColor = isRed ? 'border-red-400 text-red-300' : 'border-blue-400 text-blue-300';
+                const divColor = isRed ? 'bg-red-400/50' : 'bg-blue-400/50';
+                
+                return `
+                <div class="relative mx-auto w-[66px] sm:w-[76px] aspect-[2/2.9] bg-gradient-to-br ${fromColor} p-[2px] shadow-lg transition-transform hover:scale-110 cursor-pointer" style="clip-path: polygon(15% 0, 85% 0, 100% 12%, 100% 85%, 50% 100%, 0 85%, 0 12%);">
+                    <div class="w-full h-full bg-slate-900 flex flex-col items-center relative overflow-hidden" style="clip-path: polygon(15% 0, 85% 0, 100% 12%, 100% 85%, 50% 100%, 0 85%, 0 12%);">
+                        <!-- Inner Glow -->
+                        <div class="absolute inset-0 bg-gradient-to-b ${overlayColor} to-slate-900/90 z-0"></div>
+                        
+                        <!-- Rating & Position -->
+                        <div class="absolute top-1 left-1.5 flex flex-col items-center z-10 text-left">
+                            <span class="text-[13px] sm:text-[15px] font-black text-white leading-none drop-shadow-md">${tr}</span>
+                            <span class="text-[6px] sm:text-[7px] font-extrabold ${textColor} leading-none mt-0.5">${esc(p.position).substring(0,3).toUpperCase()}</span>
+                        </div>
+                        
+                        <!-- Avatar -->
+                        <div class="mt-3 sm:mt-3.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 border ${borderColor} flex items-center justify-center text-[10px] sm:text-xs font-black shadow-inner z-10">
+                            ${esc(p.name.charAt(0))}
+                        </div>
+                        
+                        <!-- Divider & Name -->
+                        <div class="absolute bottom-1.5 w-[85%] flex flex-col items-center z-10">
+                            <div class="w-full h-[1px] ${divColor} mb-0.5"></div>
+                            <span class="text-[7px] sm:text-[8px] font-extrabold text-white truncate w-full text-center uppercase tracking-tight">${esc(p.name)}</span>
+                        </div>
+                    </div>
+                </div>`;
+            };
 
             currentTeamA.forEach(p => {
                 const tr = calculateTrueRating(p).trueRating;
-                const card = document.createElement('div');
-                card.className = 'bg-slate-900/90 border border-red-500/40 p-1.5 rounded-xl text-center shadow';
-                card.innerHTML = `
-                    <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
-                    <p class="text-[10px] text-red-300 font-extrabold">${esc(p.position)} • ${tr}${Number.isFinite(p.age) ? ' • ' + p.age + 'y' : ''}</p>
-                `;
-                pitchA.appendChild(card);
+                const cardWrapper = document.createElement('div');
+                cardWrapper.innerHTML = createFutCard(p, tr, 'red');
+                cardWrapper.firstElementChild.onclick = () => openPlayerDetail(p.id); // Tıklayınca detayı aç
+                pitchA.appendChild(cardWrapper.firstElementChild);
             });
 
             currentTeamB.forEach(p => {
                 const tr = calculateTrueRating(p).trueRating;
-                const card = document.createElement('div');
-                card.className = 'bg-slate-900/90 border border-blue-500/40 p-1.5 rounded-xl text-center shadow';
-                card.innerHTML = `
-                    <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
-                    <p class="text-[10px] text-blue-300 font-extrabold">${esc(p.position)} • ${tr}${Number.isFinite(p.age) ? ' • ' + p.age + 'y' : ''}</p>
-                `;
-                pitchB.appendChild(card);
+                const cardWrapper = document.createElement('div');
+                cardWrapper.innerHTML = createFutCard(p, tr, 'blue');
+                cardWrapper.firstElementChild.onclick = () => openPlayerDetail(p.id); // Tıklayınca detayı aç
+                pitchB.appendChild(cardWrapper.firstElementChild);
             });
 
             document.getElementById('list-team-a-names').innerHTML = currentTeamA.map(p => `<li class="flex justify-between"><span>${esc(p.name)}</span><span class="font-bold text-red-400">${calculateTrueRating(p).trueRating}</span></li>`).join('');
