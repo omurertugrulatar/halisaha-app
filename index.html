@@ -641,15 +641,15 @@
                 <div class="lg:col-span-2 glass-panel p-4 sm:p-6 rounded-2xl flex flex-col justify-between">
                     <div class="flex justify-between items-center mb-4">
                         <div class="flex items-center space-x-2">
-                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
-                            <h3 class="font-bold text-sm text-red-400">A TAKIMI</h3>
+                            <span class="w-3 h-3 rounded-full bg-slate-200 shadow-[0_0_5px_rgba(255,255,255,0.5)]"></span>
+                            <h3 class="font-bold text-sm text-slate-200">BEYAZ TAKIM</h3>
                         </div>
                         <div class="text-center">
                             <span id="pitch-match-balance" class="text-xs font-bold bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30">Denge Hesaplaması</span>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <h3 class="font-bold text-sm text-blue-400">B TAKIMI</h3>
-                            <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                            <h3 class="font-bold text-sm text-red-400">KIRMIZI TAKIM</h3>
+                            <span class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_5px_rgba(248,113,113,0.5)]"></span>
                         </div>
                     </div>
 
@@ -685,22 +685,22 @@
                         <div class="space-y-3">
                             <div>
                                 <div class="flex justify-between text-xs mb-1">
-                                    <span class="text-red-400 font-semibold">Takım A Ortalama Rating</span>
+                                    <span class="text-slate-300 font-semibold">Beyaz Takım Ortalama Rating</span>
                                     <span id="team-a-avg-score" class="font-bold text-white">0</span>
                                 </div>
                                 <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                                    <div id="team-a-score-bar" class="bg-red-500 h-full" style="width: 50%;"></div>
+                                    <div id="team-a-score-bar" class="bg-slate-300 h-full" style="width: 50%;"></div>
                                 </div>
                                 
                             </div>
 
                             <div>
                                 <div class="flex justify-between text-xs mb-1">
-                                    <span class="text-blue-400 font-semibold">Takım B Ortalama Rating</span>
+                                    <span class="text-red-400 font-semibold">Kırmızı Takım Ortalama Rating</span>
                                     <span id="team-b-avg-score" class="font-bold text-white">0</span>
                                 </div>
                                 <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                                    <div id="team-b-score-bar" class="bg-blue-500 h-full" style="width: 50%;"></div>
+                                    <div id="team-b-score-bar" class="bg-red-500 h-full" style="width: 50%;"></div>
                                 </div>
                                 
                             </div>
@@ -723,11 +723,11 @@
                         <h3 class="font-bold text-white text-xs mb-3">Takım Listeleri</h3>
                         <div class="grid grid-cols-2 gap-3 text-xs">
                             <div>
-                                <h4 class="font-bold text-red-400 mb-2 border-b border-red-500/20 pb-1">Takım A</h4>
+                                <h4 class="font-bold text-slate-200 mb-2 border-b border-slate-500/20 pb-1">Beyaz Takım</h4>
                                 <ul id="list-team-a-names" class="space-y-1 text-slate-300 text-[11px]"></ul>
                             </div>
                             <div>
-                                <h4 class="font-bold text-blue-400 mb-2 border-b border-blue-500/20 pb-1">Takım B</h4>
+                                <h4 class="font-bold text-red-400 mb-2 border-b border-red-500/20 pb-1">Kırmızı Takım</h4>
                                 <ul id="list-team-b-names" class="space-y-1 text-slate-300 text-[11px]"></ul>
                             </div>
                         </div>
@@ -755,15 +755,15 @@
                     <div class="text-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">MAÇ SKORU</div>
                     <div class="flex items-center justify-center space-x-6">
                         <div class="text-center">
-                            <span class="block text-xs font-bold text-red-400 mb-2">Takım A</span>
-                            <input type="number" id="admin-score-a" value="0" min="0" class="w-16 sm:w-20 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            <span class="block text-xs font-bold text-slate-300 mb-2">Beyaz Takım</span>
+                            <input type="number" id="admin-score-a" value="0" min="0" class="w-16 sm:w-20 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-slate-300 focus:outline-none">
                         </div>
 
                         <span class="text-2xl font-black text-slate-600">-</span>
 
                         <div class="text-center">
-                            <span class="block text-xs font-bold text-blue-400 mb-2">Takım B</span>
-                            <input type="number" id="admin-score-b" value="0" min="0" class="w-16 sm:w-20 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <span class="block text-xs font-bold text-red-400 mb-2">Kırmızı Takım</span>
+                            <input type="number" id="admin-score-b" value="0" min="0" class="w-16 sm:w-20 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
                         </div>
                     </div>
                 </div>
@@ -1711,9 +1711,9 @@ function getVoteStats(player) {
                         <div class="min-w-0">
                             <span class="text-[10px] text-slate-400 block mb-1">${esc(m.date)}</span>
                             <div class="flex items-center space-x-2 font-bold">
-                                <span class="text-red-400">Takım A</span>
+                                <span class="text-slate-300">Beyaz Takım</span>
                                 <span class="bg-slate-800 px-2.5 py-0.5 rounded text-white font-black">${m.teamAScore} - ${m.teamBScore}</span>
-                                <span class="text-blue-400">Takım B</span>
+                                <span class="text-red-400">Kırmızı Takım</span>
                             </div>
                             ${scorers ? `<span class="text-[10px] text-slate-500 block mt-1 truncate">⚽ ${scorers}</span>` : ''}
                         </div>
@@ -2119,7 +2119,7 @@ function renderRatingSubmissions() {
             const prev = sel.value || subMatchSel;
             sel.innerHTML = list.map(m => {
                 const got = matchRatings.filter(r => r.matchId === m.id).length;
-                return `<option value="${m.id}">${esc(m.date)} • A ${m.teamAScore} - ${m.teamBScore} B • ${got}/${getMatchParticipantIds(m).length} puan${m.finalized === false ? ' • AÇIK' : ''}</option>`;
+                return `<option value="${m.id}">${esc(m.date)} • BEYAZ ${m.teamAScore} - ${m.teamBScore} KIRMIZI • ${got}/${getMatchParticipantIds(m).length} puan${m.finalized === false ? ' • AÇIK' : ''}</option>`;
             }).join('');
 
             const summary = document.getElementById('sub-match-summary');
@@ -2153,8 +2153,8 @@ function renderRatingSubmissions() {
             }
             summary.textContent = `${byVoter.size}/${parts.length} oyuncu puan verdi` + (m.finalized === false ? ' • puanlama açık (MVP geçici)' : ' • puanlama kapandı');
 
-            const dot = t => `<span class="inline-block w-2 h-2 rounded-full ${t === 'A' ? 'bg-red-500' : 'bg-blue-500'} mr-1.5"></span>`;
-            const head = parts.map(x => `<th class="px-1.5 py-2 text-[10px] font-bold text-center ${x.id === mvpId ? 'text-amber-300' : 'text-slate-300'}" title="${esc(x.p.name)}"><div class="max-w-[64px] truncate mx-auto">${x.id === mvpId ? '<i class="fa-solid fa-crown mr-0.5"></i>' : ''}${esc(x.p.name)}</div><div class="${x.team === 'A' ? 'text-red-400' : 'text-blue-400'} text-[9px]">${x.team}</div></th>`).join('');
+            const dot = t => `<span class="inline-block w-2 h-2 rounded-full ${t === 'A' ? 'bg-slate-300' : 'bg-red-500'} mr-1.5"></span>`;
+            const head = parts.map(x => `<th class="px-1.5 py-2 text-[10px] font-bold text-center ${x.id === mvpId ? 'text-amber-300' : 'text-slate-300'}" title="${esc(x.p.name)}"><div class="max-w-[64px] truncate mx-auto">${x.id === mvpId ? '<i class="fa-solid fa-crown mr-0.5"></i>' : ''}${esc(x.p.name)}</div><div class="${x.team === 'A' ? 'text-slate-400' : 'text-red-400'} text-[9px]">${x.team === 'A' ? 'BEYAZ' : 'KIRMIZI'}</div></th>`).join('');
             const rows = parts.map(v => {
                 const sc = byVoter.get(v.id);
                 return `<tr class="border-t border-slate-800 ${sc ? '' : 'opacity-60'}">
@@ -2264,9 +2264,9 @@ function renderRatingSubmissions() {
                     <p class="text-[10px] tracking-[0.35em] text-emerald-400 font-black">MAÇ KARNESİ</p>
                     <p class="text-xs text-slate-400 mt-1">${esc(m.date)}</p>
                     <div class="flex items-center justify-center gap-4 mt-3">
-                        <span class="text-red-400 font-black text-sm">TAKIM A</span>
+                        <span class="text-slate-300 font-black text-sm">BEYAZ TAKIM</span>
                         <span class="text-4xl font-black text-white tracking-tight">${sA} <span class="text-slate-600">-</span> ${sB}</span>
-                        <span class="text-blue-400 font-black text-sm">TAKIM B</span>
+                        <span class="text-red-400 font-black text-sm">KIRMIZI TAKIM</span>
                     </div>
                     ${provisional ? '<p class="mt-3 inline-block text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/40 rounded-full px-3 py-1">Puanlama sürüyor • geçici ortalamalar</p>' : ''}
                 </div>
@@ -2279,8 +2279,8 @@ function renderRatingSubmissions() {
                     </div>
                 </div>` : ''}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 px-3 sm:px-4 pb-4">
-                    ${panel('TAKIM A', 'text-red-400', 'border-red-500/30', A, sA > sB)}
-                    ${panel('TAKIM B', 'text-blue-400', 'border-blue-500/30', B, sB > sA)}
+                    ${panel('BEYAZ TAKIM', 'text-slate-300', 'border-slate-500/30', A, sA > sB)}
+                    ${panel('KIRMIZI TAKIM', 'text-red-400', 'border-red-500/30', B, sB > sA)}
                 </div>
                 <p class="px-5 pb-4 text-center text-[10px] text-slate-500">Puanlar, maçta oynayan oyuncuların birbirine verdiği 1-10 arası puanların ortalamasıdır.</p>
             </div>`;
@@ -2293,7 +2293,7 @@ function renderRatingSubmissions() {
             const card = document.getElementById('report-card');
             const list = matches.filter(m => getMatchParticipantIds(m).length > 0);
             const prev = sel.value || reportSel;
-            sel.innerHTML = list.map(m => `<option value="${m.id}">${esc(m.date)} • A ${m.teamAScore} - ${m.teamBScore} B${m.finalized === false ? ' • puanlama açık (geçici)' : ''}</option>`).join('');
+            sel.innerHTML = list.map(m => `<option value="${m.id}">${esc(m.date)} • BEYAZ ${m.teamAScore} - ${m.teamBScore} KIRMIZI${m.finalized === false ? ' • puanlama açık (geçici)' : ''}</option>`).join('');
             if (!list.length) {
                 card.innerHTML = '<p class="text-sm text-slate-400 italic text-center py-10">Kadro bilgisi olan bir maç kaydı yok. Maç kaydedildiğinde karnesi burada görünür.</p>';
                 return;
@@ -2458,7 +2458,7 @@ function renderRatingSubmissions() {
 
             const ids = getMatchParticipantIds(m);
             const hasRoster = ids.length > 0;
-            const label = `${m.date} • A ${m.teamAScore} - ${m.teamBScore} B`;
+            const label = `${m.date} • BEYAZ ${m.teamAScore} - ${m.teamBScore} KIRMIZI`;
             const msg = hasRoster
                 ? `${label} maçı silinsin mi?\n\nOyuncuların bu maçtan gelen maç, gol, galibiyet/beraberlik/mağlubiyet ve MVP kayıtları geri alınacak; maç puanları da silinecek. Bu işlem geri alınamaz.`
                 : `${label} maçı silinsin mi?\n\nBu eski maçın kadro bilgisi kayıtlı olmadığı için oyuncu istatistikleri (maç, gol, G/B/M) geri ALINAMAZ; yalnızca maç kaydı ve puanları silinir. Bu işlem geri alınamaz.`;
@@ -2854,57 +2854,82 @@ function renderGeneratorControls() {
             pitchB.innerHTML = '';
             
             const createFutCard = (p, tr, team) => {
+                const eff = getEffectiveAttributes(p).values;
+                
+                const isWhite = team === 'white';
                 const isRed = team === 'red';
-                const fromColor = isRed ? 'from-red-400 via-red-600 to-red-900' : 'from-blue-400 via-blue-600 to-blue-900';
-                const overlayColor = isRed ? 'from-red-900/60' : 'from-blue-900/60';
-                const textColor = isRed ? 'text-red-200' : 'text-blue-200';
-                const borderColor = isRed ? 'border-red-400 text-red-300' : 'border-blue-400 text-blue-300';
-                const divColor = isRed ? 'bg-red-400/50' : 'bg-blue-400/50';
+                const baseColors = isWhite 
+                    ? 'from-slate-200 via-slate-400 to-slate-800 border-slate-300' 
+                    : 'from-red-600 via-red-800 to-slate-900 border-red-500';
+                
+                const attrText = isWhite ? 'text-slate-400' : 'text-red-200';
+                const valText = 'text-white';
+                
+                const posStr = esc(p.position).substring(0,3).toUpperCase();
                 
                 return `
-                <div class="relative mx-auto w-[66px] sm:w-[76px] aspect-[2/2.9] bg-gradient-to-br ${fromColor} p-[2px] shadow-lg transition-transform hover:scale-110 cursor-pointer" style="clip-path: polygon(15% 0, 85% 0, 100% 12%, 100% 85%, 50% 100%, 0 85%, 0 12%);">
-                    <div class="w-full h-full bg-slate-900 flex flex-col items-center relative overflow-hidden" style="clip-path: polygon(15% 0, 85% 0, 100% 12%, 100% 85%, 50% 100%, 0 85%, 0 12%);">
-                        <!-- Inner Glow -->
-                        <div class="absolute inset-0 bg-gradient-to-b ${overlayColor} to-slate-900/90 z-0"></div>
+                <div class="relative mx-auto w-[85px] sm:w-[100px] aspect-[2/3.1] bg-gradient-to-br ${baseColors} rounded-t-xl rounded-b-[2rem] p-[2px] shadow-xl transition-transform hover:scale-110 cursor-pointer border-b-4 border-t-2" onclick="openPlayerDetail('${p.id}')">
+                    <div class="w-full h-full bg-slate-900 rounded-t-xl rounded-b-[1.9rem] flex flex-col relative overflow-hidden bg-cover bg-center" style="background-image: radial-gradient(circle at top, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.6) 80%);">
                         
-                        <!-- Rating & Position -->
-                        <div class="absolute top-1 left-1.5 flex flex-col items-center z-10 text-left">
-                            <span class="text-[13px] sm:text-[15px] font-black text-white leading-none drop-shadow-md">${tr}</span>
-                            <span class="text-[6px] sm:text-[7px] font-extrabold ${textColor} leading-none mt-0.5">${esc(p.position).substring(0,3).toUpperCase()}</span>
+                        <!-- Top Half: Rating, Pos, Avatar -->
+                        <div class="flex-1 flex pt-1 px-1">
+                            <div class="flex flex-col items-center justify-start w-1/3">
+                                <span class="text-[16px] sm:text-[20px] font-black text-white leading-none drop-shadow-md">${tr}</span>
+                                <span class="text-[8px] sm:text-[10px] font-extrabold ${attrText} leading-none mt-0.5">${posStr}</span>
+                            </div>
+                            <div class="w-2/3 flex items-start justify-center pt-1">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-800 border-2 ${isWhite ? 'border-slate-300' : 'border-red-400'} flex items-center justify-center text-sm sm:text-lg font-black text-emerald-400 shadow-inner overflow-hidden">
+                                    ${esc(p.name.charAt(0))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="w-[90%] mx-auto h-[1px] ${isWhite ? 'bg-slate-400/50' : 'bg-red-500/50'}"></div>
+                        
+                        <!-- Name -->
+                        <div class="text-center pt-0.5 pb-0.5">
+                            <span class="text-[9px] sm:text-[11px] font-extrabold text-white truncate w-[95%] inline-block uppercase tracking-tight">${esc(p.name)}</span>
                         </div>
                         
-                        <!-- Avatar -->
-                        <div class="mt-3 sm:mt-3.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 border ${borderColor} flex items-center justify-center text-[10px] sm:text-xs font-black shadow-inner z-10">
-                            ${esc(p.name.charAt(0))}
+                        <!-- Divider -->
+                        <div class="w-[90%] mx-auto h-[1px] ${isWhite ? 'bg-slate-400/50' : 'bg-red-500/50'}"></div>
+
+                        <!-- Attributes Bottom Half -->
+                        <div class="flex justify-between px-1.5 py-1 text-[7px] sm:text-[8px] font-bold">
+                            <div class="flex flex-col gap-[1px]">
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.pace ?? 70}</span><span class="${attrText}">HIZ</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.shooting ?? 70}</span><span class="${attrText}">ŞUT</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.passing ?? 70}</span><span class="${attrText}">PAS</span></div>
+                            </div>
+                            <div class="w-[1px] ${isWhite ? 'bg-slate-400/30' : 'bg-red-500/30'}"></div>
+                            <div class="flex flex-col gap-[1px]">
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.dribbling ?? 70}</span><span class="${attrText}">DRI</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.defending ?? 70}</span><span class="${attrText}">DEF</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.physical ?? 70}</span><span class="${attrText}">FİZ</span></div>
+                            </div>
                         </div>
                         
-                        <!-- Divider & Name -->
-                        <div class="absolute bottom-1.5 w-[85%] flex flex-col items-center z-10">
-                            <div class="w-full h-[1px] ${divColor} mb-0.5"></div>
-                            <span class="text-[7px] sm:text-[8px] font-extrabold text-white truncate w-full text-center uppercase tracking-tight">${esc(p.name)}</span>
-                        </div>
                     </div>
                 </div>`;
             };
 
             currentTeamA.forEach(p => {
-                const tr = calculateTrueRating(p).voteAvg;
+                const tr = calculateTrueRating(p).trueRating;
                 const cardWrapper = document.createElement('div');
-                cardWrapper.innerHTML = createFutCard(p, tr, 'red');
-                cardWrapper.firstElementChild.onclick = () => openPlayerDetail(p.id); // Tıklayınca detayı aç
+                cardWrapper.innerHTML = createFutCard(p, tr, 'white');
                 pitchA.appendChild(cardWrapper.firstElementChild);
             });
 
             currentTeamB.forEach(p => {
-                const tr = calculateTrueRating(p).voteAvg;
+                const tr = calculateTrueRating(p).trueRating;
                 const cardWrapper = document.createElement('div');
-                cardWrapper.innerHTML = createFutCard(p, tr, 'blue');
-                cardWrapper.firstElementChild.onclick = () => openPlayerDetail(p.id); // Tıklayınca detayı aç
+                cardWrapper.innerHTML = createFutCard(p, tr, 'red');
                 pitchB.appendChild(cardWrapper.firstElementChild);
             });
 
-            document.getElementById('list-team-a-names').innerHTML = currentTeamA.map(p => `<li class="flex justify-between"><span>${esc(p.name)}</span><span class="font-bold text-red-400">${calculateTrueRating(p).trueRating}</span></li>`).join('');
-            document.getElementById('list-team-b-names').innerHTML = currentTeamB.map(p => `<li class="flex justify-between"><span>${esc(p.name)}</span><span class="font-bold text-blue-400">${calculateTrueRating(p).trueRating}</span></li>`).join('');
+            document.getElementById('list-team-a-names').innerHTML = currentTeamA.map(p => `<li class="flex justify-between"><span>${esc(p.name)}</span><span class="font-bold text-slate-300">${calculateTrueRating(p).trueRating}</span></li>`).join('');
+            document.getElementById('list-team-b-names').innerHTML = currentTeamB.map(p => `<li class="flex justify-between"><span>${esc(p.name)}</span><span class="font-bold text-red-400">${calculateTrueRating(p).trueRating}</span></li>`).join('');
         }
 
         function renderAIAnalysis() {
@@ -2948,7 +2973,7 @@ function renderGeneratorControls() {
                 const a = avg(A, mt.f), b = avg(B, mt.f);
                 const diff = (a === null || b === null) ? null : Math.abs(a - b);
                 const cls = diff === null ? 'text-slate-500' : (diff <= mt.ok ? 'text-emerald-300' : 'text-amber-300');
-                return `<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${mt.label}</td><td class="py-1 px-2 text-center text-red-300 font-bold">${a === null ? '—' : a.toFixed(mt.d)}</td><td class="py-1 px-2 text-center text-blue-300 font-bold">${b === null ? '—' : b.toFixed(mt.d)}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff === null ? '—' : diff.toFixed(mt.d)}</td></tr>`;
+                return `<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${mt.label}</td><td class="py-1 px-2 text-center text-slate-300 font-bold">${a === null ? '—' : a.toFixed(mt.d)}</td><td class="py-1 px-2 text-center text-red-400 font-bold">${b === null ? '—' : b.toFixed(mt.d)}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff === null ? '—' : diff.toFixed(mt.d)}</td></tr>`;
             });
             const order = ['Kaleci', 'Defans', 'Orta Saha', 'Forvet'];
             const found = [...new Set([...A, ...B].map(p => p.position))];
@@ -2957,9 +2982,9 @@ function renderGeneratorControls() {
                 const a = A.filter(p => p.position === pos).length, b = B.filter(p => p.position === pos).length;
                 const diff = Math.abs(a - b);
                 const cls = diff <= ((a + b) % 2) ? 'text-emerald-300' : 'text-amber-300';
-                rows.push(`<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${esc(pos)} sayısı</td><td class="py-1 px-2 text-center text-red-300 font-bold">${a}</td><td class="py-1 px-2 text-center text-blue-300 font-bold">${b}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff}</td></tr>`);
+                rows.push(`<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${esc(pos)} sayısı</td><td class="py-1 px-2 text-center text-slate-300 font-bold">${a}</td><td class="py-1 px-2 text-center text-red-400 font-bold">${b}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff}</td></tr>`);
             });
-            el.innerHTML = `<table class="w-full text-[11px]"><thead><tr class="text-slate-500"><th class="text-left font-semibold pb-1">Ölçüt</th><th class="font-semibold pb-1 text-red-400">A</th><th class="font-semibold pb-1 text-blue-400">B</th><th class="font-semibold pb-1">Fark</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+            el.innerHTML = `<table class="w-full text-[11px]"><thead><tr class="text-slate-500"><th class="text-left font-semibold pb-1">Ölçüt</th><th class="font-semibold pb-1 text-slate-300">Beyaz</th><th class="font-semibold pb-1 text-red-400">Kırmızı</th><th class="font-semibold pb-1">Fark</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
         }
 
         // MAÇ PUANLAMA & MVP (FIRESTORE)
@@ -3087,7 +3112,7 @@ function renderGeneratorControls() {
                     `).join('')}
                 </div>`;
 
-            container.innerHTML = section('Takım A', 'text-red-400', currentTeamA) + section('Takım B', 'text-blue-400', currentTeamB);
+            container.innerHTML = section('Beyaz Takım', 'text-slate-300', currentTeamA) + section('Kırmızı Takım', 'text-red-400', currentTeamB);
         }
 
         let savingMatch = false;
