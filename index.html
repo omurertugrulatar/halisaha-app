@@ -1217,7 +1217,6 @@ function getVoteStats(player) {
         // SEZON hakkında yorumlar (koşul sağlanırsa metin döner, yoksa null)
         const COMM_SEASON = {
             hoca: [
-                 bacak yaşlanır, futbol zekâsı yaşlanmaz.`,
                 x => x.m && x.m.finalized === true && x.mvpName && `Maçın MVP'si arkadaşlarının puanıyla belli oldu: ${hl(x.mvpName)}. Bakın kardeşim, en doğru hakem sahada birlikte koşanların vicdanıdır.`,
                 x => x.topScorer && `Sezonun gol makinesi ${hl(x.topScorer.name)}: ${x.topScorer.goals} gol! Ceza sahasında yer açmayı, yer bulmayı ve gerektiğinde yere yatmayı biliyor kardeşim.`,
                 x => x.n > 0 && `Maç başına ortalama ${x.avg} gol... Bakın, bu halı saha değil, savunma felsefesinin cenaze töreni!`,
@@ -1241,14 +1240,12 @@ function getVoteStats(player) {
                 x => x.highRated && x.lowRated && x.highRated.p.id !== x.lowRated.p.id && `Rating oylamasında en yüksek ortalama ${hl(x.highRated.p.name)} (${x.highRated.tr.voteAvg}), en düşük ${hl(x.lowRated.p.name)} (${x.lowRated.tr.voteAvg}). Aradaki ${x.highRated.tr.voteAvg - x.lowRated.tr.voteAvg} puan, takım seçerken kavga çıkma riskini istatistiksel olarak anlamlı kılıyor.`
             ],
             spiker: [
-                 kaleciler tedirgin!`,
                 x => x.m && x.m.finalized === false && `Hocam maç bitti ama iş bitmedi: puanlama sürüyor! Herkes birbirine not versin, MVP kim olacak merakla bekliyorum!`,
                 x => x.topScorer && `${hl(x.topScorer.name)}! ${x.topScorer.goals} gol hocam, yakarım bu ligi! Kaleciler onu görünce sigorta şirketini arıyor!`,
                 x => x.unbeaten && `${hl(x.unbeaten.name)} hiç yenilmedi hocam! Bu adam yenilgiyi sözlükte arasa bulamaz!`,
                 x => x.winless && `${hl(x.winless.name)} ${x.winless.matches} maçtır galibiyet bekliyor hocam, bu hafta Allah'ın izniyle bozarız bu laneti!`
             ],
             sakin: [
-                 koşmak yerine doğru yerde durmak.`,
                 x => x.formStar && `${hl(x.formStar.p.name)} son maçlarda arkadaşlarından ortalama ${(x.formStar.tr.form / 10).toFixed(1)} puan almış; kardeşim bu çocuk sessiz sessiz işini yapıyor, helal olsun.`,
                 x => x.n > 0 && `Sezonda ${x.n} maç oynadık, ${x.goals} gol attık. Kardeşim, topun yuvarlak olduğunu bir kez daha gördük; gerisi detay.`,
                 x => x.mostLoser && `${hl(x.mostLoser.name)} ${x.mostLoser.losses} kez kaybetti ama sahada kalmaya devam ediyor. Bu adam karakter sahibi kardeşim.`
