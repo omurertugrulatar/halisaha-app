@@ -396,9 +396,13 @@ function checkVoterEvalStatus() {
                         statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
                         statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Şifre doğru, oy kullanabilirsiniz.';
                         btn.disabled = false;
-                    } else if (pinInput.length > 0) {
+                    } else if (pinInput.length === 6) {
                         statusEl.className = 'text-xs font-semibold min-h-[1rem] text-red-400';
                         statusEl.innerHTML = '<i class="fa-solid fa-xmark mr-1"></i>Şifre hatalı.';
+                        btn.disabled = true;
+                    } else if (pinInput.length > 0) {
+                        statusEl.className = 'text-xs font-semibold min-h-[1rem] text-amber-400';
+                        statusEl.innerHTML = 'Şifre giriliyor... (' + pinInput.length + '/6)';
                         btn.disabled = true;
                     } else {
                          statusEl.className = 'text-xs font-semibold min-h-[1rem] text-amber-400';
