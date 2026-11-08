@@ -165,7 +165,11 @@
                         <option value="">-- Oyuncu Seçiniz --</option>
                     </select>
 
-                    <p id="eval-voter-status" class="text-xs font-semibold min-h-[1rem]"></p>
+                    <div id="eval-pin-container" class="hidden mt-3">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">6 Haneli Şifreniz:</label>
+                        <input type="password" id="eval-voter-pin" maxlength="6" pattern="\d{6}" placeholder="******" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" oninput="checkVoterEvalStatus()">
+                    </div>
+                    <p id="eval-voter-status" class="text-xs font-semibold min-h-[1rem] mt-2"></p>
 
                     <div class="pt-4 flex justify-end">
                         <button id="eval-step2-btn" onclick="goToEvalStep(2)" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
@@ -222,6 +226,10 @@
                         <select id="mvp-voter-select" onchange="onMatchVoterChange()" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:ring-2 focus:ring-amber-400 focus:outline-none">
                             <option value="">-- Adınızı Seçin --</option>
                         </select>
+                        <div id="mvp-pin-container" class="hidden mt-3">
+                            <label class="block text-xs font-medium text-slate-400 mb-1">6 Haneli Şifreniz:</label>
+                            <input type="password" id="mvp-voter-pin" maxlength="6" pattern="\d{6}" placeholder="******" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:ring-2 focus:ring-amber-400 focus:outline-none" oninput="renderMVPVoteTab()">
+                        </div>
                         <p id="mr-voter-status" class="text-xs font-semibold min-h-[1rem]"></p>
                     </div>
 
@@ -370,17 +378,40 @@ function checkVoterEvalStatus() {
             }
 
             if (!voterId) {
+                document.getElementById('eval-pin-container').classList.add('hidden');
                 statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
                 statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Rating oylaması açık. Adınızı seçip oy kullanın.';
-                btn.disabled = false;
+                btn.disabled = true;
                 return;
             }
 
             const status = getVoterEvalStatus(voterId);
             if (status.canVote) {
-                statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
-                statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Bu turda oy kullanabilirsiniz.';
-                btn.disabled = false;
+                document.getElementById('eval-pin-container').classList.remove('hidden');
+                const pinInput = document.getElementById('eval-voter-pin').value;
+                const player = players.find(p => p.id === voterId);
+                
+                if(player && player.pin) {
+                    if (pinInput === player.pin) {
+                        statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                        statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Şifre doğru, oy kullanabilirsiniz.';
+                        btn.disabled = false;
+                    } else if (pinInput.length > 0) {
+                        statusEl.className = 'text-xs font-semibold min-h-[1rem] text-red-400';
+                        statusEl.innerHTML = '<i class="fa-solid fa-xmark mr-1"></i>Şifre hatalı.';
+                        btn.disabled = true;
+                    } else {
+                         statusEl.className = 'text-xs font-semibold min-h-[1rem] text-amber-400';
+                         statusEl.innerHTML = 'Lütfen şifrenizi girin.';
+                         btn.disabled = true;
+                    }
+                } else {
+                     // No pin set for player (legacy support)
+                     document.getElementById('eval-pin-container').classList.add('hidden');
+                     statusEl.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
+                     statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Bu turda oy kullanabilirsiniz.';
+                     btn.disabled = false;
+                }
             } else {
                 statusEl.className = 'text-xs font-semibold min-h-[1rem] text-red-400';
                 statusEl.innerHTML = '<i class="fa-solid fa-lock mr-1"></i>Bu turda zaten oy kullandınız. Gönderilen oylar güncellenemez; yeni tur açılınca tekrar oy verebilirsiniz.';
@@ -463,6 +494,7 @@ function goToEvalStep(step) {
 
         function onMatchVoterChange() {
             mrDraft = {};
+            document.getElementById('mvp-voter-pin').value = '';
             renderMVPVoteTab();
         }
 
@@ -628,6 +660,7 @@ function goToEvalStep(step) {
             const submitBtn = document.getElementById('mr-submit-btn');
 
             if (!voterId) {
+                document.getElementById('mvp-pin-container').classList.add('hidden');
                 status.className = 'text-xs font-semibold min-h-[1rem] text-slate-400';
                 status.textContent = 'Önce adınızı seçin.';
                 grid.innerHTML = '';
@@ -636,6 +669,7 @@ function goToEvalStep(step) {
             }
 
             if (matchRatings.some(r => r.matchId === open.id && r.voterId === voterId)) {
+                document.getElementById('mvp-pin-container').classList.add('hidden');
                 status.className = 'text-xs font-semibold min-h-[1rem] text-emerald-400';
                 status.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Bu maç için puanlarınızı gönderdiniz. Gönderilen puanlar güncellenemez.';
                 grid.innerHTML = '';
@@ -644,7 +678,7 @@ function goToEvalStep(step) {
             }
 
             status.className = 'text-xs font-semibold min-h-[1rem] text-amber-400';
-            status.textContent = 'Diğer tüm oyuncuları 1-10 arası puanlayın (zorunlu). Gönderdikten sonra değiştirilemez.';
+            status.textContent = 'Diğer tüm oyuncuları 6-10 arası puanlayın (zorunlu). Gönderdikten sonra değiştirilemez.';
             submitBtn.disabled = false;
 
             grid.innerHTML = participants.filter(p => p.id !== voterId).map(p => `
@@ -777,7 +811,7 @@ function goToEvalStep(step) {
                 input.classList.remove('border-red-500');
                 const raw = String(input.value).trim();
                 const n = parseFloat(raw);
-                if (raw === '' || isNaN(n) || n < 1 || n > 10) {
+                if (raw === '' || isNaN(n) || n < 6 || n > 10) {
                     bad++;
                     input.classList.add('border-red-500');
                 } else {

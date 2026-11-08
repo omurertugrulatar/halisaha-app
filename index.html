@@ -359,6 +359,11 @@
                             <input type="text" id="player-name" required placeholder="Örn: Burak Özdemir" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                         </div>
 
+                        <div id="pin-field-container" class="hidden">
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Oyuncu Şifresi (6 Haneli)</label>
+                            <input type="text" id="player-pin" pattern="\d{6}" maxlength="6" placeholder="Otomatik oluşturulur" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <p class="text-[10px] text-slate-500 mt-1">Sadece düzenleme modunda değiştirilebilir.</p>
+                        </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1">Tercih Ettiği Pozisyon</label>
                             <select id="player-position" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
@@ -1336,14 +1341,21 @@ function getVoteStats(player) {
 
             try {
                 if (editId) {
-                    await db.collection('players').doc(editId).update({ name, position, age });
+                    
+                    const pinInput = document.getElementById('player-pin').value;
+                    const updateData = { name, position, age };
+                    if(pinInput && pinInput.length === 6) {
+                        updateData.pin = pinInput;
+                    }
+                    await db.collection('players').doc(editId).update(updateData);
                     showToast("Oyuncu güncellendi.");
                 } else {
                     await db.collection('players').add({
                         name, position, age,
                         peerAttributeVotes: [],
                         matches: 0, goals: 0, wins: 0, draws: 0, losses: 0, mvpCount: 0,
-                        selected: false   // haftalık kadroya yönetici seçer
+                        selected: false,  // haftalık kadroya yönetici seçer
+                        pin: String(Math.floor(100000 + Math.random() * 900000)) // 6-digit random pin
                     });
                     showToast("Oyuncu eklendi. Haftalık kadroya almak için 'Haftalık Kadro' sekmesini kullanın.");
                 }
@@ -1362,6 +1374,8 @@ function getVoteStats(player) {
             document.getElementById('player-name').value = player.name;
             document.getElementById('player-position').value = player.position;
             document.getElementById('player-age').value = Number.isFinite(player.age) ? player.age : '';
+            document.getElementById('player-pin').value = player.pin || '';
+            document.getElementById('pin-field-container').classList.remove('hidden');
 
             document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-pen text-amber-400"></i> Oyuncu Düzenle`;
             document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Güncelle`;
@@ -1384,6 +1398,8 @@ function getVoteStats(player) {
             document.getElementById('player-name').value = '';
             document.getElementById('player-position').value = 'Orta Saha';
             document.getElementById('player-age').value = '';
+            document.getElementById('player-pin').value = '';
+            document.getElementById('pin-field-container').classList.add('hidden');
             document.getElementById('player-form-title').innerHTML = `<i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Oyuncu Kaydı`;
             document.getElementById('player-form-btn').innerHTML = `<i class="fa-solid fa-check"></i> Kaydet`;
         }
@@ -1450,7 +1466,7 @@ function getVoteStats(player) {
                         </div>
                         <div>
                             <p class="text-xs font-bold text-white">${esc(p.name)}</p>
-                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''} • Oylama: <span class="text-amber-400">${tr.voteCount ? tr.voteAvg : '—'}</span> | Form: <span class="text-blue-400">${tr.form ?? '—'}</span></p>
+                            <p class="text-[10px] text-emerald-400 font-semibold">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''}${p.pin ? ' • Şifre: <span class="text-white font-bold">' + p.pin + '</span>' : ''} • Oylama: <span class="text-amber-400">${tr.voteCount ? tr.voteAvg : '—'}</span> | Form: <span class="text-blue-400">${tr.form ?? '—'}</span></p>
                             <p class="text-[10px] text-slate-400">Gerçek Rating: <strong class="text-emerald-300">${tr.trueRating}</strong>${tr.adjust ? ` <span class="${tr.adjust > 0 ? 'text-emerald-400' : 'text-red-400'}">(ayar ${tr.adjust > 0 ? '+' : ''}${tr.adjust})</span>` : ''}</p>
                             <div class="flex items-center gap-1 mt-1.5" onclick="event.stopPropagation()">
                                 <button onclick="adjustRating('${p.id}', -1)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-red-500/30 border border-slate-700 text-red-300 font-black text-sm leading-none" title="Ratingi 1 puan azalt">−</button>
@@ -1778,7 +1794,7 @@ function getVoteStats(player) {
                         <input type="checkbox" ${p.selected ? 'checked' : ''} onchange="togglePlayerSelection('${p.id}', this.checked)" class="accent-emerald-500 w-4 h-4 shrink-0">
                         <div class="min-w-0">
                             <p class="text-xs font-bold text-white truncate">${esc(p.name)}${lastIds.has(p.id) ? ' <span class="text-[9px] font-semibold text-slate-400 bg-slate-800 rounded px-1 py-0.5 align-middle">son maç</span>' : ''}</p>
-                            <p class="text-[10px] text-slate-400">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''}</p>
+                            <p class="text-[10px] text-slate-400">${esc(p.position)}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''}${p.pin ? ' • Şifre: <span class="text-white font-bold">' + p.pin + '</span>' : ''}</p>
                         </div>
                     </div>
                     <span class="text-xs font-black ${p.selected ? 'text-emerald-300' : 'text-slate-500'}">${calculateTrueRating(p).trueRating}</span>
