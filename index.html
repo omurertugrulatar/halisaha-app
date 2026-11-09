@@ -2855,14 +2855,9 @@ function renderGeneratorControls() {
         }
 
         function getPlayerFaceUrl(name, position) {
-            let offset = 0;
-            if (position === 'Kaleci') offset = 1;
-            else if (position === 'Defans') offset = 25;
-            else if (position === 'Orta Saha') offset = 50;
-            else if (position === 'Forvet') offset = 75;
-            let hash = 0;
-            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-            return `https://randomuser.me/api/portraits/men/${(Math.abs(hash) % 24) + offset}.jpg`;
+            // Safari/iOS CORS engelini aşmak ve html2canvas indirmelerinde sorun yaşamamak için 
+            // isme özel sabit avatar üreten DiceBear servisini kullanıyoruz.
+            return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=0f172a`;
         }
 
         function renderPitchDisplay() {
@@ -2874,6 +2869,10 @@ function renderGeneratorControls() {
             
             const createFutCard = (p, tr, team) => {
                 const eff = getEffectiveAttributes(p).values;
+            // Admin ayarları ve performans bonuslarını alt statlara yedirmek için farkı hesaplıyoruz
+            const baseAvg = Math.round(((eff.pace ?? 70) + (eff.shooting ?? 70) + (eff.passing ?? 70) + (eff.dribbling ?? 70) + (eff.defending ?? 70) + (eff.physical ?? 70)) / 6);
+            const statBoost = tr - baseAvg;
+            const getStat = (val) => Math.max(1, Math.min(99, (val ?? 70) + statBoost));
                 
                 const isWhite = team === 'white';
                 const isRed = team === 'red';
@@ -2916,15 +2915,15 @@ function renderGeneratorControls() {
                         <!-- Attributes Bottom Half -->
                         <div class="flex justify-between px-1.5 py-1 text-[7px] sm:text-[8px] font-bold">
                             <div class="flex flex-col gap-[1px]">
-                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.pace ?? 70}</span><span class="${attrText}">HIZ</span></div>
-                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.shooting ?? 70}</span><span class="${attrText}">ŞUT</span></div>
-                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.passing ?? 70}</span><span class="${attrText}">PAS</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${getStat(eff.pace)}</span><span class="${attrText}">HIZ</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${getStat(eff.shooting)}</span><span class="${attrText}">ŞUT</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${getStat(eff.passing)}</span><span class="${attrText}">PAS</span></div>
                             </div>
                             <div class="w-[1px] ${isWhite ? 'bg-slate-400/30' : 'bg-red-500/30'}"></div>
                             <div class="flex flex-col gap-[1px]">
-                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.dribbling ?? 70}</span><span class="${attrText}">DRI</span></div>
-                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.defending ?? 70}</span><span class="${attrText}">DEF</span></div>
-                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${eff.physical ?? 70}</span><span class="${attrText}">FİZ</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${getStat(eff.dribbling)}</span><span class="${attrText}">DRI</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${getStat(eff.defending)}</span><span class="${attrText}">DEF</span></div>
+                                <div class="flex gap-1"><span class="${valText} w-3 text-right">${getStat(eff.physical)}</span><span class="${attrText}">FİZ</span></div>
                             </div>
                         </div>
                         
@@ -3369,6 +3368,10 @@ function renderGeneratorControls() {
 
         function createFutCardHTMLForExport(p, tr, team) {
             const eff = getEffectiveAttributes(p).values;
+            // Admin ayarları ve performans bonuslarını alt statlara yedirmek için farkı hesaplıyoruz
+            const baseAvg = Math.round(((eff.pace ?? 70) + (eff.shooting ?? 70) + (eff.passing ?? 70) + (eff.dribbling ?? 70) + (eff.defending ?? 70) + (eff.physical ?? 70)) / 6);
+            const statBoost = tr - baseAvg;
+            const getStat = (val) => Math.max(1, Math.min(99, (val ?? 70) + statBoost));
             const isWhite = team === 'white';
             const baseColors = isWhite 
                 ? 'from-slate-200 via-slate-400 to-slate-800 border-slate-300' 
@@ -3411,15 +3414,15 @@ function renderGeneratorControls() {
                     <!-- Attributes -->
                     <div class="flex justify-between px-4 py-3 text-[13px] font-bold">
                         <div class="flex flex-col gap-[4px]">
-                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${eff.pace ?? 70}</span><span class="${attrText}">HIZ</span></div>
-                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${eff.shooting ?? 70}</span><span class="${attrText}">ŞUT</span></div>
-                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${eff.passing ?? 70}</span><span class="${attrText}">PAS</span></div>
+                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${getStat(eff.pace)}</span><span class="${attrText}">HIZ</span></div>
+                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${getStat(eff.shooting)}</span><span class="${attrText}">ŞUT</span></div>
+                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${getStat(eff.passing)}</span><span class="${attrText}">PAS</span></div>
                         </div>
                         <div class="w-[2px]" style="background-color: ${vertDividerColor};"></div>
                         <div class="flex flex-col gap-[4px]">
-                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${eff.dribbling ?? 70}</span><span class="${attrText}">DRI</span></div>
-                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${eff.defending ?? 70}</span><span class="${attrText}">DEF</span></div>
-                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${eff.physical ?? 70}</span><span class="${attrText}">FİZ</span></div>
+                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${getStat(eff.dribbling)}</span><span class="${attrText}">DRI</span></div>
+                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${getStat(eff.defending)}</span><span class="${attrText}">DEF</span></div>
+                            <div class="flex gap-2"><span class="${valText} w-6 text-right">${getStat(eff.physical)}</span><span class="${attrText}">FİZ</span></div>
                         </div>
                     </div>
                 </div>
