@@ -3299,7 +3299,7 @@ function renderGeneratorControls() {
 
             // Create off-screen container
             const container = document.createElement('div');
-            container.style.position = 'absolute';
+            container.style.position = 'fixed';
             container.style.left = '-9999px';
             container.style.top = '0';
             container.style.width = '800px';
@@ -3350,7 +3350,8 @@ function renderGeneratorControls() {
                     scale: 2, // Yüksek çözünürlük (retina)
                     useCORS: true,
                     backgroundColor: '#0f172a',
-                    logging: false
+                    logging: false,
+                    scrollY: -window.scrollY // Scroll kaynaklı kesilme/ölçek bozulmalarını engellemek için
                 });
                 
                 const link = document.createElement('a');
@@ -3385,7 +3386,7 @@ function renderGeneratorControls() {
             const avatarBorderColor = isWhite ? '#cbd5e1' : '#f87171';
             
             return `
-            <div class="relative w-[190px] bg-gradient-to-br ${baseColors} rounded-t-2xl rounded-b-[3rem] p-[4px] shadow-2xl border-b-[6px] border-t-[3px]" style="aspect-ratio: 2/3.1;">
+            <div class="relative w-[190px] bg-gradient-to-br ${baseColors} rounded-t-2xl rounded-b-[3rem] p-[4px] shadow-2xl border-b-[6px] border-t-[3px]" style="width: 190px; height: 295px;">
                 <div class="w-full h-full bg-slate-900 rounded-t-[1.1rem] rounded-b-[2.7rem] flex flex-col relative overflow-hidden bg-cover bg-center" style="background-image: radial-gradient(circle at top, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.65) 80%);">
                     
                     <!-- Top Section -->
