@@ -107,7 +107,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
-<body class="min-h-screen flex flex-col pb-8 antialiased selection:bg-emerald-500 selection:text-white">
+<body class="min-h-screen flex flex-col pb-16 antialiased selection:bg-emerald-500 selection:text-white">
 <script>
 /* Ekranda hata gösterici: sayfa/Firebase bozulursa kırmızı kutuda hata mesajı çıkar */
 (function(){
@@ -140,6 +140,7 @@
                 <nav class="flex items-center space-x-1">
                     <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-emerald-400 bg-slate-800"><i class="fa-solid fa-user-pen"></i> <span>Rating Oylaması</span></button>
                     <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-award"></i> <span>Maç Puanı</span></button>
+                    <button onclick="switchTab('comments')" id="nav-comments" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-tv"></i> <span>Kulis</span></button>
                 </nav>
             </div>
         </div>
@@ -293,8 +294,41 @@
             </div>
         </section>
 
+        <!-- TAB: KULİS & YORUMLAR -->
+        <section id="tab-comments" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-slate-700">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-tv text-amber-400"></i> Telegol AI Kulis
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">MVP oylamaları ve maç performansları hakkında meşhur yorumcuların atışmaları (Yapay Zeka Mizahı).</p>
+                    </div>
+                    <button onclick="renderCommentsTab()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-4 py-2 rounded-xl border border-slate-700 transition-all flex items-center gap-2 shrink-0">
+                        <i class="fa-solid fa-rotate"></i> Yenile
+                    </button>
+                </div>
+                <div id="commentary-feed" class="space-y-4 max-h-[600px] overflow-y-auto pr-2 pb-4">
+                    <!-- Dynamic Comments -->
+                </div>
+            </div>
+        </section>
 
     </main>
+
+    <footer class="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 border-t border-emerald-500/30 py-2.5 px-3 backdrop-blur-md">
+        <div class="flex items-center space-x-3 max-w-4xl mx-auto overflow-hidden">
+            <div class="flex items-center space-x-2 bg-gradient-to-r from-red-600 to-amber-600 text-white font-black text-[11px] px-3 py-1 rounded-lg shrink-0 shadow">
+                <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                <span>TELEGOL AI CANLI YORUM</span>
+            </div>
+            <div class="ticker-wrap flex-grow text-xs font-medium text-slate-200">
+                <div class="ticker-move flex items-center space-x-8" id="commentators-ticker-content">
+                    <!-- Dynamic Quotes -->
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Notification Toast -->
     <div id="toast-msg" class="fixed bottom-16 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 border border-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50">
@@ -922,7 +956,9 @@ function goToEvalStep(step) {
 
         function renderCurrentTab() {
             if (currentTabId === 'evaluation') populateUserDropdown();
-            else renderMVPVoteTab();
+            else if (currentTabId === 'mvp-vote') renderMVPVoteTab();
+            else if (currentTabId === 'comments') renderCommentsTab();
+            updateCommentatorTicker();
         }
 
         function switchTab(tabId) {
@@ -941,6 +977,128 @@ function goToEvalStep(step) {
             renderCurrentTab();
         }
 
+        
+        
+        // -------------------------------------------------------------
+        // CANLI YORUMCULAR (Telegol AI)
+        // -------------------------------------------------------------
+        const COMM = {
+            ahmet:   { label: 'Ahmet Hoca',    color: 'text-red-500',    icon: 'fa-magnifying-glass', bg: 'bg-red-500/10' },
+            sinan:   { label: 'Sinan Abi',     color: 'text-amber-500',  icon: 'fa-hands-clapping', bg: 'bg-amber-500/10' },
+            rasim:   { label: 'Rasim',         color: 'text-blue-400',   icon: 'fa-face-laugh-squint', bg: 'bg-blue-500/10' },
+            batuhan: { label: 'Batu',          color: 'text-emerald-400',icon: 'fa-shoe-prints', bg: 'bg-emerald-500/10' },
+            erman:   { label: 'Erman Hoca',    color: 'text-orange-500', icon: 'fa-gavel', bg: 'bg-orange-500/10' },
+            ertem:   { label: 'Ertem',         color: 'text-slate-200',  icon: 'fa-microphone', bg: 'bg-slate-500/10' }
+        };
+
+        const hl = (name) => `<strong class="text-white">${esc(name)}</strong>`;
+        
+        function buildCommentaryContext() {
+            const x = { n: matches.length };
+            const by = (key) => [...players].sort((a, b) => (b[key] || 0) - (a[key] || 0));
+            const g = by('goals')[0];   x.topScorer = g && (g.goals || 0) > 0 ? g : null;
+
+            const m = matches[0];
+            x.m = m || null;
+            if (m) {
+                x.sA = m.teamAScore || 0;
+                x.sB = m.teamBScore || 0;
+                x.total = x.sA + x.sB;
+                x.diff = Math.abs(x.sA - x.sB);
+                x.winner = x.sA > x.sB ? 'TAKIM A' : (x.sB > x.sA ? 'TAKIM B' : null);
+                
+                const parts = getMatchParticipantIds(m);
+                const got = matchRatings.filter(r => r.matchId === m.id).length;
+                x.votingActive = m.finalized === false;
+                x.votesCast = got;
+                x.votesTotal = parts.length;
+                
+                if (m.finalized === false && got > 0) {
+                    const scMap = getMatchScoreMap(m).scores;
+                    const ranked = Object.keys(scMap).map(pid => ({ p: players.find(p=>p.id===pid), avg: scMap[pid].avg })).sort((a,b) => b.avg - a.avg);
+                    x.currentLeader = ranked[0] ? ranked[0] : null;
+                    x.currentLoser = ranked.length > 1 ? ranked[ranked.length-1] : null;
+                } else if (m.finalized === true) {
+                    x.mvpName = m.mvp;
+                }
+            }
+            return x;
+        }
+
+        function updateCommentatorTicker() {
+            const container = document.getElementById('commentators-ticker-content');
+            if (!container) return;
+            const x = buildCommentaryContext();
+            if (!x.m) {
+                container.innerHTML = `<span class="text-slate-400 italic">Sistemde henüz yorumlanacak maç yok.</span>`;
+                return;
+            }
+            
+            const txt = x.votingActive 
+                ? `ERTEM: Oylama sürüyor (${x.votesCast}/${x.votesTotal})! • AHMET HOCA: Oyları kim sayıyor, algoritma nerede?! • SİNAN ABİ: Aslanlar gibi oynadılar, hepsine 10 verin!` 
+                : `SİNAN ABİ: ${x.mvpName ? x.mvpName + ' aslanlar gibi MVP oldu!' : 'Maç bitti, duşlara!'} • RASİM: Haydaaa, bu skor tarihe geçer!`;
+            
+            const html = `<span class="flex items-center space-x-6 text-slate-300 font-bold tracking-wide">${txt.split(' • ').map(t => `<span class="text-amber-400">•</span> <span>${t}</span>`).join('')}</span>`;
+            container.innerHTML = html + '<span class="px-8"></span>' + html;
+        }
+
+        function renderCommentsTab() {
+            const feed = document.getElementById('commentary-feed');
+            if (!feed) return;
+            const x = buildCommentaryContext();
+            
+            if (!x.m) {
+                feed.innerHTML = `<div class="p-6 text-center text-slate-500 italic border border-slate-800 rounded-xl">Kulis henüz boş. Maç kaydedildiğinde kıyamet kopacak!</div>`;
+                return;
+            }
+
+            const comments = [];
+            const add = (author, text) => {
+                const c = COMM[author];
+                comments.push(`
+                    <div class="flex gap-4 p-4 rounded-xl ${c.bg} border border-slate-700/50 shadow-sm transition-all">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl shrink-0 border-2 border-slate-600 bg-slate-800 ${c.color}">
+                            <i class="fa-solid ${c.icon}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-xs font-black ${c.color} uppercase tracking-wider mb-1">${c.label}</h4>
+                            <p class="text-sm text-slate-200 leading-relaxed">${text}</p>
+                        </div>
+                    </div>
+                `);
+            };
+
+            if (x.votingActive) {
+                add('ertem', `Sayın seyirciler, maç bitti ama heyecan bitmedi! Oylama an itibariyle devam ediyor, ${x.votesCast}/${x.votesTotal} oy kullanıldı.`);
+                if (x.currentLeader) {
+                    add('ahmet', `Bak Ertem... Şuan ${hl(x.currentLeader.p.name)} önde gidiyor. Ben bu işte bir şaibe ararım! Dayısı mı var bu çocuğun? Sahada yoktu yahu!`);
+                    add('sinan', `Bırak Ahmet hoca allah aşkına! Aslanlar gibi top oynadı, çocuğu yedirmem! En az 9.5 hakediyor.`);
+                    add('batuhan', `Abi biz de top oynadık... ${hl(x.currentLeader.p.name)}'nin şutu taça gitti taça! Buna 10 puan verenler futbolu ayak tenisi sanıyor galiba.`);
+                }
+                if (x.currentLoser) {
+                    add('rasim', `Hahahah! Ya ${hl(x.currentLoser.p.name)}'a o puanları kim veriyor yahu! Çocuğa yazık, moralmen bitirdiniz! Haydaaaa!`);
+                    add('erman', `Oynat bakalım... Arkadaş, adama pas atmamışsınız ki? Göstermelik bir rating uydurmuşsunuz, yazık ediyorsunuz pırasa gibi doğruyorsunuz çocuğu.`);
+                }
+            } else {
+                add('ertem', `İnanılmaz bir geceydi! ${x.sA}-${x.sB} biten maçın ardından MVP ${hl(x.mvpName)} seçildi!`);
+                if (x.mvpName) {
+                    add('ahmet', `Ben bu ${hl(x.mvpName)}'in MVP olacağını geçen hafta söyledim! Ama yalan yok, algoritmayı hacklemiş olabilirler. Bu oylara ben güvenmiyorum kardeşim!`);
+                    add('sinan', `Öpüyorum oylayanların gözlerinden! Helal olsun, işte gerçek futbol! ${hl(x.mvpName)} kardeşim çıkışta köfte ekmekler benden!`);
+                    add('batuhan', `MVP falan hikaye abi. Adam 2 tane boş kaleye attı diye yıldız yaptınız. Ben olsam oradan rövaşata denerdim.`);
+                }
+                if (x.diff >= 4) {
+                    add('rasim', `Hocam bu nasıl fark! ${x.winner} silindir gibi geçti, ezdi geçti! Karşı takım resmen sahada yoktu, haydaaa!`);
+                } else if (x.diff === 0) {
+                    add('erman', `Berabere bitti... Herkes birbirine gülücük dağıtıyor. Kardeşim çıkın dişe diş korakor oynayın. Çay partisine mi geldiniz?`);
+                } else {
+                    add('ahmet', `Kıl payı bitti ama o verilmeyen faul... Bak o faul verilse bugün bunları konuşmuyorduk Ertem!`);
+                }
+            }
+            if (x.topScorer) {
+                add('sinan', `Günün sonunda ${hl(x.topScorer.name)}'in gollerini konuşacağız. Makine makine! Mermi gibi vuruyor!`);
+            }
+            feed.innerHTML = comments.join('');
+        }
         
         // Password Change Functions
         function togglePasswordChangeForm() {
