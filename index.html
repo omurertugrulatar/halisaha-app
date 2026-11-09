@@ -181,6 +181,9 @@
                     <button onclick="switchTab('report')" id="nav-report" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
                         <i class="fa-solid fa-ranking-star"></i> Maç Karnesi
                     </button>
+                    <button onclick="switchTab('comments')" id="nav-comments" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-tv"></i> Kulis
+                    </button>
                     <button onclick="switchTab('generator')" id="nav-generator" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 text-slate-300 hover:bg-slate-800">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> AI Kadro
                     </button>
@@ -219,6 +222,9 @@
             </button>
             <button onclick="switchTab('report')" class="text-slate-300 flex flex-col items-center gap-1">
                 <i class="fa-solid fa-ranking-star text-sm"></i> Karne
+            </button>
+            <button onclick="switchTab('comments')" class="text-slate-300 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-tv text-sm"></i> Kulis
             </button>
             <button onclick="switchTab('generator')" class="text-emerald-400 flex flex-col items-center gap-1 font-bold">
                 <i class="fa-solid fa-wand-magic-sparkles text-sm"></i> AI Kadro
@@ -609,6 +615,27 @@
             </div>
         </section>
 
+        
+        <!-- TAB: KULİS & YORUMLAR -->
+        <section id="tab-comments" class="tab-content hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl border border-slate-700">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-tv text-amber-400"></i> Telegol AI Kulis
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">MVP oylamaları ve maç performansları hakkında meşhur yorumcuların atışmaları (Yapay Zeka Mizahı).</p>
+                    </div>
+                    <button onclick="renderCommentsTab()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-4 py-2 rounded-xl border border-slate-700 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-rotate"></i> Yenile
+                    </button>
+                </div>
+                <div id="commentary-feed" class="space-y-4 max-h-[600px] overflow-y-auto pr-2 pb-4">
+                    <!-- Dynamic Comments -->
+                </div>
+            </div>
+        </section>
+
         <!-- TAB 4: AI TEAM GENERATOR -->
         <section id="tab-generator" class="tab-content hidden space-y-6">
             <div class="glass-panel p-6 rounded-2xl border border-slate-700">
@@ -960,6 +987,7 @@
                 case 'squad': renderSquadTab(); break;
                 case 'votes': renderVotesTab(); break;
                 case 'report': renderReportTab(); break;
+                case 'comments': renderCommentsTab(); break;
                 case 'generator': renderGeneratorControls(); break;
                 case 'admin': renderAdminRows(); break;
             }
@@ -1102,6 +1130,7 @@ function getVoteStats(player) {
             if (tabId === 'squad') renderSquadTab();
             if (tabId === 'votes') renderVotesTab();
             if (tabId === 'report') renderReportTab();
+            if (tabId === 'comments') renderCommentsTab();
             if (tabId === 'generator') renderGeneratorControls();
             if (tabId === 'admin') renderAdminRows();
         }
@@ -1110,24 +1139,18 @@ function getVoteStats(player) {
         // CANLI YORUMCULAR (Telegol AI) - her birinin kendi tarzı var
         // -------------------------------------------------------------
         const COMM = {
-            hoca:    { label: 'Taktik Hoca',       color: 'text-amber-400',   icon: 'fa-chalkboard-user' },
-            hakem:   { label: 'Hakem Eleştirmeni', color: 'text-red-400',     icon: 'fa-gavel' },
-            kehanet: { label: 'Kehanet Abi',       color: 'text-purple-400',  icon: 'fa-hat-wizard' },
-            analiz:  { label: 'Analiz Abi',        color: 'text-blue-400',    icon: 'fa-chart-line' },
-            spiker:  { label: 'Coşkulu Spiker',    color: 'text-emerald-400', icon: 'fa-microphone-lines' },
-            sakin:   { label: 'Sakin Abi',         color: 'text-teal-400',    icon: 'fa-mug-hot' }
+            ahmet:   { label: 'Ahmet Hoca',    color: 'text-red-500',    icon: 'fa-magnifying-glass', bg: 'bg-red-500/10' },
+            sinan:   { label: 'Sinan Abi',     color: 'text-amber-500',  icon: 'fa-hands-clapping', bg: 'bg-amber-500/10' },
+            rasim:   { label: 'Rasim',         color: 'text-blue-400',   icon: 'fa-face-laugh-squint', bg: 'bg-blue-500/10' },
+            batuhan: { label: 'Batu',          color: 'text-emerald-400',icon: 'fa-shoe-prints', bg: 'bg-emerald-500/10' },
+            erman:   { label: 'Erman Hoca',    color: 'text-orange-500', icon: 'fa-gavel', bg: 'bg-orange-500/10' },
+            ertem:   { label: 'Ertem',         color: 'text-slate-200',  icon: 'fa-microphone', bg: 'bg-slate-500/10' }
         };
 
-        const hl = (name) => `<strong class="text-emerald-400">${esc(name)}</strong>`;
+        const hl = (name) => `<strong class="text-white">${esc(name)}</strong>`;
         const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
         const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
-        function commLine(key, text) {
-            const c = COMM[key];
-            return `<span class="flex items-center gap-2"><span class="font-extrabold ${c.color} shrink-0"><i class="fa-solid ${c.icon} mr-1"></i>${c.label}:</span><span>"${text}"</span></span>`;
-        }
-
-        // Son maç + sezon verilerinden yorumlara temel olacak bağlamı çıkarır
         function buildCommentaryContext() {
             const x = { n: matches.length };
             const withTr = players.map(p => ({ p, tr: calculateTrueRating(p) }));
@@ -1136,189 +1159,123 @@ function getVoteStats(player) {
             const by = (key) => [...players].sort((a, b) => (b[key] || 0) - (a[key] || 0));
             const g = by('goals')[0];   x.topScorer = g && (g.goals || 0) > 0 ? g : null;
             const w = by('wins')[0];    x.topWinner = w && (w.wins || 0) > 0 ? w : null;
-            const l = by('losses')[0];  x.mostLoser = l && (l.losses || 0) > 0 ? l : null;
             const mv = by('mvpCount')[0]; x.mvpLeader = mv && (mv.mvpCount || 0) > 0 ? mv : null;
 
-            x.unbeaten = players.filter(p => (p.matches || 0) >= 2 && (p.losses || 0) === 0 && (p.wins || 0) > 0)
-                .sort((a, b) => (b.wins || 0) - (a.wins || 0))[0] || null;
-            x.winless = players.filter(p => (p.matches || 0) >= 3 && (p.wins || 0) === 0)
-                .sort((a, b) => (b.matches || 0) - (a.matches || 0))[0] || null;
-            x.bench = x.n > 0 ? (players.find(p => (p.matches || 0) === 0) || null) : null;
-            x.gk = players.filter(p => p.position === 'Kaleci').sort((a, b) => (b.matches || 0) - (a.matches || 0))[0] || null;
-
-            // Güncel form (maç puanları) ve rating oyu dağılımı
-            const formed = withTr.filter(({ tr }) => tr.form !== null);
-            x.formStar = formed.length ? [...formed].sort((a, b) => b.tr.form - a.tr.form)[0] : null;
-            x.formSlump = formed.length > 1 ? [...formed].sort((a, b) => a.tr.form - b.tr.form)[0] : null;
-            if (x.formStar && x.formSlump && x.formStar.p.id === x.formSlump.p.id) x.formSlump = null;
-            const rated = withTr.filter(({ tr }) => tr.voteCount > 0);
-            x.highRated = rated.length ? [...rated].sort((a, b) => b.tr.voteAvg - a.tr.voteAvg)[0] : null;
-            x.lowRated = rated.length > 1 ? [...rated].sort((a, b) => a.tr.voteAvg - b.tr.voteAvg)[0] : null;
-
-            
-
-            x.goals = players.reduce((s, p) => s + (p.goals || 0), 0);
-            x.avg = x.n ? (x.goals / x.n).toFixed(1) : '0';
-
             const m = matches[0];
+            x.m = m || null;
             if (m) {
-                x.m = m;
                 x.sA = m.teamAScore || 0;
                 x.sB = m.teamBScore || 0;
-                x.diff = Math.abs(x.sA - x.sB);
                 x.total = x.sA + x.sB;
-                x.winner = x.sA > x.sB ? 'A Takımı' : (x.sB > x.sA ? 'B Takımı' : null);
-                x.mvpName = (m.mvp && m.mvp !== 'Belirtilmedi') ? m.mvp : null;
-                x.cat = x.sA === x.sB ? 'draw' : x.diff >= 4 ? 'blowout' : x.total >= 12 ? 'goalfest' : x.diff === 1 ? 'narrow' : 'normal';
+                x.diff = Math.abs(x.sA - x.sB);
+                x.winner = x.sA > x.sB ? 'BEYAZ TAKIM' : (x.sB > x.sA ? 'KIRMIZI TAKIM' : null);
+                
+                // Oylama verileri (MVP yarışı)
+                const parts = getMatchParticipantIds(m);
+                const got = matchRatings.filter(r => r.matchId === m.id).length;
+                x.votingActive = m.finalized === false;
+                x.votesCast = got;
+                x.votesTotal = parts.length;
+                
+                // Anlık en yüksek oyu alan
+                if (m.finalized === false && got > 0) {
+                    const scMap = getMatchScoreMap(m).scores;
+                    const ranked = Object.keys(scMap).map(pid => ({ p: players.find(p=>p.id===pid), avg: scMap[pid].avg })).sort((a,b) => b.avg - a.avg);
+                    x.currentLeader = ranked[0] ? ranked[0] : null;
+                    x.currentLoser = ranked.length > 1 ? ranked[ranked.length-1] : null;
+                } else if (m.finalized === true) {
+                    x.mvpName = m.mvp;
+                }
             }
             return x;
         }
 
-        // SON MAÇ hakkında yorumlar (maç kategorisine göre)
-        const COMM_LAST = {
-            hoca: {
-                draw:     x => `Bakın kardeşim, ${x.sA}-${x.sB}... İki takım da birbirinin geometrisini bozamadı. Halı sahada bile denge bu kadar güzel kurulursa seyreden de keyif alır!`,
-                blowout:  x => `${x.sA}-${x.sB} kardeşim! ${x.winner} ikinci topları topladı, rakip yarım alanları sadece sayarak izledi. Bu skor tesadüf değil, bu bir ders!`,
-                narrow:   x => `Tek farkla biten bir maç: ${x.sA}-${x.sB}. Futbol dediğin son pasta, son dakikada ve bir de kimin dizinin tutup tutmadığında bitiyor kardeşim.`,
-                goalfest: x => `${x.total} gol! Bakın kardeşim, savunma diye bir şey bu maçta konuşulmadı; kaleciler bile kendini seyirci sanmış.`,
-                normal:   x => `${x.sA}-${x.sB} biten maçta ${x.winner} oyunu okudu; rakip ise oyunu okumak yerine formasını düzeltmekle meşguldü.`
-            },
-            hakem: {
-                draw:     x => `Arkadaş, ${x.sA}-${x.sB}! Herkes memnun gibi görünüyor ama ben diyorum ki o pozisyonda bir penaltı vardı, kimse ağzını açmadı!`,
-                blowout:  x => `${x.sA}-${x.sB}! Ben şunu söylüyorum: bu skorda hakemin düdüğü bile yoruldu; kaybeden taraf "faul değil mi?" diye bağırmaktan sesini kaybetti.`,
-                narrow:   x => `${x.sA}-${x.sB}, tek gol fark! Arkadaş ofsayt mıydı, değil miydi? Halı sahada VAR olsa maç hâlâ bitmemişti!`,
-                goalfest: x => `${x.total} gol! Ben kural kitabını açtım, "savunma" maddesini bulamadım arkadaş. Bu maçta defans diye bir kavram yok!`,
-                normal:   x => `${x.sA}-${x.sB} biten maçta ${x.winner} kazandı ama ben o ikinci gole giden kornerdeki şüpheli çekişmeyi hâlâ düşünüyorum, arkadaş!`
-            },
-            kehanet: {
-                draw:     x => `Bakın bakın, ${x.sA}-${x.sB}! Yazın bir kenara: haftaya bu iki takımdan biri kesin kazanır, kazanmazsa mesleği bırakırım!`,
-                blowout:  x => `İnanamıyorum! ${x.sA}-${x.sB}! Bu skor bağıra bağıra bir şey söylüyor: kaybeden takım haftaya pijamayla gelse bile rövanşı alır!`,
-                narrow:   x => `${x.sA}-${x.sB}... Bakın bakın, bu maç tesadüf değil, bu maç bir senaryo! Haftaya aynı skor çıkarsa şike aramak lazım!`,
-                goalfest: x => `${x.total} gol attılar, ben ağlamamak için kendimi tutuyorum! Yazın bir kenara, bu maç kırk yıl sonra torunlara anlatılır!`,
-                normal:   x => `${x.winner} kazandı ama bakın bakın, haftaya iş değişir; bu liganın yazılmamış kuralı: kazanan rahat uyur, kaybeden rövanşı hayal eder!`
-            },
-            analiz: {
-                draw:     x => `Verilere bakıyorum: ${x.sA}-${x.sB}. Beklenen gol dengesi simetrik, şans faktörü sıfır, çay faktörü yüksek. Rakamlar yalan söylemez.`,
-                blowout:  x => `Skor ${x.sA}-${x.sB}; gol farkı ${x.diff}. İstatistiksel olarak bu bir aykırı değer; takım dengesi algoritması bile "ben ne yaptım" diyor olabilir.`,
-                narrow:   x => `${x.sA}-${x.sB}: tek gol fark, güven aralığı çok dar. Bir pas daha isabetli olsaydı tabloyu tersine çevirirdi.`,
-                goalfest: x => `${x.total} gol: maç başına gol ortalamasını tavana vuran bir veri noktası. Defans oyuncuları için ayrı bir tablo açmam gerekebilir.`,
-                normal:   x => `${x.sA}-${x.sB}. ${x.winner} verimlilikte öndeydi; ceza sahasındaki karar kalitesi rakibe kıyasla ciddi biçimde yüksekti.`
-            },
-            spiker: {
-                draw:     x => `Hocam ${x.sA}-${x.sB}! Kimse kazanamadı ama tribünler ayakta, ben ayaktayım, simitçi bile ayakta!`,
-                blowout:  x => `Hocam ${x.sA}-${x.sB}! Oğlum bu ne skor, bu ne maç! ${x.winner} sahayı yaktı, ben de yanık kokusu aldım!`,
-                narrow:   x => `${x.sA}-${x.sB}! Hocam son dakikaya kadar nefes alamadık, ben ağzımdaki çekirdeği yuttum yuttum!`,
-                goalfest: x => `${x.total} gol hocam! Çocuklar kaleyi açık büfe sanmış, kimse gol atmaya doymadı!`,
-                normal:   x => x.mvpName
-                    ? `${x.sA}-${x.sB} hocam! ${x.winner} aslanlar gibi oynadı; maçın adamı ${hl(x.mvpName)} ise her topa gol arar gibi koştu!`
-                    : `${x.sA}-${x.sB} hocam! ${x.winner} aslanlar gibi oynadı, tribünler hâlâ alkışlıyor!`
-            },
-            sakin: {
-                draw:     x => `Kardeşim ${x.sA}-${x.sB}; kimse kaybetmedi, kimse fazla kazanmadı. Maç sonrası çay birlikte içildi, işte futbol bu.`,
-                blowout:  x => `${x.sA}-${x.sB}... Kardeşim, kaybeden takım üzülmesin; top yuvarlak, haftaya yine buradayız, bu sefer işi daha güzel yaparız.`,
-                narrow:   x => `${x.sA}-${x.sB}. Kardeşim bu kadar yakın maçta kazanan da kaybeden de hak etti; oturup konuşunca anlaşırız.`,
-                goalfest: x => `${x.total} gol... Kardeşim ben sakinim ama kaleciler için bu hafta bir kahve ısmarlamalıyız.`,
-                normal:   x => `${x.sA}-${x.sB}; sonuç sonuç, geçti gitti. Kardeşim önemli olan topu al, oyna, yine al, yine oyna.`
-            }
-        };
-
-        // SEZON hakkında yorumlar (koşul sağlanırsa metin döner, yoksa null)
-        const COMM_SEASON = {
-            hoca: [
-                x => x.m && x.m.finalized === true && x.mvpName && `Maçın MVP'si arkadaşlarının puanıyla belli oldu: ${hl(x.mvpName)}. Bakın kardeşim, en doğru hakem sahada birlikte koşanların vicdanıdır.`,
-                x => x.topScorer && `Sezonun gol makinesi ${hl(x.topScorer.name)}: ${x.topScorer.goals} gol! Ceza sahasında yer açmayı, yer bulmayı ve gerektiğinde yere yatmayı biliyor kardeşim.`,
-                x => x.n > 0 && `Maç başına ortalama ${x.avg} gol... Bakın, bu halı saha değil, savunma felsefesinin cenaze töreni!`,
-                x => x.unbeaten && `${hl(x.unbeaten.name)} henüz mağlubiyet yüzü görmedi. Zekâ budur kardeşim: kaybetmemek için önce nerede durmayacağını bilmek gerek.`
-            ],
-            hakem: [
-                x => x.formSlump && `${hl(x.formSlump.p.name)} son maçlarda arkadaşlarından ortalama ${(x.formSlump.tr.form / 10).toFixed(1)} puan almış! Arkadaş, bu puan değil, bu bir ihtar kartı!`,
-                x => x.mostLoser && `${hl(x.mostLoser.name)} ${x.mostLoser.losses} mağlubiyetle sezonun yük çeken adamı; ya talih yok ya da ayakkabı bağcığı sorunlu arkadaş!`,
-                x => x.gk && (x.gk.matches || 0) > 0 && `Kaleci ${hl(x.gk.name)}: ${x.gk.matches} maç, ${x.gk.losses || 0} mağlubiyet. O topların hepsi file yerine şans meleğinin sinirine gitti, arkadaş!`
-            ],
-            kehanet: [
-                x => x.m && x.m.finalized === true && x.mvpName && `${hl(x.mvpName)} MVP seçildi! Bakın bakın, haftaya bu adamın forması karaborsaya düşer, yazın bir kenara!`,
-                x => x.topWinner && `${hl(x.topWinner.name)} ${x.topWinner.wins} galibiyetle önde! Bu adam sezonu zirvede bitirmezse ben mesleği bırakırım!`,
-                x => x.mvpLeader && `${hl(x.mvpLeader.name)} ${x.mvpLeader.mvpCount} MVP'ye ulaşmış! Yazın bir kenara, o kupa bu adamın evinde yatar!`,
-                x => x.bench && `${hl(x.bench.name)} sezon boyu hiç forma giymedi! Bakın bakın, bu bir komplo mu yoksa dolabın şifresi mi unutuldu?!`
-            ],
-            analiz: [
-                
-                x => x.n > 0 && `Sezon verisi: ${x.n} maç, ${x.goals} gol, maç başına ${x.avg}. Bu oran halı saha standartlarının üzerinde; sistem "biraz savunma çalışın" uyarısı veriyor.`,
-                x => x.topScorer && `Gol dağılımında ${hl(x.topScorer.name)} ${x.topScorer.goals} golle zirvede; verimlilik grafiği "ben buradayım" diye bağırıyor.`,
-                x => x.highRated && x.lowRated && x.highRated.p.id !== x.lowRated.p.id && `Rating oylamasında en yüksek ortalama ${hl(x.highRated.p.name)} (${x.highRated.tr.voteAvg}), en düşük ${hl(x.lowRated.p.name)} (${x.lowRated.tr.voteAvg}). Aradaki ${x.highRated.tr.voteAvg - x.lowRated.tr.voteAvg} puan, takım seçerken kavga çıkma riskini istatistiksel olarak anlamlı kılıyor.`
-            ],
-            spiker: [
-                x => x.m && x.m.finalized === false && `Hocam maç bitti ama iş bitmedi: puanlama sürüyor! Herkes birbirine not versin, MVP kim olacak merakla bekliyorum!`,
-                x => x.topScorer && `${hl(x.topScorer.name)}! ${x.topScorer.goals} gol hocam, yakarım bu ligi! Kaleciler onu görünce sigorta şirketini arıyor!`,
-                x => x.unbeaten && `${hl(x.unbeaten.name)} hiç yenilmedi hocam! Bu adam yenilgiyi sözlükte arasa bulamaz!`,
-                x => x.winless && `${hl(x.winless.name)} ${x.winless.matches} maçtır galibiyet bekliyor hocam, bu hafta Allah'ın izniyle bozarız bu laneti!`
-            ],
-            sakin: [
-                x => x.formStar && `${hl(x.formStar.p.name)} son maçlarda arkadaşlarından ortalama ${(x.formStar.tr.form / 10).toFixed(1)} puan almış; kardeşim bu çocuk sessiz sessiz işini yapıyor, helal olsun.`,
-                x => x.n > 0 && `Sezonda ${x.n} maç oynadık, ${x.goals} gol attık. Kardeşim, topun yuvarlak olduğunu bir kez daha gördük; gerisi detay.`,
-                x => x.mostLoser && `${hl(x.mostLoser.name)} ${x.mostLoser.losses} kez kaybetti ama sahada kalmaya devam ediyor. Bu adam karakter sahibi kardeşim.`
-            ]
-        };
-
-        // Hiçbir koşul sağlanmazsa (yeni sezon) genel yorum
-        const COMM_FALLBACK = {
-            hoca:    x => `Bakın kardeşim, ${hl(x.topRated.p.name)} şu an ${x.topRated.tr.trueRating}'lik gerçek rating'le kadronun beyni; top onu arıyor, rakip ise gölgesini bile yakalayamıyor.`,
-            hakem:   x => `Arkadaş, ${hl(x.topRated.p.name)} ${x.topRated.tr.trueRating}'lik rating'le zirvede ama ben henüz maç görmeden kimseye kredi vermem; önce sahada görelim!`,
-            kehanet: x => `Bakın bakın, ${hl(x.topRated.p.name)} ${x.topRated.tr.trueRating}'lik rating'le geliyor; bu adam sezonu şampiyon bitirmezse ben mesleği bırakırım!`,
-            analiz:  x => `En yüksek gerçek rating ${hl(x.topRated.p.name)} oyuncusunda: ${x.topRated.tr.trueRating}. Örneklem küçük ama güven aralığı şimdilik gülümsüyor.`,
-            spiker:  x => `Hocam ${hl(x.topRated.p.name)}! ${x.topRated.tr.trueRating}'lik rating'le sahaya çıkıyor, kaleciler şimdiden terlemeye başladı!`,
-            sakin:   x => `Kardeşim, rating dediğin sadece sayı; ${hl(x.topRated.p.name)} ${x.topRated.tr.trueRating} almış, yine de topu arkadaşlarına paslamayı unutmasın.`
-        };
-
+        // Ticker için kısa metinler
         function updateCommentatorTicker() {
             const container = document.getElementById('commentators-ticker-content');
             if (!container) return;
+            const x = buildCommentaryContext();
+            if (!x.m) {
+                container.innerHTML = `<span class="text-slate-400 italic">Sistemde henüz yorumlanacak maç yok.</span>`;
+                return;
+            }
+            
+            const txt = x.votingActive 
+                ? `ERTEM: Oylama sürüyor (${x.votesCast}/${x.votesTotal})! • AHMET HOCA: Oyları kim sayıyor, algoritma nerede?! • SİNAN ABİ: Aslanlar gibi oynadılar, hepsine 10 verin!` 
+                : `SİNAN ABİ: ${x.mvpName ? x.mvpName + ' aslanlar gibi MVP oldu!' : 'Maç bitti, duşlara!'} • RASİM: Haydaaa, bu skor tarihe geçer!`;
+            
+            const html = `<span class="flex items-center space-x-6 text-slate-300 font-bold tracking-wide">${txt.split(' • ').map(t => `<span class="text-amber-400">•</span> <span>${t}</span>`).join('')}</span>`;
+            container.innerHTML = html + '<span class="px-8"></span>' + html;
+        }
 
-            if (players.length === 0) {
-                container.innerHTML = `<span class="text-slate-400 italic">Sistemde henüz yorumlanacak oyuncu verisi bulunmuyor. Sağ üstten oyuncu ekleyebilirsiniz.</span>`;
-                lastTickerSig = '';
+        // Kulis Sekmesi için zengin diyaloglar
+        function renderCommentsTab() {
+            const feed = document.getElementById('commentary-feed');
+            if (!feed) return;
+            const x = buildCommentaryContext();
+            
+            if (!x.m) {
+                feed.innerHTML = `<div class="p-6 text-center text-slate-500 italic border border-slate-800 rounded-xl">Kulis henüz boş. Maç kaydedildiğinde kıyamet kopacak!</div>`;
                 return;
             }
 
-            // Veri değişmediyse ticker'ı yeniden kurma (animasyon başa sarmasın)
-            const sig = JSON.stringify([
-                players.map(p => [p.id, p.goals, p.matches, p.wins, p.draws, p.losses, p.mvpCount, (p.peerAttributeVotes || []).length]),
-                matches.length ? [matches[0].id, matches[0].teamAScore, matches[0].teamBScore, matches[0].mvp, matches[0].finalized, Object.keys(matches[0].playerScores || {}).length] : null
-            ]);
-            if (sig === lastTickerSig && container.innerHTML.trim()) return;
-            lastTickerSig = sig;
+            const comments = [];
+            const add = (author, text) => {
+                const c = COMM[author];
+                comments.push(`
+                    <div class="flex gap-4 p-4 rounded-xl ${c.bg} border border-slate-700/50 shadow-sm animate-[fadeIn_0.5s_ease-out]">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl shrink-0 border-2 border-slate-600 bg-slate-800 ${c.color}">
+                            <i class="fa-solid ${c.icon}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-xs font-black ${c.color} uppercase tracking-wider mb-1">${c.label}</h4>
+                            <p class="text-sm text-slate-200 leading-relaxed">${text}</p>
+                        </div>
+                    </div>
+                `);
+            };
 
-            const x = buildCommentaryContext();
-            const sep = '<span class="text-slate-600 px-4">•</span>';
-            const keys = Object.keys(COMM);
-            const lastLines = [];
-            const seasonLines = [];
-
-            keys.forEach(k => {
-                if (x.m) lastLines.push(commLine(k, COMM_LAST[k][x.cat](x)));
-
-                const candidates = COMM_SEASON[k].map(fn => fn(x)).filter(Boolean);
-                if (candidates.length === 0) {
-                    if (!x.m) seasonLines.push(commLine(k, COMM_FALLBACK[k](x)));
-                } else {
-                    shuffle(candidates).slice(0, 2).forEach(t => seasonLines.push(commLine(k, t)));
+            // SENARYO 1: Oylama Devam Ediyor
+            if (x.votingActive) {
+                add('ertem', `Sayın seyirciler, maç bitti ama heyecan bitmedi! Oylama an itibariyle devam ediyor, ${x.votesCast}/${x.votesTotal} oy kullanıldı.`);
+                
+                if (x.currentLeader) {
+                    add('ahmet', `Bak Ertem... Şuan ${hl(x.currentLeader.p.name)} önde gidiyor. Ben bu işte bir şaibe ararım! Dayısı mı var bu çocuğun? Sahada yoktu yahu!`);
+                    add('sinan', `Bırak Ahmet hoca allah aşkına! Aslanlar gibi top oynadı, çocuğu yedirmem! En az 9.5 hakediyor.`);
+                    add('batuhan', `Abi biz de top oynadık... ${hl(x.currentLeader.p.name)}'nin şutu taça gitti taça! Buna 10 puan verenler futbolu ayak tenisi sanıyor galiba.`);
                 }
-            });
+                
+                if (x.currentLoser) {
+                    add('rasim', `Hahahah! Ya ${hl(x.currentLoser.p.name)}'a o puanları kim veriyor yahu! Çocuğa yazık, moralmen bitirdiniz! Haydaaaa!`);
+                    add('erman', `Oynat bakalım... Arkadaş, adama pas atmamışsınız ki? Göstermelik bir rating uydurmuşsunuz, yazık ediyorsunuz pırasa gibi doğruyorsunuz çocuğu.`);
+                }
+            } 
+            // SENARYO 2: Maç Bitti ve Kapatıldı
+            else {
+                add('ertem', `İnanılmaz bir geceydi! ${x.sA}-${x.sB} biten maçın ardından MVP ${hl(x.mvpName)} seçildi!`);
+                
+                if (x.mvpName) {
+                    add('ahmet', `Ben bu ${hl(x.mvpName)}'in MVP olacağını geçen hafta söyledim! Ama yalan yok, algoritmayı hacklemiş olabilirler. Bu oylara ben güvenmiyorum kardeşim!`);
+                    add('sinan', `Öpüyorum oylayanların gözlerinden! Helal olsun, işte gerçek futbol! ${hl(x.mvpName)} kardeşim çıkışta köfte ekmekler benden!`);
+                    add('batuhan', `MVP falan hikaye abi. Adam 2 tane boş kaleye attı diye yıldız yaptınız. Ben olsam oradan rövaşata denerdim.`);
+                }
 
-            const chip = (text, cls) => `<span class="px-2 py-0.5 rounded-md font-black text-[10px] tracking-wider ${cls}">${text}</span>`;
-            const parts = [];
-            if (x.m) {
-                parts.push(chip(`SON MAÇ • A ${x.sA} - ${x.sB} B`, 'bg-amber-500/20 text-amber-300 border border-amber-500/40'));
-                parts.push(...lastLines);
-            }
-            if (seasonLines.length) {
-                parts.push(chip(x.n ? `SEZON • ${x.n} MAÇ • ${x.goals} GOL` : 'SEZON ÖNCESİ', 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'));
-                parts.push(...seasonLines);
+                if (x.diff >= 4) {
+                    add('rasim', `Hocam bu nasıl fark! ${x.winner} silindir gibi geçti, ezdi geçti! Karşı takım resmen sahada yoktu, haydaaa!`);
+                } else if (x.diff === 0) {
+                    add('erman', `Berabere bitti... Herkes birbirine gülücük dağıtıyor. Kardeşim çıkın dişe diş korakor oynayın. Çay partisine mi geldiniz?`);
+                } else {
+                    add('ahmet', `Kıl payı bitti ama o verilmeyen faul... Bak o faul verilse bugün bunları konuşmuyorduk Ertem!`);
+                }
             }
 
-            const one = parts.join(sep);
-            container.innerHTML = one + sep + one;
+            if (x.topScorer) {
+                add('sinan', `Günün sonunda ${hl(x.topScorer.name)}'in gollerini konuşacağız. Makine makine! Mermi gibi vuruyor!`);
+            }
+
+            feed.innerHTML = comments.join('');
         }
+
 
         // PLAYER MANAGEMENT FUNCTIONS (FIRESTORE) - admin rating girmez, sadece isim + pozisyon
         async function handlePlayerSubmit(e) {
