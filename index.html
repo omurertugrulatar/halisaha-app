@@ -36,13 +36,87 @@
     </script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Google Fonts Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            red: '#f43f5e',
+                            orange: '#f97316',
+                            bg: '#030303',
+                            panel: 'rgba(10, 10, 10, 0.6)'
+                        },
+                        pitch: {
+                            DEFAULT: '#10b981',
+                            dark: '#047857',
+                            lines: 'rgba(255, 255, 255, 0.4)'
+                        },
+                        darkbg: '#030303',
+                        cardbg: 'rgba(10, 10, 10, 0.5)'
+                    },
+                    animation: {
+                        'ticker': 'ticker 35s linear infinite',
+                    },
+                    keyframes: {
+                        ticker: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-50%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
+            font-family: 'Outfit', sans-serif;
+            background-color: #030303;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        /* Ambient Glows */
+        .bg-grid {
+            position: fixed; inset: 0; z-index: -3;
+            background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(circle at center, black 20%, transparent 80%);
+            -webkit-mask-image: radial-gradient(circle at top center, black 20%, transparent 80%);
+        }
+        .glow-core {
+            position: fixed; top: -20%; left: 50%; transform: translateX(-50%);
+            width: 60vw; height: 50vh;
+            background: radial-gradient(ellipse, rgba(244, 63, 94, 0.08) 0%, rgba(249, 115, 22, 0.05) 40%, transparent 70%);
+            filter: blur(80px); z-index: -2; pointer-events: none;
+        }
+
+        .txt-gradient {
+            background: linear-gradient(to right, #f43f5e, #f97316);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bg-gradient-btn {
+            background: linear-gradient(to right, #f43f5e, #f97316);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .bg-gradient-btn:hover {
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .glass-panel {
+            background: rgba(10, 10, 10, 0.5);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
         .pitch-bg {
             background: linear-gradient(to bottom, #065f46, #047857);
@@ -110,7 +184,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
-<body class="min-h-screen flex flex-col pb-16 antialiased selection:bg-emerald-500 selection:text-white">
+<body class="min-h-screen flex flex-col pb-16 antialiased selection:bg-brand-red selection:text-white">
+    <div class="bg-grid"></div>
+    <div class="glow-core"></div>
 <script>
 /* Ekranda hata gösterici: sayfa/Firebase bozulursa kırmızı kutuda hata mesajı çıkar */
 (function(){
