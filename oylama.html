@@ -95,9 +95,14 @@
             white-space: nowrap;
         }
         .ticker-move {
-            display: inline-block;
+            display: inline-flex;
             white-space: nowrap;
-            animation: ticker 40s linear infinite;
+            width: max-content;
+            animation: tickerScroll 40s linear infinite;
+        }
+        @keyframes tickerScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
         }
         .ticker-wrap:hover .ticker-move {
             animation-play-state: paused;
@@ -323,7 +328,7 @@
                 <span>TELEGOL AI CANLI YORUM</span>
             </div>
             <div class="ticker-wrap flex-grow text-xs font-medium text-slate-200">
-                <div class="ticker-move flex items-center space-x-8" id="commentators-ticker-content">
+                <div class="ticker-move items-center space-x-8" id="commentators-ticker-content">
                     <!-- Dynamic Quotes -->
                 </div>
             </div>
