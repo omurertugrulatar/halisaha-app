@@ -1068,26 +1068,35 @@ function goToEvalStep(step) {
                 `);
             };
 
-            // Rastgele seçim fonksiyonları (Yenile butonunun çalışması için)
             const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
             const shuffle = (arr) => [...arr].sort(() => 0.5 - Math.random());
 
             if (x.votingActive) {
                 add('ertem', pick([
                     `Sayın seyirciler, maç bitti ama heyecan bitmedi! Oylama an itibariyle devam ediyor, ${x.votesCast}/${x.votesTotal} oy kullanıldı.`,
-                    `Kulisler kaynıyor! ${x.votesCast}/${x.votesTotal} oy geldi, telefonlarım susmuyor sayın seyirciler!`,
-                    `İşte gerçek futbol, işte demokrasi! ${x.votesCast}/${x.votesTotal} kişi oylarını verdi, heyecan dorukta!`
+                    `Kulisler alev alev! ${x.votesCast}/${x.votesTotal} oy geldi, telefonlarım susmuyor sayın seyirciler!`,
+                    `İşte gerçek futbol, işte demokrasi! ${x.votesCast}/${x.votesTotal} kişi oylarını verdi, heyecan dorukta!`,
+                    `Son dakika! Soyunma odasında hesaplaşmalar başladı. Şu ana kadar ${x.votesCast}/${x.votesTotal} oy sisteme girildi.`,
+                    `Bomba iddia! Bazı oyuncuların birbirlerine bilerek düşük puan vermek için lobicilik yaptığı söyleniyor. Şu an ${x.votesCast} oy var.`,
+                    `Futbolun meyvesi goldür, ama halı sahanın asıl meyvesi bu oylamadır sayın seyirciler! ${x.votesCast} oyla devam ediyoruz.`
                 ]));
 
                 if (x.currentLeader) {
                     const lName = hl(x.currentLeader.p.name);
                     const leaderQuotes = [
                         { a: 'ahmet', t: `Bak Ertem... Şuan ${lName} önde gidiyor. Ben bu işte bir şaibe ararım! Dayısı mı var bu çocuğun? Sahada yoktu yahu!` },
+                        { a: 'ahmet', t: `Bu ${lName}'e verilen puanlarda dış güçlerin parmağı var. Büyük bir lobi faaliyeti seziyorum!` },
+                        { a: 'ahmet', t: `${lName}'i lider yapan algoritmayı incelesinler. Bu oyların arkasında masonik bir yapılanma olabilir, kalemimi kırarım!` },
                         { a: 'sinan', t: `Bırak Ahmet hoca allah aşkına! Aslanlar gibi top oynadı, ${lName} kardeşimizi yedirmem! Helal olsun ona.` },
+                        { a: 'sinan', t: `Kıskanmayın kardeşim! ${lName} aslanlar gibi mücadele etti. Puanını da çatır çatır almış, öpüyorum gözlerinden.` },
+                        { a: 'sinan', t: `${lName} benim oyuncum! Formayı terletti, hakkını verdi. Ona o vermeyenler gitsin tenis oynasın.` },
                         { a: 'batuhan', t: `Abi biz de top oynadık... ${lName}'nin şutu taça gitti taça! Buna liderlik verenler futbolu ayak tenisi sanıyor galiba.` },
-                        { a: 'erman', t: `${lName} mi lider? Oynat bakalım... Arkadaş maç boyunca iki kere topa değdi. Neye göre verdiniz bu puanı?` }
+                        { a: 'batuhan', t: `Ya abi ben bu ${lName}'i izlerken yoruldum. Adamın bir tane olumlu pası yok, lider yapmışsınız. Yazık!` },
+                        { a: 'batuhan', t: `${lName} liderse, ben yarın Real Madrid'de idmana çıkarım. Halı saha topçusu bile değil abi bu!` },
+                        { a: 'erman', t: `${lName} mi lider? Oynat bakalım... Arkadaş maç boyunca iki kere topa değdi. Neye göre verdiniz bu puanı?` },
+                        { a: 'erman', t: `Karpuzcuya versen o formayı, ${lName}'den daha iyi oynardı. Kim oyluyor bunları yahu? Zıp zıp zıplıyor sahada sadece.` },
+                        { a: 'rasim', t: `Ertem, ${lName}'in şu an lider olması liyakatsizliğin dibidir! Komedi bu! Haydaaaa!` }
                     ];
-                    // Havuzdan rastgele 2 tanesini seçip ekle
                     shuffle(leaderQuotes).slice(0, 2).forEach(q => add(q.a, q.t));
                 }
 
@@ -1095,53 +1104,90 @@ function goToEvalStep(step) {
                     const lsName = hl(x.currentLoser.p.name);
                     const loserQuotes = [
                         { a: 'rasim', t: `Hahahah! Ya ${lsName}'a o dip puanları kim veriyor yahu! Çocuğa yazık, moralmen bitirdiniz! Görünmezlik peleriniyle mi dolaştın kardeşim sahada? Haydaaaa!` },
+                        { a: 'rasim', t: `Hocam ${lsName} resmen şokta! Ben böyle yerlerde sürünen rating görmedim. Futbol hayatını bitireceksiniz adamın, yapmayın!` },
+                        { a: 'rasim', t: `${lsName}'in aldığı bu puana sadece gülerim Ertem! Hahahahah! Oyunda olduğunu maç bittikten sonra forması temiz kalınca anladık!` },
                         { a: 'erman', t: `Oynat bakalım... Arkadaş, ${lsName} oyunda mıydı? Ben adamı göremedim. Halı sahaya değil çay bahçesine gelmiş sanki, pırasa gibi doğramışlar!` },
+                        { a: 'erman', t: `${lsName} kardeşim, sen bu futbol işini bırak. Git masa tenisi oyna, satranç oyna. Bacaklar gitmiyor artık, eziyet ediyorsun kendine!` },
+                        { a: 'erman', t: `Böyle top mu oynanır? ${lsName} ikili mücadelede yok, topta yok. Puanı verenler de acımamış zaten, tam isabet!` },
                         { a: 'ahmet', t: `Ertem, ${lsName} kardeşimizi fena harcamışlar. Ama yalan yok, adamın ciğeri 10. dakikada bitti. Koşmayı unutan adama eksi puan verilmeli eksi!` },
+                        { a: 'ahmet', t: `Bana ${lsName}'in sahada koştuğuna dair bir tane delil gösterin, şu kalemi kırarım Ertem! Yok, adam yürüyor yahu!` },
                         { a: 'batuhan', t: `Abi ${lsName} bildiğin yürüdü ya! Biz bu yaşta çıksak ondan çok koşarız. Kusura bakmasın, o puan bile lüks ona!` },
+                        { a: 'batuhan', t: `Abi halı saha parasını ben versem, ${lsName}'i yine oynatmam. Topu veriyorsun, taca atıyor. İnanılmaz gerçekten.` },
                         { a: 'sinan', t: `Ya yapmayın etmeyin, ${lsName} kardeşimin şanssız günüydü. Top ayağına yakışmadı değil, top adamdan korkup kaçtı resmen!` },
-                        { a: 'rasim', t: `Hocam ${lsName} resmen şokta! Ben böyle yerlerde sürünen rating görmedim. Futbol hayatını bitireceksiniz adamın, yapmayın! Haydaaa!` }
+                        { a: 'sinan', t: `${lsName} canım kardeşim, moralini bozma. Haftaya iki gol atarsın kral olursun. Ama bu hafta harbiden döküldün be yavrum!` }
                     ];
-                    // Havuzdan rastgele 2 dalgacı yorum seçip ekle
                     shuffle(loserQuotes).slice(0, 2).forEach(q => add(q.a, q.t));
                 }
             } else {
                 add('ertem', pick([
                     `İnanılmaz bir geceydi! ${x.sA}-${x.sB} biten maçın ardından MVP ${hl(x.mvpName)} seçildi!`,
-                    `Son düdük çaldı, oylar sayıldı ve gecenin yıldızı ${hl(x.mvpName)} oldu! Skor tabelasında ise ${x.sA}-${x.sB} yazıyor.`
+                    `Son düdük çaldı, oylar sayıldı ve gecenin yıldızı ${hl(x.mvpName)} oldu! Skor tabelasında ise ${x.sA}-${x.sB} yazıyor. Olağanüstü!`,
+                    `Türk futbol tarihinde bir ilk yaşanmış olabilir sayın seyirciler! Maçın MVP'si kıran kırana bir oylamayla ${hl(x.mvpName)} oldu!`
                 ]));
+                
                 if (x.mvpName) {
                     const lName = hl(x.mvpName);
                     const mvpQuotes = [
                         { a: 'ahmet', t: `Ben bu ${lName}'in MVP olacağını söyledim! Ama yalan yok, algoritmayı hacklemiş olabilir. Bu oylara ben güvenmiyorum kardeşim!` },
+                        { a: 'ahmet', t: `Halı sahanın kara gecesi! ${lName} MVP seçildi. Oylayanların hesap hareketleri acilen incelenmeli!` },
+                        { a: 'ahmet', t: `${lName}'i MVP yapan lobiyi tebrik ediyorum. Helal olsun, operasyon budur işte!` },
                         { a: 'sinan', t: `Öpüyorum oylayanların gözlerinden! Helal olsun! ${lName} kardeşim çıkışta köfte ekmekler benden!` },
+                        { a: 'sinan', t: `Aslanlar gibi MVP oldu! Fiziği harika, bilekler süper. ${lName} sen bu işin vakkasısın yavrum!` },
                         { a: 'batuhan', t: `MVP falan hikaye abi. Adam 2 tane boş kaleye attı diye yıldız yaptınız. Ben olsam oradan rövaşata denerdim.` },
-                        { a: 'erman', t: `MVP seçmişsiniz iyi güzel de... Çıksın şurada 2 tur koşsun ciğeri patlar. Bu mu maçın adamı?` }
+                        { a: 'batuhan', t: `${lName} MVP mi? Abi gidin halı sahanın parasını geri isteyin. Bizim zamanımızda böyle MVP'leri tesise almazlardı.` },
+                        { a: 'erman', t: `MVP seçmişsiniz iyi güzel de... Çıksın şurada 2 tur koşsun ciğeri patlar. Bu mu maçın adamı?` },
+                        { a: 'erman', t: `Göstermelik bir MVP! Erkek gibi mücadele eden adamları yediniz, ${lName}'i vitrine koydunuz. Karpuzcu forması giysin seneye!` },
+                        { a: 'rasim', t: `Hahahah Ertem! ${lName}'in MVP olduğu yerde ben de Ballon d'Or alırım! Vizyonsuzluk bu yahu, haydaaaa!` }
                     ];
                     shuffle(mvpQuotes).slice(0, 2).forEach(q => add(q.a, q.t));
                 }
+                
                 if (x.diff >= 4) {
                     add('rasim', pick([
                         `Hocam bu nasıl fark! ${x.winner} silindir gibi geçti, ezdi geçti! Karşı takım resmen sahada yoktu, haydaaa!`,
-                        `Ya bu fark tarihe geçer! ${x.winner} rakibi paramparça etti, çocukları ağlattınız yahu!`
+                        `Karşı takım averaj takımı olmuş Ertem! ${x.winner} acımamış, çocukları sahada ağlatmış resmen! Şaka gibi skor!`
+                    ]));
+                    add('ahmet', pick([
+                        `Bu maçın ${x.winner} lehine bu kadar farklı bitmesi normal değil. Ben şike demiyorum, ama saha parası karşı takımdan alınmış olabilir!`,
+                        `Tarihi fark var ortada. ${x.winner} takımı, karşı takıma futbol dersi değil, adeta eziyet vermiş!`
                     ]));
                 } else if (x.diff === 0) {
-                    add('erman', `Berabere bitti... Herkes birbirine gülücük dağıtıyor. Kardeşim çıkın dişe diş korakor oynayın. Çay partisine mi geldiniz?`);
+                    add('erman', pick([
+                        `Berabere bitti... Herkes birbirine gülücük dağıtıyor. Kardeşim çıkın dişe diş korakor oynayın. Çay partisine mi geldiniz?`,
+                        `Al gülüm ver gülüm. Erkek adam gibi çıkıp kazanan çıkmadı sahadan. Pamuk şeker mi dağıttınız devrede?`
+                    ]));
+                    add('batuhan', pick([
+                        `Abi berabere biten maçı ben izlemem. Vuracaksın kıracaksın kazanacaksın. Biz halı sahada yenilince birbirimize girerdik.`,
+                        `Şut yok, aksiyon yok, gol yok... Böyle beraberlik mi olur abi? İzlerken uykum geldi yemin ederim.`
+                    ]));
                 } else {
                     add('ahmet', pick([
                         `Kıl payı bitti ama o verilmeyen faul... Bak o faul verilse bugün bunları konuşmuyorduk Ertem! Olayın arkasında büyük güçler var!`,
-                        `Futbol bu işte Ertem! Ama maçı hakem katletti, o son pozisyon net penaltıydı net!`
+                        `Futbol bu işte Ertem! Ama maçı hakem katletti, o son saniyedeki pozisyon net penaltıydı net! Hakkı yendi o takımın!`
+                    ]));
+                    add('sinan', pick([
+                        `Kıran kırana geçti be! Helal olsun çocuklara. Kemik sesleri geldi sahadan kemik! Böyle futbol canımı yesin!`,
+                        `Seyretmeye doyamadım Ertem. ${x.winner} kazandı ama helal olsun, terlerinin son damlasına kadar hak ettiler.`
                     ]));
                 }
             }
+            
             if (x.topScorer) {
                 const tsName = hl(x.topScorer.name);
                 add('sinan', pick([
                     `Günün sonunda ${tsName}'in gollerini konuşacağız. Makine makine! Mermi gibi vuruyor!`,
-                    `Gollerin efendisi ${tsName}! Adam ceza sahasında yılan gibi kıvrıldı bugün!`
+                    `Gollerin efendisi ${tsName}! Adam ceza sahasında yılan gibi kıvrıldı bugün, tutamadılar aslanımı!`
+                ]));
+                add('batuhan', pick([
+                    `O attığı son gol şanstı abi. ${tsName} benim önümde öyle vursa, ben topu direkt kaleciye bırakırdım zaten. Şişirme vurdu gol oldu.`,
+                    `Abi ${tsName} gol atmadı, top kendi kendine girdi kaleye. Bana sorsan o pozisyonda şut değil, trivela denerdim ben.`
+                ]));
+                add('erman', pick([
+                    `${tsName} iyi gol attı da, defans uyuyordu be Ertem. Biraz erkek gibi bassalar o gollerin yarısını atamazdı.`,
+                    `Savunma evlere şenlik olunca ${tsName} tabii yazar golleri. Kardeşim defans defans gibi dursa, bir tane atamazdı o!`
                 ]));
             }
             
-            // Yorumları basmadan önce küçük bir görünüm animasyonu sağlamak için fade efekti hilesi
             feed.style.opacity = '0';
             setTimeout(() => {
                 feed.innerHTML = comments.join('');
@@ -1149,6 +1195,7 @@ function goToEvalStep(step) {
                 feed.style.opacity = '1';
             }, 50);
         }
+
 
         
         // Password Change Functions
