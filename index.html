@@ -1092,8 +1092,29 @@
         const ROUND_DECAY = 0.6;
         const TRIM_MIN_VOTES = 3; // bir turda bir nitelik için en az bu kadar oy varsa en yüksek ve en düşük oy çıkarılır
 
+// Oylar iki biçimde saklanabilir: eski biçim = puanlanan oyuncunun belgesinde {voterId,...};
+        // yeni biçim = oy verenin kendi belgesinde {targetId,...}. İkisi de (hedef, oy veren) olarak normalize edilir.
+        let _rvCache = { src: null, list: [] };
+        function allRatingVotes() {
+            if (_rvCache.src === players) return _rvCache.list;
+            const seen = new Set();
+            const list = [];
+            players.forEach(doc => (doc.peerAttributeVotes || []).forEach(v => {
+                if (!v) return;
+                const targetId = v.targetId || doc.id;
+                const voterId = v.targetId ? doc.id : v.voterId;
+                if (!voterId || voterId === targetId) return;
+                const key = [targetId, voterId, v.period || 0].join('|');
+                if (seen.has(key)) return; // aynı oy iki yerde varsa bir kez say
+                seen.add(key);
+                list.push({ ...v, targetId, voterId });
+            }));
+            _rvCache = { src: players, list };
+            return list;
+        }
+
 function getVoteStats(player) {
-            const votes = (player.peerAttributeVotes || []).filter(v => v && ATTR_KEYS.some(k => typeof v[k] === 'number') && !excludedVotes.has(voteKey(v.period, v.voterId)));
+            const votes = allRatingVotes().filter(v => v.targetId === player.id && ATTR_KEYS.some(k => typeof v[k] === 'number') && !excludedVotes.has(voteKey(v.period, v.voterId)));
 
             if (votes.length === 0) {
                 // Eski sürümden kalan tek puanlı oylar (varsa)
@@ -1961,7 +1982,7 @@ function getVoteStats(player) {
 
 function renderRatingSubmissions() {
             const all = [];
-            players.forEach(t => (t.peerAttributeVotes || []).forEach(v => { if (v) all.push({ ...v, targetId: t.id }); }));
+            allRatingVotes().forEach(v => all.push(v));
 
             const sel = document.getElementById('sub-round-select');
             const periods = [...new Set(all.map(v => v.period || 0))].sort((a, b) => b - a);
@@ -2554,9 +2575,9 @@ function renderRatingSubmissions() {
         function updateResetStats() {
             const el = document.getElementById('reset-stats');
             if (!el) return;
-            const total = players.reduce((s, p) => s + (p.peerAttributeVotes || []).length, 0);
-            const voters = new Set();
-            players.forEach(p => (p.peerAttributeVotes || []).forEach(v => voters.add(v.voterId)));
+            const rv = allRatingVotes();
+            const total = rv.length;
+            const voters = new Set(rv.map(v => v.voterId));
             el.textContent = `Şu an kayıtlı: ${total} rating oyu (${voters.size} farklı oy veren) ve ${matchRatings.length} maç puanı kaydı.`;
         }
 
