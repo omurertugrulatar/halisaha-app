@@ -844,7 +844,7 @@
             }
 
             status.className = 'text-xs font-semibold min-h-[1rem] text-orange-400';
-            status.textContent = 'Diğer tüm oyuncuları 6-10 arası puanlayın (zorunlu). Gönderdikten sonra değiştirilemez.';
+            status.textContent = 'Diğer tüm oyuncuları 1-10 arası puanlayın (zorunlu). Gönderdikten sonra değiştirilemez.';
             submitBtn.disabled = false;
 
             grid.innerHTML = participants.filter(p => p.id !== voterId).map(p => `
@@ -942,7 +942,6 @@
             const voteTs = Date.now();
 
             try {
-                // Sadece oy verenin dökümanını güncelliyoruz (diğer oyuncuların dökümanlarına erişim yetki hatası vermesin diye)
                 const voterRef = db.collection('players').doc(voterId);
                 const voterSnap = await voterRef.get();
                 if (!voterSnap.exists) throw new Error("Oyuncu bulunamadı.");
@@ -969,7 +968,6 @@
                     peerAttributeVotes: [...currentPeerVotes, ...newVotesForVoter]
                 });
 
-                // eval_log kaydı (durum takibi için)
                 try {
                     const logRef = db.collection('eval_log').doc(`${voterId}_${period}`);
                     await logRef.set({ voterId, period, lastTs: voteTs }, { merge: true });
@@ -1008,7 +1006,7 @@
                 input.classList.remove('border-red-500');
                 const raw = String(input.value).trim();
                 const n = parseFloat(raw);
-                if (raw === '' || isNaN(n) || n < 6 || n > 10) {
+                if (raw === '' || isNaN(n) || n < 1 || n > 10) {
                     bad++;
                     input.classList.add('border-red-500');
                 } else {
@@ -1119,13 +1117,16 @@
                 x.votingActive = m.finalized === false;
                 x.votesCast = got;
                 x.votesTotal = parts.length;
-                
-                if (m.finalized === false && got > 0) {
-                    const scMap = getMatchScoreMap(m).scores;
-                    const ranked = Object.keys(scMap).map(pid => ({ p: players.find(p=>p.id===pid), avg: scMap[pid].avg })).sort((a,b) => b.avg - a.avg);
-                    x.currentLeader = ranked[0] ? ranked[0] : null;
-                    x.currentLoser = ranked.length > 1 ? ranked[ranked.length-1] : null;
-                } else if (m.finalized === true) {
+
+                const scMap = getMatchScoreMap(m).scores;
+                const ranked = Object.keys(scMap).map(pid => ({ p: players.find(p=>p.id===pid), avg: scMap[pid].avg })).sort((a,b) => b.avg - a.avg);
+                x.currentLeader = ranked[0] ? ranked[0] : null;
+
+                // 7'nin altında puan alan düşük performanslı oyuncular (Diptedekiler)
+                x.lowPerformers = ranked.filter(item => item.p && item.avg < 7);
+                x.currentLoser = ranked.length > 1 ? ranked[ranked.length-1] : null;
+
+                if (m.finalized === true) {
                     x.mvpName = m.mvp;
                 }
             }
@@ -1141,9 +1142,15 @@
                 return;
             }
             
+            let lowTickerStr = "";
+            if (x.lowPerformers && x.lowPerformers.length > 0) {
+                const lowNames = x.lowPerformers.map(lp => `${lp.p.name} (${lp.avg.toFixed(1)})`).join(', ');
+                lowTickerStr = ` • ERMAN HOCA: ${lowNames} 7 puanın altında kaldı, kırmızı alarm!`;
+            }
+
             const txt = x.votingActive 
-                ? `ERTEM: Oylama sürüyor (${x.votesCast}/${x.votesTotal})! • AHMET HOCA: Oyları kim sayıyor, algoritma nerede?! • SİNAN ABİ: Aslanlar gibi oynadılar, hepsine 10 verin!` 
-                : `SİNAN ABİ: ${x.mvpName ? x.mvpName + ' aslanlar gibi MVP oldu!' : 'Maç bitti, duşlara!'} • RASİM: Haydaaa, bu skor tarihe geçer!`;
+                ? `ERTEM: Oylama sürüyor (${x.votesCast}/${x.votesTotal})! • AHMET HOCA: Oyları kim sayıyor, algoritma nerede?!${lowTickerStr} • SİNAN ABİ: Aslanlar gibi oynadılar!` 
+                : `SİNAN ABİ: ${x.mvpName ? x.mvpName + ' aslanlar gibi MVP oldu!' : 'Maç bitti, duşlara!'}${lowTickerStr} • RASİM: Haydaaa, 7 altı alanlar felaket!`;
             
             const html = `<span class="flex items-center space-x-6 text-zinc-300 font-bold tracking-wide">${txt.split(' • ').map(t => `<span class="text-orange-400">•</span> <span>${t}</span>`).join('')}</span>`;
             container.innerHTML = html + '<span class="px-8"></span>' + html;
@@ -1182,117 +1189,44 @@
                 add('ertem', pick([
                     `Sayın seyirciler, maç bitti ama heyecan bitmedi! Oylama an itibariyle devam ediyor, ${x.votesCast}/${x.votesTotal} oy kullanıldı.`,
                     `Kulisler alev alev! ${x.votesCast}/${x.votesTotal} oy geldi, telefonlarım susmuyor sayın seyirciler!`,
-                    `İşte gerçek futbol, işte demokrasi! ${x.votesCast}/${x.votesTotal} kişi oylarını verdi, heyecan dorukta!`,
-                    `Son dakika! Soyunma odasında hesaplaşmalar başladı. Şu ana kadar ${x.votesCast}/${x.votesTotal} oy sisteme girildi.`,
-                    `Bomba iddia! Bazı oyuncuların birbirlerine bilerek düşük puan vermek için lobicilik yaptığı söyleniyor. Şu an ${x.votesCast} oy var.`,
-                    `Futbolun meyvesi goldür, ama halı sahanın asıl meyvesi bu oylamadır sayın seyirciler! ${x.votesCast} oyla devam ediyoruz.`
+                    `İşte gerçek futbol, işte demokrasi! ${x.votesCast}/${x.votesTotal} kişi oylarını verdi, heyecan dorukta!`
                 ]));
 
                 if (x.currentLeader) {
                     const lName = hl(x.currentLeader.p.name);
                     const leaderQuotes = [
-                        { a: 'ahmet', t: `Bak Ertem... Şuan ${lName} önde gidiyor. Ben bu işte bir şaibe ararım! Dayısı mı var bu çocuğun? Sahada yoktu yahu!` },
-                        { a: 'ahmet', t: `Bu ${lName}'e verilen puanlarda dış güçlerin parmağı var. Büyük bir lobi faaliyeti seziyorum!` },
-                        { a: 'ahmet', t: `${lName}'i lider yapan algoritmayı incelesinler. Bu oyların arkasında masonik bir yapılanma olabilir, kalemimi kırarım!` },
-                        { a: 'sinan', t: `Bırak Ahmet hoca allah aşkına! Aslanlar gibi top oynadı, ${lName} kardeşimizi yedirmem! Helal olsun ona.` },
-                        { a: 'sinan', t: `Kıskanmayın kardeşim! ${lName} aslanlar gibi mücadele etti. Puanını da çatır çatır almış, öpüyorum gözlerinden.` },
-                        { a: 'sinan', t: `${lName} benim oyuncum! Formayı terletti, hakkını verdi. Ona o vermeyenler gitsin tenis oynasın.` },
-                        { a: 'batuhan', t: `Abi biz de top oynadık... ${lName}'nin şutu taça gitti taça! Buna liderlik verenler futbolu ayak tenisi sanıyor galiba.` },
-                        { a: 'batuhan', t: `Ya abi ben bu ${lName}'i izlerken yoruldum. Adamın bir tane olumlu pası yok, lider yapmışsınız. Yazık!` },
-                        { a: 'batuhan', t: `${lName} liderse, ben yarın Real Madrid'de idmana çıkarım. Halı saha topçusu bile değil abi bu!` },
-                        { a: 'erman', t: `${lName} mi lider? Oynat bakalım... Arkadaş maç boyunca iki kere topa değdi. Neye göre verdiniz bu puanı?` },
-                        { a: 'erman', t: `Karpuzcuya versen o formayı, ${lName}'den daha iyi oynardı. Kim oyluyor bunları yahu? Zıp zıp zıplıyor sahada sadece.` },
-                        { a: 'rasim', t: `Ertem, ${lName}'in şu an lider olması liyakatsizliğin dibidir! Komedi bu! Haydaaaa!` }
+                        { a: 'ahmet', t: `Bak Ertem... Şuan ${lName} önde gidiyor (${x.currentLeader.avg.toFixed(1)}). Ben bu işte bir şaibe ararım! Dayısı mı var bu çocuğun? Sahada yoktu yahu!` },
+                        { a: 'sinan', t: `Kıskanmayın kardeşim! ${lName} aslanlar gibi mücadele etti. Puanını da (${x.currentLeader.avg.toFixed(1)}) çatır çatır almış, öpüyorum gözlerinden.` },
+                        { a: 'batuhan', t: `Ya abi ben bu ${lName}'i izlerken yoruldum. Adamın bir tane olumlu pası yok, lider yapmışsınız. Yazık!` }
                     ];
-                    shuffle(leaderQuotes).slice(0, 2).forEach(q => add(q.a, q.t));
-                }
-
-                if (x.currentLoser) {
-                    const lsName = hl(x.currentLoser.p.name);
-                    const loserQuotes = [
-                        { a: 'rasim', t: `Hahahah! Ya ${lsName}'a o dip puanları kim veriyor yahu! Çocuğa yazık, moralmen bitirdiniz! Görünmezlik peleriniyle mi dolaştın kardeşim sahada? Haydaaaa!` },
-                        { a: 'rasim', t: `Hocam ${lsName} resmen şokta! Ben böyle yerlerde sürünen rating görmedim. Futbol hayatını bitireceksiniz adamın, yapmayın!` },
-                        { a: 'rasim', t: `${lsName}'in aldığı bu puana sadece gülerim Ertem! Hahahahah! Oyunda olduğunu maç bittikten sonra forması temiz kalınca anladık!` },
-                        { a: 'erman', t: `Oynat bakalım... Arkadaş, ${lsName} oyunda mıydı? Ben adamı göremedim. Halı sahaya değil çay bahçesine gelmiş sanki, pırasa gibi doğramışlar!` },
-                        { a: 'erman', t: `${lsName} kardeşim, sen bu futbol işini bırak. Git masa tenisi oyna, satranç oyna. Bacaklar gitmiyor artık, eziyet ediyorsun kendine!` },
-                        { a: 'erman', t: `Böyle top mu oynanır? ${lsName} ikili mücadelede yok, topta yok. Puanı verenler de acımamış zaten, tam isabet!` },
-                        { a: 'ahmet', t: `Ertem, ${lsName} kardeşimizi fena harcamışlar. Ama yalan yok, adamın ciğeri 10. dakikada bitti. Koşmayı unutan adama eksi puan verilmeli eksi!` },
-                        { a: 'ahmet', t: `Bana ${lsName}'in sahada koştuğuna dair bir tane delil gösterin, şu kalemi kırarım Ertem! Yok, adam yürüyor yahu!` },
-                        { a: 'batuhan', t: `Abi ${lsName} bildiğin yürüdü ya! Biz bu yaşta çıksak ondan çok koşarız. Kusura bakmasın, o puan bile lüks ona!` },
-                        { a: 'batuhan', t: `Abi halı saha parasını ben versem, ${lsName}'i yine oynatmam. Topu veriyorsun, taca atıyor. İnanılmaz gerçekten.` },
-                        { a: 'sinan', t: `Ya yapmayın etmeyin, ${lsName} kardeşimin şanssız günüydü. Top ayağına yakışmadı değil, top adamdan korkup kaçtı resmen!` },
-                        { a: 'sinan', t: `${lsName} canım kardeşim, moralini bozma. Haftaya iki gol atarsın kral olursun. Ama bu hafta harbiden döküldün be yavrum!` }
-                    ];
-                    shuffle(loserQuotes).slice(0, 2).forEach(q => add(q.a, q.t));
+                    shuffle(leaderQuotes).slice(0, 1).forEach(q => add(q.a, q.t));
                 }
             } else {
                 add('ertem', pick([
                     `İnanılmaz bir geceydi! ${x.sA}-${x.sB} biten maçın ardından MVP ${hl(x.mvpName)} seçildi!`,
-                    `Son düdük çaldı, oylar sayıldı ve gecenin yıldızı ${hl(x.mvpName)} oldu! Skor tabelasında ise ${x.sA}-${x.sB} yazıyor. Olağanüstü!`,
-                    `Türk futbol tarihinde bir ilk yaşanmış olabilir sayın seyirciler! Maçın MVP'si kıran kırana bir oylamayla ${hl(x.mvpName)} oldu!`
+                    `Son düdük çaldı, oylar sayıldı ve gecenin yıldızı ${hl(x.mvpName)} oldu! Olağanüstü!`
                 ]));
-                
-                if (x.mvpName) {
-                    const lName = hl(x.mvpName);
-                    const mvpQuotes = [
-                        { a: 'ahmet', t: `Ben bu ${lName}'in MVP olacağını söyledim! Ama yalan yok, algoritmayı hacklemiş olabilir. Bu oylara ben güvenmiyorum kardeşim!` },
-                        { a: 'ahmet', t: `Halı sahanın kara gecesi! ${lName} MVP seçildi. Oylayanların hesap hareketleri acilen incelenmeli!` },
-                        { a: 'ahmet', t: `${lName}'i MVP yapan lobiyi tebrik ediyorum. Helal olsun, operasyon budur işte!` },
-                        { a: 'sinan', t: `Öpüyorum oylayanların gözlerinden! Helal olsun! ${lName} kardeşim çıkışta köfte ekmekler benden!` },
-                        { a: 'sinan', t: `Aslanlar gibi MVP oldu! Fiziği harika, bilekler süper. ${lName} sen meşale yakılacak adamsın yavrum!` },
-                        { a: 'batuhan', t: `MVP falan hikaye abi. Adam 2 tane boş kaleye attı diye yıldız yaptınız. Ben olsam oradan rövaşata denerdim.` },
-                        { a: 'batuhan', t: `${lName} MVP mi? Abi gidin halı sahanın parasını geri isteyin. Bizim zamanımızda böyle MVP'leri tesise almazlardı.` },
-                        { a: 'erman', t: `MVP seçmişsiniz iyi güzel de... Çıksın şurada 2 tur koşsun ciğeri patlar. Bu mu maçın adamı?` },
-                        { a: 'erman', t: `Göstermelik bir MVP! Erkek gibi mücadele eden adamları yediniz, ${lName}'i vitrine koydunuz. Karpuzcu forması giysin seneye!` },
-                        { a: 'rasim', t: `Hahahah Ertem! ${lName}'in MVP olduğu yerde ben de Ballon d'Or alırım! Vizyonsuzluk bu yahu, haydaaaa!` }
-                    ];
-                    shuffle(mvpQuotes).slice(0, 2).forEach(q => add(q.a, q.t));
-                }
-                
-                if (x.diff >= 4) {
-                    add('rasim', pick([
-                        `Hocam bu nasıl fark! ${x.winner} silindir gibi geçti, ezdi geçti! Karşı takım resmen sahada yoktu, haydaaa!`,
-                        `Karşı takım averaj takımı olmuş Ertem! ${x.winner} acımamış, çocukları sahada ağlatmış resmen! Şaka gibi skor!`
-                    ]));
-                    add('ahmet', pick([
-                        `Bu maçın ${x.winner} lehine bu kadar farklı bitmesi normal değil. Ben şike demiyorum, ama saha parası karşı takımdan alınmış olabilir!`,
-                        `Tarihi fark var ortada. ${x.winner} takımı, karşı takıma futbol dersi değil, adeta eziyet vermiş!`
-                    ]));
-                } else if (x.diff === 0) {
-                    add('erman', pick([
-                        `Berabere bitti... Herkes birbirine gülücük dağıtıyor. Kardeşim çıkın dişe diş korakor oynayın. Çay partisine mi geldiniz?`,
-                        `Al gülüm ver gülüm. Erkek adam gibi çıkıp kazanan çıkmadı sahadan. Pamuk şeker mi dağıttınız devrede?`
-                    ]));
-                    add('batuhan', pick([
-                        `Abi berabere biten maçı ben izlemem. Vuracaksın kıracaksın kazanacaksın. Biz halı sahada yenilince birbirimize girerdik.`,
-                        `Şut yok, aksiyon yok, gol yok... Böyle beraberlik mi olur abi? İzlerken uykum geldi yemin ederim.`
-                    ]));
-                } else {
-                    add('ahmet', pick([
-                        `Kıl payı bitti ama o verilmeyen faul... Bak o faul verilse bugün bunları konuşmuyorduk Ertem! Olayın arkasında büyük güçler var!`,
-                        `Futbol bu işte Ertem! Ama maçı hakem katletti, o son saniyedeki pozisyon net penaltıydı net! Hakkı yendi o takımın!`
-                    ]));
-                    add('sinan', pick([
-                        `Kıran kırana geçti be! Helal olsun çocuklara. Kemik sesleri geldi sahadan kemik! Böyle futbol canımı yesin!`,
-                        `Seyretmeye doyamadım Ertem. ${x.winner} kazandı ama helal olsun, terlerinin son damlasına kadar hak ettiler.`
-                    ]));
-                }
             }
-            
-            if (x.topScorer) {
-                const tsName = hl(x.topScorer.name);
-                add('sinan', pick([
-                    `Günün sonunda ${tsName}'in gollerini konuşacağız. Makine makine! Mermi gibi vuruyor!`,
-                    `Gollerin efendisi ${tsName}! Adam ceza sahasında yılan gibi kıvrıldı bugün, tutamadılar aslanımı!`
-                ]));
-                add('batuhan', pick([
-                    `O attığı son gol şanstı abi. ${tsName} benim önümde öyle vursa, ben topu direkt kaleciye bırakırdım zaten. Şişirme vurdu gol oldu.`,
-                    `Abi ${tsName} gol atmadı, top kendi kendine girdi kaleye. Bana sorsan o pozisyonda şut değil, trivela denerdim ben.`
-                ]));
-                add('erman', pick([
-                    `${tsName} iyi gol attı da, defans uyuyordu be Ertem. Biraz erkek gibi bassalar o gollerin yarısını atamazdı.`,
-                    `Savunma evlere şenlik olunca ${tsName} tabii yazar golleri. Kardeşim defans defans gibi dursa, bir tane atamazdı o!`
-                ]));
+
+            // 7 ALTINDA KALANLAR İÇİN SERT/MİZAHİ DALGA GEÇME YORUMLARI
+            if (x.lowPerformers && x.lowPerformers.length > 0) {
+                x.lowPerformers.forEach(item => {
+                    const name = hl(item.p.name);
+                    const score = item.avg.toFixed(1);
+
+                    const roastQuotes = [
+                        { a: 'erman', t: `Oynat bakalım... Arkadaşlar ${name} için verilen puan <strong class="text-rose-400">${score}</strong>! 7'nin altı felakettir! Arkadaş halı sahaya değil, çay bahçesine çekirdek çitmeye gelmiş sanki. Pırasa gibi doğramışlar!` },
+                        { a: 'rasim', t: `Hahahahaha! Ertem, ${name} kardeşimize baksana, ortalaması <strong class="text-rose-400">${score}</strong> kalmış! Görünmezlik peleriniyle mi dolaştın sahada? Forması bile kirlenmemiş! Haydaaaaa!` },
+                        { a: 'ahmet', t: `Bana ${name}'in (${score}) sahada 5 metre koştuğuna dair tek bir delil gösterin, şu kalemi canlı yayında kırarım Ertem! Adam sahada turistik gezi yapmış yahu!` },
+                        { a: 'batuhan', t: `Abi ${name} bildiğin yürüdü ya! O puan (${score}) bile ona lüks. Ben o parayı versem, ${name}'i tesisten içeri sokmam abi!` },
+                        { a: 'sinan', t: `Ya yapmayın etmeyin... ${name} kardeşimiz <strong class="text-rose-400">${score}</strong> almış ama moralini bozmasın. Haftaya çayları o ısmarlarsa affederiz!` }
+                    ];
+
+                    const pickedRoast = pick(roastQuotes);
+                    add(pickedRoast.a, pickedRoast.t);
+                });
+            } else if (x.currentLoser && x.currentLoser.avg >= 7) {
+                add('sinan', `Hocalarım takıma bak be! En düşük puan alan bile 7'nin üstünde! Herkes canını dişine takmış, helal olsun!`);
             }
             
             feed.style.opacity = '0';
