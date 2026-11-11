@@ -1121,7 +1121,7 @@ function getVoteStats(player) {
                     const n = vals.length;
                     if (n >= TRIM_MIN_VOTES) { vals = vals.slice(1, -1); trimmedAny = true; }
                     const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-                    const w = Math.pow(ROUND_DECAY, rank) * n;
+                    const w = Math.pow(ROUND_DECAY, rank) * Math.min(1, n / TRIM_MIN_VOTES); // tur ağırlığı oy sayısıyla değil katılımla (en fazla 1) ölçeklenir; yeni tur 3 oyla tam ağırlığa ulaşır
                     sum += mean * w;
                     wsum += w;
                 });
