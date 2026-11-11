@@ -942,50 +942,40 @@
             const voteTs = Date.now();
 
             try {
-                // Puan verenin oyuncu belgesi güncellenir ve puan alan her oyuncuya da oy kaydı eklenir
-                await db.runTransaction(async tx => {
-                    const voterRef = db.collection('players').doc(voterId);
-                    const voterSnap = await tx.get(voterRef);
-                    if (!voterSnap.exists) throw new Error("Oyuncu bulunamadı.");
+                // Sadece oy verenin dökümanını güncelliyoruz (diğer oyuncuların dökümanlarına erişim yetki hatası vermesin diye)
+                const voterRef = db.collection('players').doc(voterId);
+                const voterSnap = await voterRef.get();
+                if (!voterSnap.exists) throw new Error("Oyuncu bulunamadı.");
 
-                    const voterData = voterSnap.data();
-                    const currentPeerVotes = voterData.peerAttributeVotes || [];
+                const voterData = voterSnap.data();
+                const currentPeerVotes = voterData.peerAttributeVotes || [];
 
-                    const newVotesForVoter = [];
+                const newVotesForVoter = [];
 
-                    for (const targetId of peerIdsToSave) {
-                        const vals = votesByPeer[targetId];
-                        const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + vals[k], 0) / ATTR_KEYS.length);
-                        
-                        // 1. Oy veren kullanıcının kendi dökümanına ekle
-                        newVotesForVoter.push({
-                            targetId,
-                            period,
-                            ts: voteTs,
-                            overall,
-                            ...vals
-                        });
-
-                        // 2. Oy alan hedef oyuncunun dökümanına ekle
-                        const targetRef = db.collection('players').doc(targetId);
-                        const targetSnap = await tx.get(targetRef);
-                        if (targetSnap.exists) {
-                            const targetData = targetSnap.data();
-                            const targetVotes = targetData.peerAttributeVotes || [];
-                            tx.update(targetRef, {
-                                peerAttributeVotes: [...targetVotes, { voterId, period, ts: voteTs, overall, ...vals }]
-                            });
-                        }
-                    }
-
-                    tx.update(voterRef, {
-                        peerAttributeVotes: [...currentPeerVotes, ...newVotesForVoter]
+                for (const targetId of peerIdsToSave) {
+                    const vals = votesByPeer[targetId];
+                    const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + vals[k], 0) / ATTR_KEYS.length);
+                    
+                    newVotesForVoter.push({
+                        targetId,
+                        period,
+                        ts: voteTs,
+                        overall,
+                        ...vals
                     });
+                }
 
-                    // Genel eval_log kaydı (görünürlük ve durum takibi)
-                    const logRef = db.collection('eval_log').doc(`${voterId}_${period}`);
-                    tx.set(logRef, { voterId, period, lastTs: voteTs }, { merge: true });
+                await voterRef.update({
+                    peerAttributeVotes: [...currentPeerVotes, ...newVotesForVoter]
                 });
+
+                // eval_log kaydı (durum takibi için)
+                try {
+                    const logRef = db.collection('eval_log').doc(`${voterId}_${period}`);
+                    await logRef.set({ voterId, period, lastTs: voteTs }, { merge: true });
+                } catch(e) {
+                    console.log("Log kaydı atlandı/yetki yok:", e);
+                }
 
                 evalLogIds.add(`${voterId}_${period}`);
                 showToast("Yeni oylarınız başarıyla kaydedildi!");
@@ -1033,11 +1023,7 @@
             mrSubmitting = true;
             try {
                 const ref = db.collection('match_ratings').doc(`${open.id}_${voterId}`);
-                await db.runTransaction(async tx => {
-                    const s = await tx.get(ref);
-                    if (s.exists) throw new Error('Bu maç için zaten puan verdiniz.');
-                    tx.set(ref, { matchId: open.id, voterId, scores, ts: Date.now() });
-                });
+                await ref.set({ matchId: open.id, voterId, scores, ts: Date.now() });
                 mrDraft = {};
 
                 showToast("Puanlarınız kaydedildi, teşekkürler! MVP, tüm oyuncular puanlayınca açıklanır.");
@@ -1253,7 +1239,7 @@
                         { a: 'ahmet', t: `Halı sahanın kara gecesi! ${lName} MVP seçildi. Oylayanların hesap hareketleri acilen incelenmeli!` },
                         { a: 'ahmet', t: `${lName}'i MVP yapan lobiyi tebrik ediyorum. Helal olsun, operasyon budur işte!` },
                         { a: 'sinan', t: `Öpüyorum oylayanların gözlerinden! Helal olsun! ${lName} kardeşim çıkışta köfte ekmekler benden!` },
-                        { a: 'sinan', t: `Aslanlar gibi MVP oldu! Fiziği harika, bilekler süper. ${lName} sen bu işin vakkasısın yavrum!` },
+                        { a: 'sinan', t: `Aslanlar gibi MVP oldu! Fiziği harika, bilekler süper. ${lName} sen meşale yakılacak adamsın yavrum!` },
                         { a: 'batuhan', t: `MVP falan hikaye abi. Adam 2 tane boş kaleye attı diye yıldız yaptınız. Ben olsam oradan rövaşata denerdim.` },
                         { a: 'batuhan', t: `${lName} MVP mi? Abi gidin halı sahanın parasını geri isteyin. Bizim zamanımızda böyle MVP'leri tesise almazlardı.` },
                         { a: 'erman', t: `MVP seçmişsiniz iyi güzel de... Çıksın şurada 2 tur koşsun ciğeri patlar. Bu mu maçın adamı?` },
