@@ -395,12 +395,23 @@
             // Oylamaya seçili/seçilsiz TÜM oyuncuları dahil ediyoruz (kendisi hariç)
             const targetPeers = players.filter(p => p.id !== voterId);
             
-            // Oyuncunun mevcut turda oy verdiği hedef id'leri bul
+            // Oyuncunun mevcut turda oy verdiği hedef id'leri bul (hem oy verenden hem oy alandan çift yönlü kontrol)
             const votedPeerIds = new Set();
+
+            // 1. Oy verenin kendi dökümanındaki peerAttributeVotes dizisi
             (voter.peerAttributeVotes || []).forEach(v => {
-                if (v.period === ratingRound.roundId) {
-                    if (v.targetId) votedPeerIds.add(v.targetId);
+                if (v.period === ratingRound.roundId && v.targetId) {
+                    votedPeerIds.add(v.targetId);
                 }
+            });
+
+            // 2. Diğer oyuncuların dökümanlarında bu voterId ile verilen oylar
+            targetPeers.forEach(peer => {
+                (peer.peerAttributeVotes || []).forEach(v => {
+                    if (v.period === ratingRound.roundId && v.voterId === voterId) {
+                        votedPeerIds.add(peer.id);
+                    }
+                });
             });
 
             const unvotedPeers = targetPeers.filter(p => !votedPeerIds.has(p.id));
@@ -567,19 +578,27 @@
             const voter = players.find(p => p.id === voterId);
             const period = ratingRound.roundId;
 
+            const voterStatus = getVoterEvalStatus(voterId);
+            const votedPeerIds = voterStatus.votedPeerIds || new Set();
+
             // Tüm oyuncuları oylamaya dahil et (kendisi hariç)
             const peers = players.filter(p => p.id !== voterId);
 
             peers.forEach(peer => {
                 const attrMeta = getAttrMeta(peer.position);
                 
-                // Bu hedef oyuncuya daha önce oy verilip verilmediğini bul
+                // Oy verenin dökümanından veya oy alan dökümandan mevcut oyu bul
                 let existingVote = null;
+
                 if (voter && voter.peerAttributeVotes) {
                     existingVote = voter.peerAttributeVotes.find(v => v.period === period && v.targetId === peer.id);
                 }
 
-                const isVoted = !!existingVote;
+                if (!existingVote && peer.peerAttributeVotes) {
+                    existingVote = peer.peerAttributeVotes.find(v => v.period === period && v.voterId === voterId);
+                }
+
+                const isVoted = votedPeerIds.has(peer.id) || !!existingVote;
 
                 const card = document.createElement('div');
                 card.dataset.peerCardId = peer.id;
@@ -605,7 +624,7 @@
                     </div>
                     <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                         ${attrMeta.map(a => {
-                            const val = isVoted ? (existingVote[a.key] || '') : '';
+                            const val = (isVoted && existingVote) ? (existingVote[a.key] || '') : '';
                             return `
                             <div>
                                 <label class="block text-[9px] text-zinc-500 font-semibold mb-0.5 text-center" title="${a.fullLabel}">${a.label}</label>
