@@ -1097,11 +1097,23 @@
         };
 
         const hl = (name) => `<strong class="text-white">${esc(name)}</strong>`;
-        
+        const kPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        const kShuffle = (arr) => [...arr].sort(() => 0.5 - Math.random());
+        const kJoin = (names) => names.length <= 1 ? (names[0] || '') : names.slice(0, -1).join(', ') + ' ve ' + names[names.length - 1];
+
         function buildCommentaryContext() {
             const x = { n: matches.length };
             const by = (key) => [...players].sort((a, b) => (b[key] || 0) - (a[key] || 0));
             const g = by('goals')[0];   x.topScorer = g && (g.goals || 0) > 0 ? g : null;
+            const w = by('wins')[0];    x.topWinner = w && (w.wins || 0) > 0 ? w : null;
+            const mv = by('mvpCount')[0]; x.mvpLeader = mv && (mv.mvpCount || 0) > 0 ? mv : null;
+            x.seasonGoals = players.reduce((s, p) => s + (p.goals || 0), 0);
+            x.avgGoals = x.n ? (x.seasonGoals / x.n).toFixed(1) : '0';
+            x.unbeaten = players.filter(p => (p.matches || 0) >= 2 && (p.losses || 0) === 0 && (p.wins || 0) > 0)
+                .sort((a, b) => (b.wins || 0) - (a.wins || 0))[0] || null;
+            x.winless = players.filter(p => (p.matches || 0) >= 3 && (p.wins || 0) === 0)
+                .sort((a, b) => (b.matches || 0) - (a.matches || 0))[0] || null;
+            x.ratingOpen = !!ratingRound.open;
 
             const m = matches[0];
             x.m = m || null;
@@ -1111,23 +1123,58 @@
                 x.total = x.sA + x.sB;
                 x.diff = Math.abs(x.sA - x.sB);
                 x.winner = x.sA > x.sB ? 'TAKIM A' : (x.sB > x.sA ? 'TAKIM B' : null);
-                
+                x.loser = x.sA > x.sB ? 'TAKIM B' : (x.sB > x.sA ? 'TAKIM A' : null);
+                x.cat = x.sA === x.sB ? 'draw' : x.diff >= 4 ? 'blowout' : x.total >= 12 ? 'goalfest' : x.diff === 1 ? 'narrow' : 'normal';
+
+                const idsA = m.teamAIds || [], idsB = m.teamBIds || [];
                 const parts = getMatchParticipantIds(m);
                 const got = matchRatings.filter(r => r.matchId === m.id).length;
                 x.votingActive = m.finalized === false;
                 x.votesCast = got;
                 x.votesTotal = parts.length;
+                const votedIds = new Set(matchRatings.filter(r => r.matchId === m.id).map(r => r.voterId));
+                x.pending = getMatchParticipants(m).filter(p => !votedIds.has(p.id));
+
+                const goalsOf = (p) => m.goalsById ? (m.goalsById[p.id] || 0) : ((m.scorers || []).filter(s => s.name === p.name).reduce((s, q) => s + (q.goals || 0), 0));
+                x.scorers = (m.scorers || []).filter(s => s.goals > 0).sort((a, b) => b.goals - a.goals);
+                x.topGoal = x.scorers[0] || null;
+                x.hatTrick = x.scorers.find(s => s.goals >= 3) || null;
 
                 const scMap = getMatchScoreMap(m).scores;
-                const ranked = Object.keys(scMap).map(pid => ({ p: players.find(p=>p.id===pid), avg: scMap[pid].avg })).sort((a,b) => b.avg - a.avg);
-                x.currentLeader = ranked[0] ? ranked[0] : null;
+                const teamOf = id => idsA.includes(id) ? 'A' : (idsB.includes(id) ? 'B' : null);
+                const ranked = Object.keys(scMap)
+                    .map(pid => ({ p: players.find(p => p.id === pid), avg: scMap[pid].avg, count: scMap[pid].count, team: teamOf(pid) }))
+                    .filter(r => r.p)
+                    .sort((a, b) => b.avg - a.avg);
+                x.ranked = ranked;
+                x.currentLeader = ranked[0] || null;
+                x.runnerUp = ranked[1] || null;
+                x.currentLoser = ranked.length > 1 ? ranked[ranked.length - 1] : null;
+                x.spread = (x.currentLeader && x.currentLoser) ? x.currentLeader.avg - x.currentLoser.avg : null;
 
-                // 7'nin altında puan alan düşük performanslı oyuncular (Diptedekiler)
-                x.lowPerformers = ranked.filter(item => item.p && item.avg < 7);
-                x.currentLoser = ranked.length > 1 ? ranked[ranked.length-1] : null;
+                // 7'nin altında puan alan düşük performanslı oyuncular
+                x.lowPerformers = ranked.filter(item => item.avg < 7);
+                // 8.5 ve üstü: gecenin yıldızları
+                x.stars = ranked.filter(item => item.avg >= 8.5);
+                x.scorerLow = ranked.find(r => goalsOf(r.p) > 0 && r.avg < 7) || null;
+                x.scorerHigh = ranked.find(r => goalsOf(r.p) > 0 && r.avg >= 8) || null;
+                x.gks = ranked.filter(r => r.p.position === 'Kaleci');
+                x.defBest = ranked.find(r => r.p.position === 'Defans') || null;
+                x.fwdWorst = [...ranked].reverse().find(r => r.p.position === 'Forvet') || null;
+
+                const avgOf = (t) => { const k = ranked.filter(r => r.team === t); return k.length ? k.reduce((s, r) => s + r.avg, 0) / k.length : null; };
+                x.teamAvgA = avgOf('A');
+                x.teamAvgB = avgOf('B');
+                x.teamGap = (x.teamAvgA !== null && x.teamAvgB !== null) ? Math.abs(x.teamAvgA - x.teamAvgB) : null;
+                x.betterTeam = x.teamGap === null ? null : (x.teamAvgA > x.teamAvgB ? 'TAKIM A' : 'TAKIM B');
+
+                const aged = ranked.filter(r => Number.isFinite(r.p.age));
+                x.oldest = aged.length > 1 ? [...aged].sort((a, b) => b.p.age - a.p.age)[0] : null;
+                x.youngest = aged.length > 1 ? [...aged].sort((a, b) => a.p.age - b.p.age)[0] : null;
+                if (x.oldest && x.youngest && x.oldest.p.age === x.youngest.p.age) { x.oldest = null; x.youngest = null; }
 
                 if (m.finalized === true) {
-                    x.mvpName = m.mvp;
+                    x.mvpName = (m.mvp && m.mvp !== 'Belirtilmedi') ? m.mvp : null;
                 }
             }
             return x;
@@ -1141,18 +1188,29 @@
                 container.innerHTML = `<span class="text-zinc-400 italic">Sistemde henüz yorumlanacak maç yok.</span>`;
                 return;
             }
-            
-            let lowTickerStr = "";
+
+            const lines = [];
+            lines.push(`ERTEM: Skor ${x.sA}-${x.sB}${x.winner ? ', ' + x.winner + ' kazandı' : ', kimse kazanamadı'}!`);
+            if (x.votingActive) {
+                lines.push(`ERTEM: Oylama sürüyor (${x.votesCast}/${x.votesTotal})!`);
+                lines.push(`AHMET HOCA: Oyları kim sayıyor, algoritma nerede?!`);
+                if (x.pending.length > 0 && x.pending.length <= 3) lines.push(`ERTEM: Hâlâ oy vermeyenler: ${x.pending.map(p => p.name).join(', ')}!`);
+                if (x.currentLeader) lines.push(`SİNAN ABİ: ${x.currentLeader.p.name} şu an önde (${x.currentLeader.avg.toFixed(1)}), aslanlar gibi oynadı!`);
+            } else {
+                lines.push(`SİNAN ABİ: ${x.mvpName ? x.mvpName + ' aslanlar gibi MVP oldu!' : 'Maç bitti, duşlara!'}`);
+            }
+            if (x.topGoal) lines.push(`RASİM: Maçın golcüsü ${x.topGoal.name} (${x.topGoal.goals} gol), haydaaa!`);
+            if (x.betterTeam && x.teamGap >= 0.3) lines.push(`ERMAN HOCA: Puan ortalamasında ${x.betterTeam} önde (${x.teamGap.toFixed(1)} fark)!`);
+            if (x.stars && x.stars.length) lines.push(`BATU: ${x.stars.map(s => s.p.name).join(', ')} 8.5 üstü, helal abi!`);
             if (x.lowPerformers && x.lowPerformers.length > 0) {
                 const lowNames = x.lowPerformers.map(lp => `${lp.p.name} (${lp.avg.toFixed(1)})`).join(', ');
-                lowTickerStr = ` • ERMAN HOCA: ${lowNames} 7 puanın altında kaldı, kırmızı alarm!`;
+                lines.push(`ERMAN HOCA: ${lowNames} 7 puanın altında kaldı, kırmızı alarm!`);
+                lines.push(`RASİM: Haydaaa, 7 altı alanlar felaket!`);
             }
+            if (x.topScorer) lines.push(`AHMET HOCA: Sezonun golcüsü ${x.topScorer.name} (${x.topScorer.goals} gol), ben yine de bir şaibe ararım!`);
 
-            const txt = x.votingActive 
-                ? `ERTEM: Oylama sürüyor (${x.votesCast}/${x.votesTotal})! • AHMET HOCA: Oyları kim sayıyor, algoritma nerede?!${lowTickerStr} • SİNAN ABİ: Aslanlar gibi oynadılar!` 
-                : `SİNAN ABİ: ${x.mvpName ? x.mvpName + ' aslanlar gibi MVP oldu!' : 'Maç bitti, duşlara!'}${lowTickerStr} • RASİM: Haydaaa, 7 altı alanlar felaket!`;
-            
-            const html = `<span class="flex items-center space-x-6 text-zinc-300 font-bold tracking-wide">${txt.split(' • ').map(t => `<span class="text-orange-400">•</span> <span>${t}</span>`).join('')}</span>`;
+            const txt = lines.join(' • ');
+            const html = `<span class="flex items-center space-x-6 text-zinc-300 font-bold tracking-wide">${txt.split(' • ').map(t => `<span class="text-orange-400">•</span> <span>${esc(t)}</span>`).join('')}</span>`;
             container.innerHTML = html + '<span class="px-8"></span>' + html;
         }
 
@@ -1160,7 +1218,7 @@
             const feed = document.getElementById('commentary-feed');
             if (!feed) return;
             const x = buildCommentaryContext();
-            
+
             if (!x.m) {
                 feed.innerHTML = `<div class="p-6 text-center text-zinc-500 italic border border-white/[0.08] rounded-3xl">Kulis henüz boş. Maç kaydedildiğinde kıyamet kopacak!</div>`;
                 return;
@@ -1181,10 +1239,76 @@
                     </div>
                 `);
             };
+            const pick = kPick, shuffle = kShuffle;
+            const sc = (r) => r.avg.toFixed(1);
 
-            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-            const shuffle = (arr) => [...arr].sort(() => 0.5 - Math.random());
+            // 1) MAÇ ÖZETİ: skora göre açılış + iki yorumcunun tepkisi
+            const opener = {
+                draw:     [`Sayın seyirciler, ${x.sA}-${x.sB}! İki takım da birbirine üstünlük kuramadı, puanlar paylaşıldı.`, `Son düdük çaldı, skor ${x.sA}-${x.sB}. Bu maçta kaybeden yok, ama kazanan da yok sayın seyirciler!`],
+                blowout:  [`Sayın seyirciler, ${x.sA}-${x.sB}! ${x.winner} sahayı silip süpürdü, bu bir maç değil, ders oldu!`, `${x.total} gol, ${x.diff} gol fark! ${x.winner} rakibine nefes aldırmadı!`],
+                goalfest: [`Sayın seyirciler, tam ${x.total} gol! ${x.sA}-${x.sB} biten maçta kaleciler gece boyu mesai yaptı!`, `Gol düellosu! Skor ${x.sA}-${x.sB}, savunma diye bir şey bu gece konuşulmadı!`],
+                narrow:   [`Tek farkla bitti sayın seyirciler: ${x.sA}-${x.sB}! ${x.winner} son düdüğe kadar nefes nefese kazandı!`, `${x.sA}-${x.sB}! Bir gol fark, bir paslık şans. ${x.winner} güldü, rakip yandı!`],
+                normal:   [`Maç tamamlandı, skor ${x.sA}-${x.sB}! ${x.winner} üstünlüğünü sahaya yansıttı.`, `${x.sA}-${x.sB}! ${x.winner} oyunu kontrol etti, kazanan taraf belli oldu sayın seyirciler.`]
+            };
+            add('ertem', pick(opener[x.cat]));
 
+            const react = {
+                draw: [
+                    { a: 'ahmet', t: `${x.sA}-${x.sB} mi? Ertem, bu beraberlik masa başında yazılmış! O pozisyonda bir penaltı vardı, kimse ağzını açmadı!` },
+                    { a: 'sinan', t: `Kardeşim ${x.sA}-${x.sB}, herkes hakkını almış. Maç sonu çayını birlikte içen takımdır kazanan!` },
+                    { a: 'rasim', t: `Hahaha, beraberlik! İkisi de kazanamadı, ikisi de kaybetmedi, kimse kimseye kızamıyor! Haydaaa!` }
+                ],
+                blowout: [
+                    { a: 'ahmet', t: `${x.sA}-${x.sB}! Ertem bu skor tesadüf olamaz! Takımları kim kurdu, algoritmanın dosyasını istiyorum!` },
+                    { a: 'batuhan', t: `Abi ${x.loser} sahada yok muydu? ${x.diff} fark yemek için özel çaba lazım, onu bile sezonluk kart gibi gösterdiler!` },
+                    { a: 'sinan', t: `Kaybeden takım üzülmesin kardeşim, top yuvarlak. Haftaya bu skor ters çıkar, ben söyleyeyim!` }
+                ],
+                goalfest: [
+                    { a: 'rasim', t: `${x.total} gol mü? Kaleciler file yerine tribünlere bakmış! Haydaaaa, bu maçta savunma izne çıkmış!` },
+                    { a: 'erman', t: `Arkadaşlar kural kitabını açtım, "savunma" maddesini bulamadım! ${x.total} gol, kaleciler gece ücretini hak etmiş!` },
+                    { a: 'sinan', t: `Aslanlar gibi oynadılar kardeşim, ${x.total} gol! Herkes gol atmaya doymadı!` }
+                ],
+                narrow: [
+                    { a: 'ahmet', t: `Tek gol fark, ${x.sA}-${x.sB}! Ofsayt mıydı, değil miydi? Halı sahada VAR olmadığı için bu maç hâlâ bitmedi!` },
+                    { a: 'erman', t: `Çok yakın bir maçtı. ${x.winner} haklı bir galibiyet aldı ama o son dakikadaki ikili mücadeleyi ben hâlâ düşünüyorum!` },
+                    { a: 'batuhan', t: `Abi ${x.sA}-${x.sB} de skor mu, kalbim duracaktı! ${x.winner} şanslı çıktı, ben söyleyeyim!` }
+                ],
+                normal: [
+                    { a: 'sinan', t: `${x.winner} aslanlar gibi oynadı kardeşim, ${x.sA}-${x.sB}! Alın teriyle kazanılan bir galibiyet.` },
+                    { a: 'ahmet', t: `Skor ${x.sA}-${x.sB} ama ben o ikinci golün öncesindeki faulü unutmadım Ertem! Bu iş burada bitmez!` },
+                    { a: 'rasim', t: `${x.winner} kazandı, diğer takım formasını düzeltmekle meşguldü! Haydaaa!` }
+                ]
+            };
+            shuffle(react[x.cat]).slice(0, 2).forEach(q => add(q.a, q.t));
+
+            // 2) GOLLER
+            if (x.hatTrick) {
+                add('ertem', pick([
+                    `Şampiyonlar Ligi gecesi gibi! ${hl(x.hatTrick.name)} tam ${x.hatTrick.goals} gol attı, topu da cebine koyup gidecek sayın seyirciler!`,
+                    `${hl(x.hatTrick.name)} hat-trick yaptı! ${x.hatTrick.goals} gol, ceza sahasında tek başına orkestra!`
+                ]));
+                add('batuhan', `Abi ${hl(x.hatTrick.name)} ${x.hatTrick.goals} gol attı ya, gol atmak bu kadar kolay mıymış? Ben bir tane atamadım, kaleci beni görünce hep köşeye yatıyor!`);
+            } else if (x.topGoal) {
+                const others = x.scorers.length - 1;
+                add('rasim', pick([
+                    `Maçın golcüsü ${hl(x.topGoal.name)}, ${x.topGoal.goals} golle! ${others > 0 ? 'Arkasından ' + others + ' kişi daha ağları sarstı' : 'Başka gol atan da çıkmadı'}! Haydaaa!`,
+                    `${hl(x.topGoal.name)} ${x.topGoal.goals} gol attı, kaleci hâlâ topu nerede kaçırdığını hatırlamaya çalışıyor!`
+                ]));
+            } else if (x.total === 0) {
+                add('erman', `0-0! Arkadaşlar bu maçta gol ayağına gelen yoktu, kaleciler ne yapsın! Topa vuran çıkmadı sanki!`);
+            }
+
+            if (x.scorers.length >= 3) {
+                add('ertem', `${x.scorers.length} farklı oyuncu ağları havalandırdı: ${kJoin(x.scorers.map(s => hl(s.name)))}. Gol yükünü herkes paylaştı sayın seyirciler!`);
+            }
+
+            if (x.scorerLow) {
+                add('ahmet', `Bak Ertem, ${hl(x.scorerLow.p.name)} gol attı ama arkadaşlarından yalnızca <strong class="text-rose-400">${sc(x.scorerLow)}</strong> almış! Gol mü hepsi, oyun yok mu? Ben bu golün VAR'a gitmesini isterdim!`);
+            } else if (x.scorerHigh) {
+                add('sinan', `${hl(x.scorerHigh.p.name)} hem gol attı hem ${sc(x.scorerHigh)} puan aldı, kardeşim hem gol hem alın teri! Öpüyorum gözlerinden!`);
+            }
+
+            // 3) OYLAMA / MVP DURUMU
             if (x.votingActive) {
                 add('ertem', pick([
                     `Sayın seyirciler, maç bitti ama heyecan bitmedi! Oylama an itibariyle devam ediyor, ${x.votesCast}/${x.votesTotal} oy kullanıldı.`,
@@ -1192,23 +1316,99 @@
                     `İşte gerçek futbol, işte demokrasi! ${x.votesCast}/${x.votesTotal} kişi oylarını verdi, heyecan dorukta!`
                 ]));
 
+                if (x.pending.length > 0 && x.pending.length <= 4) {
+                    add('erman', `Arkadaşlar hâlâ oy kullanmayanlar var: ${kJoin(x.pending.map(p => hl(p.name)))}. Bu ne kayıtsızlık! Oynat bakalım, hemen oylarını versinler!`);
+                    if (x.pending.length === 1) add('rasim', `Hahaha, sadece ${hl(x.pending[0].name)} kaldı! Herkes bekliyor, MVP onun elinde! Haydaaa, hadi kardeşim!`);
+                } else if (x.pending.length > 4) {
+                    add('rasim', `Haydaaa, ${x.pending.length} kişi daha oy vermedi! Sandık başında kuyruk yok, herkes kaçmış mı ne!`);
+                } else if (x.votesTotal > 0) {
+                    add('sinan', `Herkes oyunu kullandı kardeşim, aferin hepinize! Şimdi sonuçlar açıklanır.`);
+                }
+
                 if (x.currentLeader) {
                     const lName = hl(x.currentLeader.p.name);
                     const leaderQuotes = [
-                        { a: 'ahmet', t: `Bak Ertem... Şuan ${lName} önde gidiyor (${x.currentLeader.avg.toFixed(1)}). Ben bu işte bir şaibe ararım! Dayısı mı var bu çocuğun? Sahada yoktu yahu!` },
-                        { a: 'sinan', t: `Kıskanmayın kardeşim! ${lName} aslanlar gibi mücadele etti. Puanını da (${x.currentLeader.avg.toFixed(1)}) çatır çatır almış, öpüyorum gözlerinden.` },
-                        { a: 'batuhan', t: `Ya abi ben bu ${lName}'i izlerken yoruldum. Adamın bir tane olumlu pası yok, lider yapmışsınız. Yazık!` }
+                        { a: 'ahmet', t: `Bak Ertem... Şuan ${lName} önde gidiyor (${sc(x.currentLeader)}). Ben bu işte bir şaibe ararım! Dayısı mı var bu çocuğun? Sahada yoktu yahu!` },
+                        { a: 'sinan', t: `Kıskanmayın kardeşim! ${lName} aslanlar gibi mücadele etti. Puanını da (${sc(x.currentLeader)}) çatır çatır almış, öpüyorum gözlerinden.` },
+                        { a: 'batuhan', t: `Ya abi ben bu ${lName}'i izlerken yoruldum. Adamın bir tane olumlu pası yok, lider yapmışsınız. Yazık!` },
+                        { a: 'erman', t: `Arkadaşlar ${lName} şu an ${sc(x.currentLeader)} ortalamayla liderlikte. Oynat bakalım, oylar bitince bakacağız bu liderlik kalıcı mı!` }
                     ];
                     shuffle(leaderQuotes).slice(0, 1).forEach(q => add(q.a, q.t));
+                    if (x.runnerUp && x.currentLeader.avg - x.runnerUp.avg <= 0.3) {
+                        add('ertem', `Dikkat sayın seyirciler, fark çok az! ${hl(x.currentLeader.p.name)} (${sc(x.currentLeader)}) ile ${hl(x.runnerUp.p.name)} (${sc(x.runnerUp)}) arasında sadece ${(x.currentLeader.avg - x.runnerUp.avg).toFixed(2)} puan var. MVP son oya kalabilir!`);
+                    }
                 }
-            } else {
+            } else if (x.mvpName) {
                 add('ertem', pick([
                     `İnanılmaz bir geceydi! ${x.sA}-${x.sB} biten maçın ardından MVP ${hl(x.mvpName)} seçildi!`,
                     `Son düdük çaldı, oylar sayıldı ve gecenin yıldızı ${hl(x.mvpName)} oldu! Olağanüstü!`
                 ]));
+                add(pick(['sinan', 'batuhan', 'ahmet']), pick([
+                    `${hl(x.mvpName)} MVP olmuş, hak etti kardeşim, gözümüz arkadaşların vicdanında!`,
+                    `Bak Ertem, ${hl(x.mvpName)}'in MVP olmasına bir şey demiyorum ama ben yine de oy kutusuna bir bakardım!`,
+                    `Abi ${hl(x.mvpName)} MVP olmuş, maçın adamı ya! Sezonluk kart bu çocuğa çıkar!`
+                ]));
+                if (x.runnerUp && x.currentLeader) {
+                    add('erman', `Arkadaşlar ikinci sırada ${hl(x.runnerUp.p.name)} (${sc(x.runnerUp)}) var, MVP'ye ${(x.currentLeader.avg - x.runnerUp.avg).toFixed(2)} puan kalmış. Oynat bakalım, bir oy daha ters olsaydı kupa ondaydı!`);
+                }
+            } else {
+                add('ertem', `Maç tamamlandı ama bu maçta MVP belirlenemedi sayın seyirciler. Puanlar yeterli gelmedi!`);
             }
 
-            // 7 ALTINDA KALANLAR İÇİN SERT/MİZAHİ DALGA GEÇME YORUMLARI
+            // 4) TAKIM KARŞILAŞTIRMASI (puan ortalamaları)
+            if (x.teamGap !== null) {
+                const a = x.teamAvgA.toFixed(1), b = x.teamAvgB.toFixed(1);
+                if (x.teamGap < 0.2) {
+                    add('ertem', `Takım puan ortalamaları: A ${a}, B ${b}. Neredeyse eşit sayın seyirciler, algoritma bu sefer iyi çalışmış!`);
+                } else {
+                    add('erman', pick([
+                        `Arkadaşlar, takım ortalamalarına bakıyorum: A ${a}, B ${b}. ${x.betterTeam} ${x.teamGap.toFixed(1)} puanla önde. Skor da buna uyuyor mu, orası ayrı mesele!`,
+                        `Puan ortalamasında ${x.betterTeam} öne çıkıyor (A ${a} / B ${b}). Oynat bakalım, sahadaki performans oylara yansımış!`
+                    ]));
+                    if (x.winner && x.betterTeam && x.winner !== x.betterTeam) {
+                        add('ahmet', `Bir dakika Ertem! ${x.winner} kazandı ama puan ortalaması ${x.betterTeam}'de yüksek! Ben bunda bir bit yeniği ararım, sayım yeniden yapılsın!`);
+                    }
+                }
+            }
+
+            // 5) KALECİLER
+            if (x.gks.length > 0) {
+                const best = x.gks[0], worst = x.gks.length > 1 ? x.gks[x.gks.length - 1] : null;
+                add('batuhan', pick([
+                    `Abi kaleci ${hl(best.p.name)} ${sc(best)} puan almış, onu geçen az kişi var. Kaleci olmak kolay değil, her gol senin yüzünden diyorlar!`,
+                    `Eldivenler ${hl(best.p.name)}'de konuşmuş abi, ${sc(best)}! Kaleciye puan vermek zor, buna rağmen almış!`
+                ]));
+                if (worst && worst.p.id !== best.p.id && worst.avg < 7) {
+                    add('rasim', `Haydaaa, kaleci ${hl(worst.p.name)} ${sc(worst)} almış! Toplar file yerine ruhuna gitmiş herhalde! Hahaha!`);
+                }
+            }
+
+            // 6) DEFANS / FORVET
+            if (x.defBest && x.defBest.avg >= 8) {
+                add('sinan', `Defans oyuncusu ${hl(x.defBest.p.name)} ${sc(x.defBest)} almış kardeşim, kalesini kapatan adam! Bunlara madalya vermek lazım.`);
+            }
+            if (x.fwdWorst && x.fwdWorst.avg < 6.5) {
+                add('ahmet', `Forvet ${hl(x.fwdWorst.p.name)} ${sc(x.fwdWorst)} almış! Ertem forvet dediğin gol atar, yoksa top taşır! Bu adam sahada çizik bile atmamış!`);
+            }
+
+            // 7) YILDIZLAR (8.5 ve üstü)
+            if (x.stars.length > 0) {
+                const starNames = kJoin(x.stars.map(s => hl(s.p.name)));
+                add('ertem', pick([
+                    `Gecenin yıldızları: ${starNames}! 8.5 ve üzeri puanla alkışı hak ettiler sayın seyirciler!`,
+                    `${starNames} arkadaşlarından tam not gibi puan topladı! Onlara bir alkış!`
+                ]));
+            }
+
+            // 8) YAŞ
+            if (x.oldest && x.oldest.avg >= 7.5 && x.oldest.p.age >= 30) {
+                add('sinan', `${hl(x.oldest.p.name)} ${x.oldest.p.age} yaşında ama ${sc(x.oldest)} puan almış kardeşim! Bacak yaşlanır, futbol zekâsı yaşlanmaz!`);
+            }
+            if (x.youngest && x.oldest && x.youngest.avg >= 8) {
+                add('rasim', `Genç yetenek ${hl(x.youngest.p.name)} (${x.youngest.p.age}) ${sc(x.youngest)} almış! Hocalar yetişin, gençlere yol açın! Haydaaa!`);
+            }
+
+            // 9) 7 ALTINDA KALANLAR İÇİN SERT/MİZAHİ DALGA GEÇME YORUMLARI
             if (x.lowPerformers && x.lowPerformers.length > 0) {
                 x.lowPerformers.forEach(item => {
                     const name = hl(item.p.name);
@@ -1216,19 +1416,48 @@
 
                     const roastQuotes = [
                         { a: 'erman', t: `Oynat bakalım... Arkadaşlar ${name} için verilen puan <strong class="text-rose-400">${score}</strong>! 7'nin altı felakettir! Arkadaş halı sahaya değil, çay bahçesine çekirdek çitmeye gelmiş sanki. Pırasa gibi doğramışlar!` },
-                        { a: 'rasim', t: `Hahahahaha! Ertem, ${name} kardeşimize baksana, ortalaması <strong class="text-rose-400">${score}</strong> kalmış! Görünmezlik peleriniyle mi dolaştın sahada? Forması bile kirlenmemiş! Haydaaaaa!` },
+                        { a: 'rasim', t: `Hahahahaha! Ertem, ${name} kardeşimize baksana, ortalaması <strong class="text-rose-400">${score}</strong> kalmış! Görünmezlik peleriniyle mi dolaştın sahada? Forması bile kirlenmemiş! Haydaaaa!` },
                         { a: 'ahmet', t: `Bana ${name}'in (${score}) sahada 5 metre koştuğuna dair tek bir delil gösterin, şu kalemi canlı yayında kırarım Ertem! Adam sahada turistik gezi yapmış yahu!` },
                         { a: 'batuhan', t: `Abi ${name} bildiğin yürüdü ya! O puan (${score}) bile ona lüks. Ben o parayı versem, ${name}'i tesisten içeri sokmam abi!` },
-                        { a: 'sinan', t: `Ya yapmayın etmeyin... ${name} kardeşimiz <strong class="text-rose-400">${score}</strong> almış ama moralini bozmasın. Haftaya çayları o ısmarlarsa affederiz!` }
+                        { a: 'sinan', t: `Ya yapmayın etmeyin... ${name} kardeşimiz <strong class="text-rose-400">${score}</strong> almış ama moralini bozmasın. Haftaya çayları o ısmarlarsa affederiz!` },
+                        { a: 'erman', t: `${name} ${score}! Arkadaşlar bu performansla sahaya çıkılmaz, en azından ısınma turu atılırdı! Oynat bakalım, haftaya bir bakacağız!` },
+                        { a: 'rasim', t: `Ya ${name} (${score}) topla tanışmış mıydı bu akşam, yoksa ilk karşılaşma mıydı? Hahaha, Ertem sen de gördün mü bunu?` }
                     ];
 
                     const pickedRoast = pick(roastQuotes);
                     add(pickedRoast.a, pickedRoast.t);
                 });
+                if (x.lowPerformers.length >= 3) {
+                    add('ertem', `Sayın seyirciler, ${x.lowPerformers.length} oyuncu 7'nin altında kaldı! Bu gece kırmızı alarm, kulisler bunu uzun süre konuşur!`);
+                }
             } else if (x.currentLoser && x.currentLoser.avg >= 7) {
                 add('sinan', `Hocalarım takıma bak be! En düşük puan alan bile 7'nin üstünde! Herkes canını dişine takmış, helal olsun!`);
             }
-            
+
+            // 10) PUAN FARKI (en yüksek - en düşük)
+            if (x.spread !== null && x.spread >= 3) {
+                add('ertem', `Dikkat çeken bir fark: en yüksek ile en düşük puan arasında ${x.spread.toFixed(1)} puan var! ${hl(x.currentLeader.p.name)} ile ${hl(x.currentLoser.p.name)} aynı maçı mı oynadı sayın seyirciler?`);
+            }
+
+            // 11) SEZON DURUMU
+            const season = [];
+            if (x.topScorer) season.push({ a: 'ahmet', t: `Sezonun golcüsü ${hl(x.topScorer.name)}: ${x.topScorer.goals} gol! Ertem bu adamın ayağında mıknatıs mı var? Ben bir şaibe ararım, topu alıp bakalım!` });
+            if (x.topScorer) season.push({ a: 'batuhan', t: `Abi ${hl(x.topScorer.name)} ${x.topScorer.goals} golle gol krallığında! Ben bir kere gol attım, o da kendi kalemize!` });
+            if (x.topWinner) season.push({ a: 'sinan', t: `En çok galibiyet ${hl(x.topWinner.name)}'de: ${x.topWinner.wins} galibiyet! Kazanan takımın çocuğu kardeşim, şans da yanında!` });
+            if (x.mvpLeader) season.push({ a: 'erman', t: `Arkadaşlar ${hl(x.mvpLeader.name)} ${x.mvpLeader.mvpCount} kez MVP olmuş! Oynat bakalım, bu istikrar tesadüf değil!` });
+            if (x.unbeaten) season.push({ a: 'rasim', t: `${hl(x.unbeaten.name)} hâlâ yenilmedi! Hahaha, bu adam yenilgiyi sözlükte arasa bulamaz! Haydaaa!` });
+            if (x.winless) season.push({ a: 'ahmet', t: `${hl(x.winless.name)} ${x.winless.matches} maçtır galibiyet bekliyor Ertem! Bu bir lanet mi, yoksa takım seçerken kura mı çekiliyor?` });
+            if (x.n > 0) season.push({ a: 'ertem', t: `Sezon bilançosu sayın seyirciler: ${x.n} maç, ${x.seasonGoals} gol, maç başına ${x.avgGoals} gol ortalaması!` });
+            shuffle(season).slice(0, 3).forEach(q => add(q.a, q.t));
+
+            // 12) RATING OYLAMASI AÇIKSA HATIRLATMA
+            if (x.ratingOpen) {
+                add('ertem', pick([
+                    `Bir hatırlatma sayın seyirciler: Rating oylaması açık! Arkadaşlarınızı puanlamayı unutmayın!`,
+                    `Kulislerden son dakika: Rating oylaması devam ediyor, oyunu kullanmayan kaldı mı?`
+                ]));
+            }
+
             feed.style.opacity = '0';
             setTimeout(() => {
                 feed.innerHTML = comments.join('');
