@@ -1,266 +1,566 @@
 <!DOCTYPE html>
-<html lang="tr" class="dark">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="robots" content="noindex,nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HalıSaha AI - Yönetici Paneli</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
-                    colors: {
-                        brand: {
-                            red: '#f43f5e',
-                            orange: '#f97316',
-                            bg: '#030303',
-                            panel: 'rgba(10, 10, 10, 0.6)'
-                        },
-                        pitch: {
-                            DEFAULT: '#10b981',
-                            dark: '#047857',
-                            lines: 'rgba(255, 255, 255, 0.4)'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Outfit', sans-serif; background-color: #030303; color: #ffffff; overflow-x: hidden; }
-        .glass-panel { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .pitch-bg { background: linear-gradient(to bottom, #065f46, #047857); position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.6); }
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
-<body class="min-h-screen flex flex-col pb-16 antialiased selection:bg-rose-500 selection:text-white">
-
-<div id="login-gate" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-sm rounded-2xl border border-slate-700 p-6 space-y-4">
-        <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-900 font-black text-xl"><i class="fa-solid fa-futbol"></i></div>
-            <div>
-                <h1 class="font-black text-lg text-white leading-tight">Yönetici Girişi</h1>
-                <p class="text-[11px] text-slate-400">HalıSaha AI yönetim paneli</p>
-            </div>
-        </div>
-        <div class="space-y-3">
-            <button type="button" id="google-login-btn" onclick="adminLogin()" class="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2">
-                <i class="fa-brands fa-google text-red-500"></i> Google ile Giriş Yap
-            </button>
-            <p id="login-error" class="text-xs text-red-400 min-h-[1rem]"></p>
-        </div>
-    </div>
-</div>
-
-<header class="sticky top-0 z-40 glass-panel border-b border-slate-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-900 font-black text-xl shadow-lg">
-                    <i class="fa-solid fa-futbol"></i>
+<body class="pb-24">
+    <!-- Header -->
+    <header class="glass-card sticky top-0 z-50 p-4 mb-4 border-b border-slate-700">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xl border border-emerald-500/30">
+                    <i class="fas fa-futbol"></i>
                 </div>
                 <div>
-                    <span class="font-black text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-200">HalıSaha AI</span>
-                    <span class="text-[10px] block text-slate-400 font-semibold tracking-wider uppercase">Admin Paneli</span>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">HalıSaha AI</h1>
+                    <p class="text-xs text-slate-400">GERÇEK RATING & KADRO ALGORİTMASI</p>
                 </div>
             </div>
-            <nav class="hidden md:flex items-center space-x-1">
-                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold text-emerald-400 bg-slate-800"><i class="fa-solid fa-chart-pie"></i> Genel Bakış</button>
-                <button onclick="switchTab('players')" id="nav-players" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-users-gear"></i> Oyuncular</button>
-                <button onclick="switchTab('squad')" id="nav-squad" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-clipboard-user"></i> Haftalık Kadro</button>
-                <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-clipboard-list"></i> Maç Kaydı</button>
-            </nav>
-            <div class="flex items-center space-x-2">
-                <button onclick="copyVoteLink()" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs px-3 py-2 rounded-xl border border-slate-700"><i class="fa-solid fa-link"></i> Oylama Linki</button>
-                <button onclick="adminLogout()" class="bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white text-xs px-3 py-2 rounded-xl border border-slate-700"><i class="fa-solid fa-right-from-bracket"></i></button>
+            <div class="flex items-center gap-2">
+                <button onclick="openModal('addPlayerModal')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                    <i class="fas fa-user-plus"></i> Oyuncu Ekle
+                </button>
+                <button onclick="copyVotingLink()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 p-2 rounded-lg text-xs font-semibold transition" title="Oylama Linkini Kopyala">
+                    <i class="fas fa-link"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto px-4">
+        <!-- AI Live Stream Banner -->
+        <div class="glass-card p-3 rounded-xl mb-4 border-l-4 border-emerald-500 flex items-center justify-between">
+            <div class="flex items-center gap-2 overflow-hidden">
+                <span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse uppercase">Telegol AI</span>
+                <marquee id="aiMarquee" class="text-xs text-slate-300 font-medium">Sistem hazır. Yeni rating turu başlatılabilir.</marquee>
+            </div>
+        </div>
+
+        <!-- Tab contents -->
+        <div id="tab-genel" class="tab-content active">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div class="glass-card p-3 rounded-xl text-center">
+                    <div class="text-slate-400 text-xs">Toplam Oyuncu</div>
+                    <div id="statTotalPlayers" class="text-xl font-bold text-emerald-400">0</div>
+                </div>
+                <div class="glass-card p-3 rounded-xl text-center">
+                    <div class="text-slate-400 text-xs">Aktif Tur Oyu</div>
+                    <div id="statActiveVotes" class="text-xl font-bold text-teal-400">0</div>
+                </div>
+                <div class="glass-card p-3 rounded-xl text-center">
+                    <div class="text-slate-400 text-xs">Ortalama Rating</div>
+                    <div id="statAvgRating" class="text-xl font-bold text-yellow-400">0</div>
+                </div>
+                <div class="glass-card p-3 rounded-xl text-center">
+                    <div class="text-slate-400 text-xs">Son Maç MVP</div>
+                    <div id="statMVP" class="text-xl font-bold text-purple-400">-</div>
+                </div>
+            </div>
+
+            <!-- Quick Player Cards -->
+            <div class="glass-card p-4 rounded-xl mb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-semibold text-slate-200 text-sm">Genel Oyuncu Dereceleri</h2>
+                    <input type="text" id="searchGenel" oninput="renderGenelTab()" placeholder="Ara..." class="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-2 py-1 outline-none focus:border-emerald-500">
+                </div>
+                <div id="genelPlayerList" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div id="tab-oyuncu" class="tab-content">
+            <div class="glass-card p-4 rounded-xl mb-4">
+                <h2 class="font-semibold text-slate-200 text-sm mb-3">Tüm Oyuncu Yönetimi</h2>
+                <div id="fullPlayerList" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div id="tab-kadro" class="tab-content">
+            <div class="glass-card p-4 rounded-xl mb-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+                    <div>
+                        <h2 class="font-semibold text-slate-200 text-sm">Haftalık Kadro & Oylama Yönetimi</h2>
+                        <p class="text-xs text-slate-400">Oylamaya katılacak oyuncuları seçin ve turu yönetin.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="selectAllKadro(true)" class="bg-slate-700 text-xs px-2.5 py-1 rounded hover:bg-slate-600">Tümünü Seç</button>
+                        <button onclick="selectAllKadro(false)" class="bg-slate-700 text-xs px-2.5 py-1 rounded hover:bg-slate-600">Temizle</button>
+                        <button onclick="startNewRatingRound()" class="bg-emerald-600 text-xs px-3 py-1 rounded font-bold hover:bg-emerald-500 text-white">Yeni Rating Turu Başlat</button>
+                    </div>
+                </div>
+                <div id="kadroSelectionList" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+            </div>
+        </div>
+
+        <div id="tab-oylar" class="tab-content">
+            <div class="glass-card p-4 rounded-xl mb-4">
+                <h2 class="font-semibold text-slate-200 text-sm mb-3">Gelen Oylar (ID Eşleşmeli)</h2>
+                <div id="votesList" class="space-y-2 text-xs text-slate-300"></div>
+            </div>
+        </div>
+
+        <div id="tab-karne" class="tab-content">
+            <div class="glass-card p-4 rounded-xl mb-4">
+                <h2 class="font-semibold text-slate-200 text-sm mb-3">Oyuncu Performans Karnesi</h2>
+                <select id="karneSelect" onchange="renderKarne()" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-xs text-slate-200 mb-4"></select>
+                <div id="karneContent" class="text-center py-4 text-slate-400 text-xs">Oyuncu seçiniz</div>
+            </div>
+        </div>
+
+        <div id="tab-kulis" class="tab-content">
+            <div class="glass-card p-4 rounded-xl mb-4">
+                <h2 class="font-semibold text-slate-200 text-sm mb-3">Soyunma Odası & Kulis Tartışmaları</h2>
+                <div id="kulisMessages" class="space-y-2 mb-4 max-h-60 overflow-y-auto p-2 bg-slate-900/50 rounded-lg"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="kulisInput" placeholder="Mesaj yazın..." class="flex-1 bg-slate-800 border border-slate-700 text-xs text-slate-200 px-3 py-2 rounded-lg">
+                    <button onclick="sendKulisMessage()" class="bg-emerald-600 text-xs text-white px-4 py-2 rounded-lg font-bold">Gönder</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-alkadro" class="tab-content">
+            <div class="glass-card p-4 rounded-xl mb-4 text-center">
+                <h2 class="font-semibold text-slate-200 text-sm mb-2">AI Kadro Oluşturucu</h2>
+                <p class="text-xs text-slate-400 mb-4">Aktif kadrodaki oyuncuların puanlarına göre dengeli 2 takım (Yeşil vs Mavi) oluşturulur.</p>
+                <button onclick="generateAITeams()" class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-lg">Otomatik Kadro Kur</button>
+                <div id="aiTeamResults" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-left"></div>
+            </div>
+        </div>
+
+        <div id="tab-macgir" class="tab-content">
+            <div class="glass-card p-4 rounded-xl mb-4">
+                <h2 class="font-semibold text-slate-200 text-sm mb-3">Maç Sonucu Kaydet</h2>
+                <div class="grid grid-cols-2 gap-4 mb-3">
+                    <div>
+                        <label class="text-xs text-slate-400">Yeşil Takım Gol</label>
+                        <input type="number" id="scoreGreen" value="0" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-xs">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400">Mavi Takım Gol</label>
+                        <input type="number" id="scoreBlue" value="0" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-xs">
+                    </div>
+                </div>
+                <button onclick="saveMatchResult()" class="w-full bg-emerald-600 text-xs font-bold py-2 rounded text-white">Maç Sonucunu Kaydet ve İstatistikleri Güncelle</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 glass-card border-t border-slate-700 z-50">
+        <div class="max-w-4xl mx-auto flex justify-between items-center px-2 py-2 overflow-x-auto text-[11px]">
+            <button onclick="switchTab('genel')" class="nav-btn flex flex-col items-center min-w-[50px] text-emerald-400" data-tab="genel">
+                <i class="fas fa-chart-pie text-base"></i><span>Genel</span>
+            </button>
+            <button onclick="switchTab('oyuncu')" class="nav-btn flex flex-col items-center min-w-[50px] text-slate-400" data-tab="oyuncu">
+                <i class="fas fa-users-cog text-base"></i><span>Oyuncu</span>
+            </button>
+            <button onclick="switchTab('kadro')" class="nav-btn flex flex-col items-center min-w-[50px] text-slate-400" data-tab="kadro">
+                <i class="fas fa-clipboard-list text-base"></i><span>Kadro</span>
+            </button>
+            <button onclick="switchTab('oylar')" class="nav-btn flex flex-col items-center min-w-[50px] text-slate-400" data-tab="oylar">
+                <i class="fas fa-poll text-base"></i><span>Oylar</span>
+            </button>
+            <button onclick="switchTab('karne')" class="nav-btn flex flex-col items-center min-w-[50px] text-slate-400" data-tab="karne">
+                <i class="fas fa-id-card text-base"></i><span>Karne</span>
+            </button>
+            <button onclick="switchTab('kulis')" class="nav-btn flex flex-col items-center min-w-[50px] text-slate-400" data-tab="kulis">
+                <i class="fas fa-comments text-base"></i><span>Kulis</span>
+            </button>
+            <button onclick="switchTab('alkadro')" class="nav-btn flex flex-col items-center min-w-[50px] text-slate-400" data-tab="alkadro">
+                <i class="fas fa-robot text-base"></i><span>AI Kadro</span>
+            </button>
+            <button onclick="switchTab('macgir')" class="nav-btn flex flex-col items-center min-w-[50px] text-slate-400" data-tab="macgir">
+                <i class="fas fa-trophy text-base"></i><span>Maç Gir</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Modal Oyuncu Ekle -->
+    <div id="addPlayerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="glass-card w-full max-w-md p-6 rounded-xl border border-slate-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-100 text-sm">Yeni Oyuncu Ekle</h3>
+                <button onclick="closeModal('addPlayerModal')" class="text-slate-400 hover:text-white">&times;</button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Oyuncu Adı</label>
+                    <input type="text" id="newPlayerName" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-slate-200">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Mevki</label>
+                    <select id="newPlayerPos" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-slate-200">
+                        <option value="Kaleci">Kaleci</option>
+                        <option value="Defans">Defans</option>
+                        <option value="Orta Saha">Orta Saha</option>
+                        <option value="Forvet">Forvet</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Varsayılan Rating (Puan)</label>
+                    <input type="number" id="newPlayerRating" value="70" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-slate-200">
+                </div>
+            </div>
+            <div class="mt-5 flex gap-2">
+                <button onclick="saveNewPlayer()" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded text-xs">Kaydet</button>
+                <button onclick="closeModal('addPlayerModal')" class="bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded text-xs">İptal</button>
             </div>
         </div>
     </div>
-</header>
 
-<main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <section id="tab-dashboard" class="tab-content space-y-6">
-        <div class="glass-panel rounded-2xl p-5 border border-slate-700/60">
-            <h2 class="text-lg font-bold text-white mb-4"><i class="fa-solid fa-ranking-star text-amber-400"></i> Oyuncu Liderlik ve Gerçek Rating Tablosu (ID Bazlı Hesaplama)</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="text-slate-400 border-b border-slate-700/60 text-xs font-semibold uppercase">
-                            <th class="pb-3 px-2">#</th>
-                            <th class="pb-3 px-2">Oyuncu</th>
-                            <th class="pb-3 px-2">Pozisyon</th>
-                            <th class="pb-3 px-2 text-center">Oylama Ort.</th>
-                            <th class="pb-3 px-2 text-right">Gerçek Rating</th>
-                        </tr>
-                    </thead>
-                    <tbody id="player-leaderboard-body" class="divide-y divide-slate-800"></tbody>
-                </table>
-            </div>
-        </div>
-    </section>
+    <!-- Script Application Logic -->
+    <script>
+        // Initial Mock Data with Unique IDs
+        let players = JSON.parse(localStorage.getItem('halisaha_players')) || [
+            { id: 'p1', name: 'İSA K.', pos: 'Defans', pin: '238690', rating: 76, selected: true, lastMatch: true },
+            { id: 'p2', name: 'KEREM', pos: 'Defans', pin: '449843', rating: 70, selected: true, lastMatch: false },
+            { id: 'p3', name: 'KEREM', pos: 'Forvet', pin: '449844', rating: 70, selected: true, lastMatch: false },
+            { id: 'p4', name: 'MEHMET Ç.', pos: 'Defans', pin: '677814', rating: 69, selected: true, lastMatch: true },
+            { id: 'p5', name: 'ÖMÜR', pos: 'Orta Saha', pin: '231707', rating: 84, selected: true, lastMatch: true },
+            { id: 'p6', name: 'RAMAZAN', pos: 'Orta Saha', pin: '076611', rating: 85, selected: true, lastMatch: true },
+            { id: 'p7', name: 'SELÇUK', pos: 'Orta Saha', pin: '951842', rating: 66, selected: true, lastMatch: true }
+        ];
 
-    <section id="tab-players" class="tab-content hidden space-y-6">
-        <div class="glass-panel p-6 rounded-2xl border border-slate-700">
-            <h2 class="text-lg font-bold text-white mb-4"><i class="fa-solid fa-users text-emerald-400"></i> Kayıtlı Oyuncular</h2>
-            <div id="players-card-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-        </div>
-    </section>
+        let votes = JSON.parse(localStorage.getItem('halisaha_votes')) || [];
+        let kulisMessages = JSON.parse(localStorage.getItem('halisaha_kulis')) || [
+            { sender: 'Sinan Abi', text: 'Ramazan aslanlar gibi oynadı son maç!' },
+            { sender: 'Ömür', text: 'Bu hafta kadroyu AI dengeli kursun.' }
+        ];
 
-    <section id="tab-squad" class="tab-content hidden space-y-6">
-        <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-5">
-            <h2 class="text-xl font-extrabold text-white"><i class="fa-solid fa-clipboard-user text-emerald-400"></i> Haftalık Kadro & Rating Turu</h2>
-            <button onclick="startRatingRound()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl"><i class="fa-solid fa-play"></i> Yeni Rating Turu Başlat</button>
-        </div>
-    </section>
-
-    <section id="tab-admin" class="tab-content hidden space-y-6">
-        <div class="glass-panel p-6 rounded-2xl border border-slate-700">
-            <h2 class="text-xl font-black text-white">Maç Kaydı</h2>
-        </div>
-    </section>
-</main>
-
-<div id="toast-msg" class="fixed bottom-16 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 border border-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl z-50">
-    <span id="toast-text">İşlem yapıldı.</span>
-</div>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBC5anWNILz9VPS_ktAroINLf8W8MRNL7s",
-        authDomain: "halisahaai.firebaseapp.com",
-        databaseURL: "https://halisahaai-default-rtdb.firebaseio.com",
-        projectId: "halisahaai",
-        storageBucket: "halisahaai.firebasestorage.app",
-        messagingSenderId: "752014826496",
-        appId: "1:752014826496:web:925ed3ae6aa466b178cce5"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    let players = [];
-    let matches = [];
-    let ratingRound = { open: false, roundId: 0 };
-    let currentTabId = 'dashboard';
-    const ATTR_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
-
-    function esc(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
-    function showToast(text) {
-        const toast = document.getElementById('toast-msg');
-        document.getElementById('toast-text').textContent = text;
-        toast.classList.remove('translate-y-20', 'opacity-0');
-        setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
-    }
-
-    // YENİ GÜÇLENDİRİLMİŞ ID BAZLI RATING HESAPLAMA MANTIĞI
-    function getVoteStats(player) {
-        // peerAttributeVotes dizisi içindeki her kayıt doğrudan targetId veya hedef ID eşleşmesine bakar.
-        // Sonradan eklenen oyuncuların oyları targetId bazlı toplandığı için 70'te takılı kalmaz.
-        const votes = (player.peerAttributeVotes || []).filter(v => v && ATTR_KEYS.some(k => typeof v[k] === 'number'));
-
-        if (votes.length === 0) {
-            return { count: 0, overall: 70, attrs: { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 } };
+        function saveData() {
+            localStorage.setItem('halisaha_players', JSON.stringify(players));
+            localStorage.setItem('halisaha_votes', JSON.stringify(votes));
+            localStorage.setItem('halisaha_kulis', JSON.stringify(kulisMessages));
+            calculateIDBasedRatings();
         }
 
-        const attrs = {};
-        ATTR_KEYS.forEach(k => {
-            const validVals = votes.map(v => v[k]).filter(n => typeof n === 'number');
-            attrs[k] = validVals.length ? Math.round(validVals.reduce((a, b) => a + b, 0) / validVals.length) : 70;
-        });
+        // CRITICAL FIX: Calculate Ratings based strictly on Player IDs instead of Names
+        function calculateIDBasedRatings() {
+            if (votes.length === 0) return;
 
-        const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + attrs[k], 0) / ATTR_KEYS.length);
-        return { count: votes.length, overall, attrs };
-    }
+            // Map to store sum and count per playerId
+            let ratingsMap = {};
+            
+            votes.forEach(vote => {
+                // vote structure: { voterId, ratings: { targetPlayerId: score } }
+                if (vote.ratings) {
+                    Object.keys(vote.ratings).forEach(targetId => {
+                        let score = parseFloat(vote.ratings[targetId]);
+                        if (!isNaN(score)) {
+                            if (!ratingsMap[targetId]) {
+                                ratingsMap[targetId] = { total: 0, count: 0 };
+                            }
+                            ratingsMap[targetId].total += score;
+                            ratingsMap[targetId].count += 1;
+                        }
+                    });
+                }
+            });
 
-    function calculateTrueRating(player) {
-        const vs = getVoteStats(player);
-        const base = vs.overall;
-        const adj = Number.isFinite(player.ratingAdjust) ? player.ratingAdjust : 0;
-        return { trueRating: Math.max(1, Math.min(base + adj, 99)), voteAvg: vs.overall, voteCount: vs.count, adjust: adj };
-    }
+            // Update player ratings
+            players.forEach(p => {
+                if (ratingsMap[p.id] && ratingsMap[p.id].count > 0) {
+                    p.rating = Math.round(ratingsMap[p.id].total / ratingsMap[p.id].count);
+                }
+            });
 
-    function renderDashboard() {
-        const tbody = document.getElementById('player-leaderboard-body');
-        tbody.innerHTML = '';
-        const sorted = [...players].sort((a, b) => calculateTrueRating(b).trueRating - calculateTrueRating(a).trueRating);
-
-        sorted.forEach((player, index) => {
-            const trStats = calculateTrueRating(player);
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-800/50 transition-colors';
-            tr.innerHTML = `
-                <td class="py-3 px-2 font-bold text-slate-500 text-xs">${index + 1}</td>
-                <td class="py-3 px-2 font-bold text-white text-xs">${esc(player.name)}</td>
-                <td class="py-3 px-2"><span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-emerald-400">${esc(player.position)}</span></td>
-                <td class="py-3 px-2 text-center text-xs"><span class="text-amber-400 font-bold">${trStats.voteCount ? trStats.voteAvg : '70'}</span></td>
-                <td class="py-3 px-2 text-right font-black text-emerald-400 text-sm">${trStats.trueRating}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    function switchTab(tabId) {
-        currentTabId = tabId;
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-        document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-        if (tabId === 'dashboard') renderDashboard();
-    }
-
-    async function startRatingRound() {
-        try {
-            const now = Date.now();
-            await db.collection('settings').doc('rating_round').set({ open: true, roundId: now, openedAt: now });
-            showToast("Yeni rating turu başlatıldı.");
-        } catch (err) {
-            showToast("Hata: " + err.message);
+            localStorage.setItem('halisaha_players', JSON.stringify(players));
         }
-    }
 
-    function initFirestoreListeners() {
-        db.collection('players').onSnapshot(snap => {
-            players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderDashboard();
-        });
-        db.collection('settings').doc('rating_round').onSnapshot(doc => {
-            const d = doc.exists ? doc.data() : {};
-            ratingRound = { open: !!d.open, roundId: d.roundId || 0 };
-        });
-    }
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('text-emerald-400');
+                el.classList.add('text-slate-400');
+            });
 
-    async function adminLogin() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        try { await firebase.auth().signInWithPopup(provider); } catch (e) { showToast("Giriş hatası"); }
-    }
-
-    function adminLogout() {
-        firebase.auth().signOut().then(() => location.reload());
-    }
-
-    function copyVoteLink() {
-        const url = new URL('oylama.html', location.href).href;
-        navigator.clipboard?.writeText(url).then(() => showToast('Oylama linki kopyalandı!'));
-    }
-
-    window.onload = function() {
-        firebase.auth().onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('login-gate').classList.add('hidden');
-                initFirestoreListeners();
-            } else {
-                document.getElementById('login-gate').classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            let activeBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('text-emerald-400');
             }
+
+            renderAll();
+        }
+
+        // Render Functions
+        function renderAll() {
+            calculateIDBasedRatings();
+            renderGenelTab();
+            renderPlayerTab();
+            renderKadroTab();
+            renderOylarTab();
+            renderKarneSelect();
+            renderKulisTab();
+        }
+
+        function renderGenelTab() {
+            let total = players.length;
+            let activeVotes = votes.length;
+            let avg = total > 0 ? Math.round(players.reduce((acc, p) => acc + (p.rating || 70), 0) / total) : 0;
+            
+            document.getElementById('statTotalPlayers').innerText = total;
+            document.getElementById('statActiveVotes').innerText = activeVotes;
+            document.getElementById('statAvgRating').innerText = avg;
+
+            let topPlayer = [...players].sort((a,b) => (b.rating||0) - (a.rating||0))[0];
+            document.getElementById('statMVP').innerText = topPlayer ? topPlayer.name : '-';
+
+            let q = document.getElementById('searchGenel').value.toLowerCase();
+            let container = document.getElementById('genelPlayerList');
+            container.innerHTML = '';
+
+            players.filter(p => p.name.toLowerCase().includes(q)).forEach(p => {
+                container.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full ${p.selected ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-700 text-slate-400'} text-[10px] flex items-center justify-center font-bold">
+                                ${p.selected ? '✓' : ''}
+                            </span>
+                            <div>
+                                <div class="font-bold text-xs text-slate-200">${p.name} ${p.lastMatch ? '<span class="text-[9px] text-slate-400 bg-slate-700 px-1 rounded">son maç</span>' : ''}</div>
+                                <div class="text-[10px] text-slate-400">${p.pos} • Şifre: ${p.pin}</div>
+                            </div>
+                        </div>
+                        <div class="text-sm font-bold ${p.rating >= 80 ? 'text-emerald-400' : p.rating >= 70 ? 'text-teal-400' : 'text-yellow-400'}">
+                            ${p.rating || 70}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderPlayerTab() {
+            let container = document.getElementById('fullPlayerList');
+            container.innerHTML = '';
+            players.forEach((p, idx) => {
+                container.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                        <div>
+                            <div class="font-bold text-xs text-slate-200">${p.name} <span class="text-[10px] text-slate-400">(${p.pos})</span></div>
+                            <div class="text-[10px] text-slate-400">ID: ${p.id} | PIN: ${p.pin}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-emerald-400">${p.rating || 70} Puan</span>
+                            <button onclick="deletePlayer(${idx})" class="text-red-400 hover:text-red-300 text-xs px-2 py-1"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderKadroTab() {
+            let container = document.getElementById('kadroSelectionList');
+            container.innerHTML = '';
+            players.forEach((p, idx) => {
+                container.innerHTML += `
+                    <label class="flex items-center justify-between p-2 bg-slate-800/50 rounded border border-slate-700 cursor-pointer">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" ${p.selected ? 'checked' : ''} onchange="toggleKadroSelection(${idx})" class="rounded accent-emerald-500">
+                            <span class="text-xs font-medium text-slate-200">${p.name} (${p.pos})</span>
+                        </div>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded ${p.selected ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-400'}">
+                            ${p.selected ? 'Kadroda' : 'Yedek'}
+                        </span>
+                    </label>
+                `;
+            });
+        }
+
+        function renderOylarTab() {
+            let container = document.getElementById('votesList');
+            container.innerHTML = '';
+            if (votes.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-slate-500">Henüz oy kullanılmadı.</div>';
+                return;
+            }
+            votes.forEach((v, idx) => {
+                let voter = players.find(p => p.id === v.voterId) || { name: 'Bilinmeyen Oyuncu' };
+                container.innerHTML += `
+                    <div class="bg-slate-800/50 p-2.5 rounded border border-slate-700">
+                        <div class="font-semibold text-emerald-400 mb-1">${voter.name} oylarını kullandı</div>
+                        <div class="text-[11px] text-slate-400">${Object.keys(v.ratings || {}).length} oyuncuya puan verildi.</div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderKarneSelect() {
+            let select = document.getElementById('karneSelect');
+            select.innerHTML = '<option value="">Oyuncu Seçin...</option>';
+            players.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.name} (${p.pos}) - ${p.rating} Puan</option>`;
+            });
+        }
+
+        function renderKarne() {
+            let id = document.getElementById('karneSelect').value;
+            let container = document.getElementById('karneContent');
+            if(!id) { container.innerHTML = 'Oyuncu seçiniz'; return; }
+            let p = players.find(x => x.id === id);
+            container.innerHTML = `
+                <div class="bg-slate-800/80 p-4 rounded-xl border border-emerald-500/30 text-left space-y-2">
+                    <div class="text-base font-bold text-emerald-400">${p.name}</div>
+                    <div class="text-xs text-slate-300">Mevki: <span class="text-slate-100 font-medium">${p.pos}</span></div>
+                    <div class="text-xs text-slate-300">Güncel Rating: <span class="text-yellow-400 font-bold">${p.rating}</span></div>
+                    <div class="text-xs text-slate-300">Özel Şifre: <span class="text-slate-400">${p.pin}</span></div>
+                    <div class="text-[11px] text-slate-400 border-t border-slate-700 pt-2 mt-2">ID: ${p.id}</div>
+                </div>
+            `;
+        }
+
+        function renderKulisTab() {
+            let container = document.getElementById('kulisMessages');
+            container.innerHTML = '';
+            kulisMessages.forEach(m => {
+                container.innerHTML += `
+                    <div class="text-xs bg-slate-800/70 p-2 rounded border border-slate-700/60">
+                        <span class="font-bold text-emerald-400">${m.sender}:</span>
+                        <span class="text-slate-200">${m.text}</span>
+                    </div>
+                `;
+            });
+        }
+
+        // Actions & Modals
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+
+        function saveNewPlayer() {
+            let name = document.getElementById('newPlayerName').value.trim();
+            let pos = document.getElementById('newPlayerPos').value;
+            let rating = parseInt(document.getElementById('newPlayerRating').value) || 70;
+
+            if(!name) { alert('Oyuncu adı gerekli'); return; }
+
+            let newId = 'p_' + Date.now();
+            let pin = Math.floor(100000 + Math.random() * 900000).toString();
+
+            players.push({
+                id: newId,
+                name: name,
+                pos: pos,
+                pin: pin,
+                rating: rating,
+                selected: true,
+                lastMatch: true
+            });
+
+            saveData();
+            closeModal('addPlayerModal');
+            renderAll();
+            alert(`Yeni Oyuncu Eklendi!\nİsim: ${name}\nPIN/Şifre: ${pin}`);
+        }
+
+        function deletePlayer(idx) {
+            if(confirm('Bu oyuncuyu silmek istediğinize emin misiniz?')) {
+                players.splice(idx, 1);
+                saveData();
+                renderAll();
+            }
+        }
+
+        function toggleKadroSelection(idx) {
+            players[idx].selected = !players[idx].selected;
+            saveData();
+            renderGenelTab();
+        }
+
+        function selectAllKadro(val) {
+            players.forEach(p => p.selected = val);
+            saveData();
+            renderKadroTab();
+            renderGenelTab();
+        }
+
+        function startNewRatingRound() {
+            if(confirm('Yeni bir rating turu başlatılacak. Eski oy kayıtları temizlenecek. Onaylıyor musunuz?')) {
+                votes = [];
+                saveData();
+                renderAll();
+                alert('Yeni rating turu başlatıldı! Kadrodaki oyuncular oylama sayfasında oy kullanabilir.');
+            }
+        }
+
+        function sendKulisMessage() {
+            let input = document.getElementById('kulisInput');
+            let txt = input.value.trim();
+            if(txt) {
+                kulisMessages.push({ sender: 'Yönetici', text: txt });
+                input.value = '';
+                saveData();
+                renderKulisTab();
+            }
+        }
+
+        function generateAITeams() {
+            let active = players.filter(p => p.selected);
+            if(active.length < 2) {
+                alert('Kadroda yeterli oyuncu yok.');
+                return;
+            }
+
+            let sorted = [...active].sort((a,b) => b.rating - a.rating);
+            let teamGreen = [];
+            let teamBlue = [];
+            let scoreGreen = 0;
+            let scoreBlue = 0;
+
+            sorted.forEach(p => {
+                if(scoreGreen <= scoreBlue) {
+                    teamGreen.push(p);
+                    scoreGreen += p.rating;
+                } else {
+                    teamBlue.push(p);
+                    scoreBlue += p.rating;
+                }
+            });
+
+            let res = document.getElementById('aiTeamResults');
+            res.innerHTML = `
+                <div class="bg-emerald-900/30 p-3 rounded-lg border border-emerald-500/40">
+                    <h3 class="font-bold text-emerald-400 text-xs mb-2">YEŞİL TAKIM (Ort: ${Math.round(scoreGreen/teamGreen.length)})</h3>
+                    <ul class="text-xs text-slate-300 space-y-1">
+                        ${teamGreen.map(p => `<li>• ${p.name} (${p.pos}) - <b>${p.rating}</b></li>`).join('')}
+                    </ul>
+                </div>
+                <div class="bg-blue-900/30 p-3 rounded-lg border border-blue-500/40">
+                    <h3 class="font-bold text-blue-400 text-xs mb-2">MAVİ TAKIM (Ort: ${Math.round(scoreBlue/teamBlue.length)})</h3>
+                    <ul class="text-xs text-slate-300 space-y-1">
+                        ${teamBlue.map(p => `<li>• ${p.name} (${p.pos}) - <b>${p.rating}</b></li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        function saveMatchResult() {
+            let g = document.getElementById('scoreGreen').value;
+            let b = document.getElementById('scoreBlue').value;
+            alert(`Maç sonucu kaydoldu: Yeşil ${g} - ${b} Mavi`);
+        }
+
+        function copyVotingLink() {
+            navigator.clipboard.writeText(window.location.origin + '/oylama.html');
+            alert('Oylama linki kopyalandı!');
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            renderAll();
         });
-    };
-</script>
+    </script>
 </body>
 </html>
