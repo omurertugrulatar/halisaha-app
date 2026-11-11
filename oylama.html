@@ -43,8 +43,6 @@
                 }
             }
         }
-            }
-        }
     </script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -125,7 +123,8 @@
       box.style.cssText='position:fixed;left:0;right:0;bottom:48px;z-index:99999;background:#7f1d1d;color:#fff;font:12px/1.4 monospace;padding:10px 14px;max-height:40vh;overflow:auto;white-space:pre-wrap';
       (document.body||document.documentElement).appendChild(box);
     }
-    box.textContent+=msg+'\n';
+    box.textContent+=msg+'
+';
   }
   window.__showErr=show;
   window.addEventListener('error',function(e){show('HATA: '+e.message+' (satır '+e.lineno+':'+e.colno+')');});
@@ -162,7 +161,7 @@
                     </h2>
                     <p class="text-sm text-zinc-400 mt-1">Rating oylaması yönetici tarafından ihtiyaç olduğunda açılır. Kadrodaki oyuncular birbirini puanlar; ortalama 'Gerçek Rating'i oluşturur.</p>
                     <p id="eval-squad-info" class="text-xs text-zinc-400 mt-2 leading-relaxed"></p>
-                    <p class="text-xs text-orange-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Her rating turunda yalnızca 1 kez oy kullanabilirsiniz; gönderilen oylar güncellenemez.</p>
+                    <p class="text-xs text-orange-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Verilen oylar kilitlenir ve değiştirilemez; ancak henüz oy vermediğiniz oyuncuları puanlamaya devam edebilirsiniz.</p>
                 </div>
 
                 <!-- Step 1: Select Evaluator -->
@@ -211,7 +210,7 @@
                         <h3 class="text-base font-bold text-violet-400 flex items-center gap-2">
                             <i class="fa-solid fa-users-gear"></i> Akran Değerlendirme Listesi
                         </h3>
-                        <span class="text-xs text-orange-400 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i>Tüm nitelikler zorunlu (1-99)</span>
+                        <span class="text-xs text-orange-400 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i>Açık kutular zorunludur (1-99)</span>
                     </div>
 
                     <div id="peer-ratings-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
@@ -360,12 +359,12 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Oylama sayfası durumu (yalnızca okuma + kendi oyunu yazma)
+        // Oylama sayfası durumu
         let players = [];
         let matches = [];
         let matchRatings = [];
         let ratingRound = { open: false, roundId: 0 };   // yönetici rating turunu açar/kapatır
-        let evalLogIds = new Set();                       // oy kullananlar: 'oyuncu_tur' kayıt numaraları
+        let evalLogIds = new Set();                       // oy kullananlar
         let currentTabId = 'evaluation';
         let evalSubmitting = false;
         let mrDraft = {};
@@ -386,10 +385,35 @@
             return 0;
         }
 
-function getVoterEvalStatus(voterId) {
-            if (!ratingRound.open) return { canVote: false, closed: true };
-            const voted = voterId ? evalLogIds.has(`${voterId}_${ratingRound.roundId}`) : false;
-            return { canVote: !voted, closed: false, voted };
+        // Oyuncunun belirli bir hedef oyuncuya oy verip vermediğini veya toplam kalan durumunu kontrol eder
+        function getVoterEvalStatus(voterId) {
+            if (!ratingRound.open) return { canVote: false, closed: true, remainingPeersCount: 0 };
+            
+            const voter = players.find(p => p.id === voterId);
+            if (!voter) return { canVote: false, closed: false, remainingPeersCount: 0 };
+
+            // Oylamaya seçili/seçilsiz TÜM oyuncuları dahil ediyoruz (kendisi hariç)
+            const targetPeers = players.filter(p => p.id !== voterId);
+            
+            // Oyuncunun mevcut turda oy verdiği hedef id'leri bul
+            const votedPeerIds = new Set();
+            (voter.peerAttributeVotes || []).forEach(v => {
+                if (v.period === ratingRound.roundId) {
+                    if (v.targetId) votedPeerIds.add(v.targetId);
+                }
+            });
+
+            const unvotedPeers = targetPeers.filter(p => !votedPeerIds.has(p.id));
+            const remainingCount = unvotedPeers.length;
+
+            return { 
+                canVote: remainingCount > 0, 
+                closed: false, 
+                voted: votedPeerIds.size > 0,
+                votedPeerIds: votedPeerIds,
+                remainingPeersCount: remainingCount,
+                totalPeersCount: targetPeers.length
+            };
         }
 
         const ATTR_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
@@ -418,7 +442,6 @@ function getVoterEvalStatus(voterId) {
             }
         };
 
-        // Verilen pozisyona uygun nitelik etiketlerini (kısa + tam) döndürür. Anahtarlar her pozisyon için aynıdır.
         function getAttrMeta(position) {
             const shortTable = ATTR_SHORT_LABELS[position] || ATTR_SHORT_LABELS.default;
             const fullTable = ATTR_FULL_LABELS[position] || ATTR_FULL_LABELS.default;
@@ -427,24 +450,26 @@ function getVoterEvalStatus(voterId) {
 
         function populateUserDropdown() {
             const select = document.getElementById('eval-current-user');
-            const prev = select.value; // anlık veri güncellemelerinde seçimi koru
+            const prev = select.value;
             select.innerHTML = '<option value="">-- Oyuncu Seçiniz --</option>';
-            players.filter(p => p.selected).forEach(p => {
+            
+            // Tüm oyuncuları dropdown listesine koyuyoruz
+            players.forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.textContent = `${p.name} (${p.position})`;
                 select.appendChild(opt);
             });
-            if (prev && players.some(p => p.id === prev && p.selected)) select.value = prev;
+            if (prev && players.some(p => p.id === prev)) select.value = prev;
 
-            const squad = players.filter(p => p.selected);
-            document.getElementById('eval-squad-info').innerHTML = squad.length
-                ? `<span class="text-zinc-300 font-semibold">Bu haftanın kadrosu (${squad.length}):</span> ` + squad.map(p => esc(p.name)).join(', ')
-                : 'Bu haftanın kadrosu henüz yönetici tarafından açıklanmadı.';
+            const allP = players;
+            document.getElementById('eval-squad-info').innerHTML = allP.length
+                ? `<span class="text-zinc-300 font-semibold">Tüm Kadro (${allP.length}):</span> ` + allP.map(p => esc(p.name)).join(', ')
+                : 'Kadroda henüz kayıtlı oyuncu yok.';
             checkVoterEvalStatus();
         }
 
-function checkVoterEvalStatus() {
+        function checkVoterEvalStatus() {
             const select = document.getElementById('eval-current-user');
             const statusEl = document.getElementById('eval-voter-status');
             const btn = document.getElementById('eval-step2-btn');
@@ -474,11 +499,16 @@ function checkVoterEvalStatus() {
                 const pinInput = document.getElementById('eval-voter-pin').value;
                 const player = players.find(p => p.id === voterId);
                 
+                const checkPinAndEnable = () => {
+                    const votedText = status.voted ? ` (Daha önce ${status.totalPeersCount - status.remainingPeersCount} oyuncuya oy verdiniz, kilitli)` : '';
+                    statusEl.className = 'text-xs font-semibold min-h-[1rem] text-violet-400';
+                    statusEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>Şifre doğru. ${status.remainingPeersCount} oyuncu için oy verebilirsiniz.${votedText}`;
+                    btn.disabled = false;
+                };
+
                 if(player && player.pin) {
                     if (pinInput === player.pin) {
-                        statusEl.className = 'text-xs font-semibold min-h-[1rem] text-violet-400';
-                        statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Şifre doğru, oy kullanabilirsiniz.';
-                        btn.disabled = false;
+                        checkPinAndEnable();
                     } else if (pinInput.length === 6) {
                         statusEl.className = 'text-xs font-semibold min-h-[1rem] text-rose-400';
                         statusEl.innerHTML = '<i class="fa-solid fa-xmark mr-1"></i>Şifre hatalı.';
@@ -493,20 +523,17 @@ function checkVoterEvalStatus() {
                          btn.disabled = true;
                     }
                 } else {
-                     // No pin set for player (legacy support)
                      document.getElementById('eval-pin-container').classList.add('hidden');
-                     statusEl.className = 'text-xs font-semibold min-h-[1rem] text-violet-400';
-                     statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i>Bu turda oy kullanabilirsiniz.';
-                     btn.disabled = false;
+                     checkPinAndEnable();
                 }
             } else {
                 statusEl.className = 'text-xs font-semibold min-h-[1rem] text-rose-400';
-                statusEl.innerHTML = '<i class="fa-solid fa-lock mr-1"></i>Bu turda zaten oy kullandınız. Gönderilen oylar güncellenemez; yeni tur açılınca tekrar oy verebilirsiniz.';
+                statusEl.innerHTML = '<i class="fa-solid fa-lock mr-1"></i>Bu turda tüm oyunculara oy verdiniz. Oylarınız kilitlendi ve güncellenemez.';
                 btn.disabled = true;
             }
         }
 
-function goToEvalStep(step) {
+        function goToEvalStep(step) {
             const userSelect = document.getElementById('eval-current-user');
             if (step === 2) {
                 if (!ratingRound.open) {
@@ -519,7 +546,7 @@ function goToEvalStep(step) {
                     return;
                 }
                 if (!getVoterEvalStatus(userSelect.value).canVote) {
-                    showToast("Bu turda zaten oy kullandınız.");
+                    showToast("Tüm oyuncular için oyunuzu kullandınız.");
                     checkVoterEvalStatus();
                     return;
                 }
@@ -536,31 +563,61 @@ function goToEvalStep(step) {
             const container = document.getElementById('peer-ratings-list');
             container.innerHTML = '';
 
-            const selectedId = document.getElementById('eval-current-user').value;
-            const peers = players.filter(p => p.id !== selectedId && p.selected);
+            const voterId = document.getElementById('eval-current-user').value;
+            const voter = players.find(p => p.id === voterId);
+            const period = ratingRound.roundId;
+
+            // Tüm oyuncuları oylamaya dahil et (kendisi hariç)
+            const peers = players.filter(p => p.id !== voterId);
 
             peers.forEach(peer => {
-                const attrMeta = getAttrMeta(peer.position); // Kaleciyse kaleciye özgü nitelik etiketleri çıkar
+                const attrMeta = getAttrMeta(peer.position);
+                
+                // Bu hedef oyuncuya daha önce oy verilip verilmediğini bul
+                let existingVote = null;
+                if (voter && voter.peerAttributeVotes) {
+                    existingVote = voter.peerAttributeVotes.find(v => v.period === period && v.targetId === peer.id);
+                }
+
+                const isVoted = !!existingVote;
+
                 const card = document.createElement('div');
                 card.dataset.peerCardId = peer.id;
-                card.className = 'bg-[#0a0a0a]/80 p-3 rounded-3xl border border-white/[0.08] space-y-2.5';
+                card.dataset.isVoted = isVoted ? "true" : "false";
+                card.className = `p-3 rounded-3xl border transition-all ${
+                    isVoted 
+                    ? 'bg-[#0a0a0a]/40 border-white/[0.04] opacity-80' 
+                    : 'bg-[#0a0a0a]/80 border-white/[0.08]'
+                } space-y-2.5`;
+
                 card.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 rounded-full bg-white/5 text-violet-400 font-bold flex items-center justify-center text-xs border border-white/[0.08] shrink-0">
-                            ${esc(peer.name.charAt(0))}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-white/5 text-violet-400 font-bold flex items-center justify-center text-xs border border-white/[0.08] shrink-0">
+                                ${esc(peer.name.charAt(0))}
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-white">${esc(peer.name)}</p>
+                                <p class="text-[10px] text-zinc-400">${esc(peer.position)}${peer.position === 'Kaleci' ? ' • Kaleci nitelikleri' : ''}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-xs font-bold text-white">${esc(peer.name)}</p>
-                            <p class="text-[10px] text-zinc-400">${esc(peer.position)}${peer.position === 'Kaleci' ? ' • Kaleci nitelikleri' : ''}</p>
-                        </div>
+                        ${isVoted ? '<span class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full"><i class="fa-solid fa-lock mr-1"></i>Oy Verildi (Kilitli)</span>' : ''}
                     </div>
                     <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                        ${attrMeta.map(a => `
+                        ${attrMeta.map(a => {
+                            const val = isVoted ? (existingVote[a.key] || '') : '';
+                            return `
                             <div>
                                 <label class="block text-[9px] text-zinc-500 font-semibold mb-0.5 text-center" title="${a.fullLabel}">${a.label}</label>
-                                <input type="number" min="1" max="99" placeholder="—" data-peer-id="${peer.id}" data-attr-key="${a.key}" class="peer-attr-input w-full bg-white/5 border border-white/[0.08] text-violet-400 text-xs font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                <input type="number" min="1" max="99" placeholder="—" 
+                                    value="${val}" 
+                                    ${isVoted ? 'disabled' : ''} 
+                                    data-peer-id="${peer.id}" 
+                                    data-attr-key="${a.key}" 
+                                    class="peer-attr-input w-full ${isVoted ? 'bg-white/5 text-zinc-500 cursor-not-allowed border-transparent' : 'bg-white/5 border-white/[0.08] text-violet-400'} text-xs font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-violet-500 focus:outline-none">
                             </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                 `;
                 container.appendChild(card);
@@ -588,7 +645,7 @@ function goToEvalStep(step) {
             renderMVPVoteTab();
         }
 
-// -------------------------------------------------------------
+        // -------------------------------------------------------------
         // MAÇ KARNESİ: maç puanlarını takımlara ayırıp 10 üzerinden gösteren görsel
         // -------------------------------------------------------------
         function getMatchScoreMap(m) {
@@ -804,18 +861,18 @@ function goToEvalStep(step) {
                 return;
             }
 
-            // Güvenlik amaçlı ikinci kontrol: başka cihazdan oy kullanılmış olabilir
             const status = getVoterEvalStatus(voterId);
             if (!status.canVote) {
-                showToast(status.closed ? "Rating oylaması kapalı." : "Bu turda zaten oy kullandınız.");
+                showToast(status.closed ? "Rating oylaması kapalı." : "Tüm oyuncular için oyunuzu kullandınız.");
                 goToEvalStep(1);
                 checkVoterEvalStatus();
                 return;
             }
 
-            const cards = document.querySelectorAll('#peer-ratings-list > div[data-peer-card-id]');
+            // Sadece kilitli OLMUYAN (daha önce oy verilmemiş) kartları alıyoruz
+            const cards = document.querySelectorAll('#peer-ratings-list > div[data-peer-card-id][data-is-voted="false"]');
             if (cards.length === 0) {
-                showToast("Puanlanacak oyuncu bulunamadı.");
+                showToast("Puanlanacak yeni oyuncu bulunamadı.");
                 return;
             }
 
@@ -826,52 +883,93 @@ function goToEvalStep(step) {
                 card.classList.remove('border-red-500');
                 const peerId = card.dataset.peerCardId;
                 const values = {};
+                let hasValue = false;
                 let complete = true;
 
                 card.querySelectorAll('.peer-attr-input').forEach(input => {
                     const key = input.getAttribute('data-attr-key');
                     const raw = input.value.trim();
-                    const num = parseInt(raw, 10);
-                    if (raw === '' || isNaN(num) || num < 1 || num > 99) complete = false;
-                    else values[key] = num;
+                    if (raw !== '') {
+                        hasValue = true;
+                        const num = parseInt(raw, 10);
+                        if (isNaN(num) || num < 1 || num > 99) complete = false;
+                        else values[key] = num;
+                    } else {
+                        complete = false;
+                    }
                 });
 
-                if (complete) votesByPeer[peerId] = values;
-                else incompleteCards.push(card);
+                if (hasValue && complete) {
+                    votesByPeer[peerId] = values;
+                } else if (hasValue && !complete) {
+                    incompleteCards.push(card);
+                }
             });
 
             if (incompleteCards.length > 0) {
                 incompleteCards.forEach(card => card.classList.add('border-red-500'));
-                showToast(`Lütfen tüm oyuncular için 6 niteliğin tamamını (1-99) girin. ${incompleteCards.length} oyuncu eksik.`);
+                showToast(`Puanladığınız oyuncular için 6 niteliğin tamamını (1-99) eksiksiz girin.`);
+                return;
+            }
+
+            const peerIdsToSave = Object.keys(votesByPeer);
+            if (peerIdsToSave.length === 0) {
+                showToast("Lütfen oy vermek istediğiniz en az bir oyuncunun niteliklerini eksiksiz girin.");
                 return;
             }
 
             evalSubmitting = true;
-            const period = ratingRound.roundId; // bu oylar hangi rating turuna ait
+            const period = ratingRound.roundId;
             const voteTs = Date.now();
-            try {
-                const peerIds = Object.keys(votesByPeer);
-                await db.runTransaction(async tx => {
-                    // Kayıt numarası = oyuncu_dönem: aynı dönemde ikinci kez yazılamaz (güvenlik kuralları da engeller)
-                    const logRef = db.collection('eval_log').doc(`${voterId}_${period}`);
-                    const logSnap = await tx.get(logRef);
-                    if (logSnap.exists) throw new Error('Bu turda zaten oy kullandınız.');
 
-                    const refs = peerIds.map(id => db.collection('players').doc(id));
-                    const snaps = await Promise.all(refs.map(r => tx.get(r)));
-                    snaps.forEach((snap, i) => {
-                        if (!snap.exists) return;
-                        const vals = votesByPeer[peerIds[i]];
+            try {
+                // Puan verenin oyuncu belgesi güncellenir ve puan alan her oyuncuya da oy kaydı eklenir
+                await db.runTransaction(async tx => {
+                    const voterRef = db.collection('players').doc(voterId);
+                    const voterSnap = await tx.get(voterRef);
+                    if (!voterSnap.exists) throw new Error("Oyuncu bulunamadı.");
+
+                    const voterData = voterSnap.data();
+                    const currentPeerVotes = voterData.peerAttributeVotes || [];
+
+                    const newVotesForVoter = [];
+
+                    for (const targetId of peerIdsToSave) {
+                        const vals = votesByPeer[targetId];
                         const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + vals[k], 0) / ATTR_KEYS.length);
-                        tx.update(refs[i], {
-                            peerAttributeVotes: [...(snap.data().peerAttributeVotes || []), { voterId, period, ts: voteTs, overall, ...vals }]
+                        
+                        // 1. Oy veren kullanıcının kendi dökümanına ekle
+                        newVotesForVoter.push({
+                            targetId,
+                            period,
+                            ts: voteTs,
+                            overall,
+                            ...vals
                         });
+
+                        // 2. Oy alan hedef oyuncunun dökümanına ekle
+                        const targetRef = db.collection('players').doc(targetId);
+                        const targetSnap = await tx.get(targetRef);
+                        if (targetSnap.exists) {
+                            const targetData = targetSnap.data();
+                            const targetVotes = targetData.peerAttributeVotes || [];
+                            tx.update(targetRef, {
+                                peerAttributeVotes: [...targetVotes, { voterId, period, ts: voteTs, overall, ...vals }]
+                            });
+                        }
+                    }
+
+                    tx.update(voterRef, {
+                        peerAttributeVotes: [...currentPeerVotes, ...newVotesForVoter]
                     });
-                    tx.set(logRef, { voterId, period, ts: voteTs });
+
+                    // Genel eval_log kaydı (görünürlük ve durum takibi)
+                    const logRef = db.collection('eval_log').doc(`${voterId}_${period}`);
+                    tx.set(logRef, { voterId, period, lastTs: voteTs }, { merge: true });
                 });
 
                 evalLogIds.add(`${voterId}_${period}`);
-                showToast("Oylarınız kaydedildi, teşekkürler!");
+                showToast("Yeni oylarınız başarıyla kaydedildi!");
                 checkVoterEvalStatus();
                 goToEvalStep(1);
             } catch (err) {
@@ -983,8 +1081,6 @@ function goToEvalStep(step) {
             renderCurrentTab();
         }
 
-        
-        
         // -------------------------------------------------------------
         // CANLI YORUMCULAR (Telegol AI)
         // -------------------------------------------------------------
@@ -1202,8 +1298,6 @@ function goToEvalStep(step) {
             }, 50);
         }
 
-
-        
         // Password Change Functions
         function togglePasswordChangeForm() {
             const form = document.getElementById('password-change-form');
@@ -1254,11 +1348,9 @@ function goToEvalStep(step) {
                 showToast("Şifreniz başarıyla değiştirildi.");
                 document.getElementById(formId).classList.add('hidden');
                 
-                // Clear and update the main input
                 const mainInput = document.getElementById(mainInputId);
                 mainInput.value = newPin;
                 
-                // Trigger the oninput event manually to re-validate
                 const event = new Event('input');
                 mainInput.dispatchEvent(event);
                 
