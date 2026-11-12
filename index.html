@@ -462,7 +462,7 @@
 
                         <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-[11px] text-emerald-200 leading-relaxed">
                             <i class="fa-solid fa-circle-info mr-1"></i>
-                            Rating girmenize gerek yok. Rating oylaması sizin açtığınız turlarla alınır: kadrodaki oyuncular birbirini puanlar. Her maç sonrası verilen 1-10 puanlar ve gol/galibiyet/MVP performansı da oyuncunun <strong>Gerçek Rating</strong>'ini zamanla günceller.
+                            Rating girmenize gerek yok. Rating oylaması sizin açtığınız turlarla alınır: kadrodaki oyuncular birbirini puanlar. Her maç sonrası verilen 6-10 puanlar ve gol/galibiyet/MVP performansı da oyuncunun <strong>Gerçek Rating</strong>'ini zamanla günceller.
                         </div>
 
                         <div class="pt-3 flex gap-2">
@@ -668,7 +668,7 @@
                 <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
                     <div>
                         <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-futbol text-emerald-400"></i> Gönderilen Maç Puanları (MVP oylaması)</h2>
-                        <p class="text-xs text-slate-400 mt-1">Satırdaki oyuncunun sütundaki oyuncuya verdiği 1-10 puan. Altta her oyuncunun aldığı ortalama görünür; en yüksek ortalama MVP'dir.</p>
+                        <p class="text-xs text-slate-400 mt-1">Satırdaki oyuncunun sütundaki oyuncuya verdiği 6-10 puan. Altta her oyuncunun aldığı ortalama görünür; en yüksek ortalama MVP'dir. Yanlış ya da şüpheli bir puanlamayı satırın sonundaki düğmeyle silebilirsiniz.</p>
                     </div>
                     <div class="max-w-md">
                         <label class="block text-xs font-semibold text-slate-300 mb-1">Maç</label>
@@ -2228,13 +2228,144 @@ function renderRatingSubmissions() {
                             ? `<td class="px-1 py-1"><div class="rounded-md text-center text-xs font-black py-1 ${scoreCellClass(val)}">${Number.isInteger(val) ? val : val.toFixed(1)}</div></td>`
                             : '<td class="px-1.5 py-1.5 text-center text-slate-700 text-xs">·</td>';
                     }).join('')}
+                    <td class="px-2 py-1.5 text-right whitespace-nowrap">${sc ? `<button onclick="deleteMatchVote('${m.id}', '${v.id}')" class="text-[10px] font-bold px-2 py-1 rounded-lg border bg-red-500/15 text-red-300 border-red-500/40 hover:bg-red-500/25" title="Bu oyuncunun puanlarını sil"><i class="fa-solid fa-trash mr-1"></i>Sil</button>` : ''}</td>
                 </tr>`;
             }).join('');
             const foot = `<tr class="border-t-2 border-emerald-500/30 bg-emerald-500/5">
                 <td class="px-2 py-2 text-[10px] font-black text-emerald-300 whitespace-nowrap">Ortalama (aldığı puan)</td>
                 ${parts.map(t => { const s = stats.get(t.id); return `<td class="px-1.5 py-2 text-center text-xs font-black ${t.id === mvpId ? 'text-amber-300' : 'text-emerald-300'}">${s.avg === null ? '—' : s.avg.toFixed(2)}<div class="text-[9px] font-normal text-slate-500">${s.n} puan</div></td>`; }).join('')}
+                <td></td>
             </tr>`;
-            table.innerHTML = `<table class="w-full text-left"><thead><tr><th class="px-2 py-2 text-[10px] text-slate-400 font-bold">Puan veren ↓ / Alan →</th>${head}</tr></thead><tbody>${rows}${foot}</tbody></table>`;
+            const reopenBtn = m.finalized === true ? `<button onclick="reopenMatchRating('${m.id}')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg border bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25"><i class="fa-solid fa-lock-open mr-1"></i>Puanlamayı Yeniden Aç</button>` : '';
+            const delAllBtn = byVoter.size ? `<button onclick="deleteAllMatchVotes('${m.id}')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg border bg-red-500/15 text-red-300 border-red-500/40 hover:bg-red-500/25"><i class="fa-solid fa-trash mr-1"></i>Bu maçın tüm puanlarını sil</button>` : '';
+            const delAll = (reopenBtn || delAllBtn) ? `<div class="flex flex-wrap justify-end gap-2 mb-2">${reopenBtn}${delAllBtn}</div>` : '';
+            table.innerHTML = `${delAll}<table class="w-full text-left"><thead><tr><th class="px-2 py-2 text-[10px] text-slate-400 font-bold">Puan veren ↓ / Alan →</th>${head}<th class="px-2 py-2 text-right text-[10px] text-slate-400 font-bold">İşlem</th></tr></thead><tbody>${rows}${foot}</tbody></table>`;
+        }
+
+        // -------------------------------------------------------------
+        // MVP / MAÇ PUANI SİLME (yalnızca yönetici)
+        // -------------------------------------------------------------
+        // Kapanmış (MVP'si belirlenmiş) bir maçta puan silinince ortalamalar ve MVP yeniden hesaplanır; MVP sayaçları düzeltilir.
+        async function recomputeClosedMatch(matchId) {
+            const m = matches.find(x => x.id === matchId);
+            if (!m || m.finalized !== true) return;
+            const snap = await db.collection('match_ratings').where('matchId', '==', matchId).get();
+            const agg = {};
+            snap.forEach(d => {
+                const sc = d.data().scores || {};
+                Object.keys(sc).forEach(pid => {
+                    const v = Number(sc[pid]);
+                    if (isNaN(v)) return;
+                    const a = agg[pid] || (agg[pid] = { sum: 0, count: 0 });
+                    a.sum += v;
+                    a.count++;
+                });
+            });
+            const playerScores = {};
+            Object.keys(agg).forEach(pid => { playerScores[pid] = { avg: Math.round(agg[pid].sum / agg[pid].count * 100) / 100, count: agg[pid].count }; });
+
+            const goalsOf = (name) => ((m.scorers || []).filter(s => s.name === name).reduce((s, x) => s + x.goals, 0));
+            const ranked = Object.keys(playerScores)
+                .map(pid => ({ pid, ...playerScores[pid], p: players.find(p => p.id === pid) }))
+                .filter(r => r.p)
+                .sort((a, b) => b.avg - a.avg || b.count - a.count || goalsOf(b.p.name) - goalsOf(a.p.name) || a.p.name.localeCompare(b.p.name, 'tr'));
+            const winner = ranked[0] || null;
+            const fallback = (m.scorers && m.scorers[0] && m.scorers[0].name) || 'Belirtilmedi';
+
+            await db.runTransaction(async tx => {
+                const mref = db.collection('matches').doc(matchId);
+                const ms = await tx.get(mref);
+                if (!ms.exists) return;
+                const oldId = ms.data().mvpId || null;
+                const newId = winner ? winner.pid : null;
+                const inc = firebase.firestore.FieldValue.increment;
+                if (oldId !== newId) {
+                    if (oldId && players.some(p => p.id === oldId)) tx.update(db.collection('players').doc(oldId), { mvpCount: inc(-1) });
+                    if (newId) tx.update(db.collection('players').doc(newId), { mvpCount: inc(1) });
+                }
+                const upd = { playerScores };
+                if (winner) { upd.mvp = winner.p.name; upd.mvpId = winner.pid; }
+                else { upd.mvp = fallback; upd.mvpId = firebase.firestore.FieldValue.delete(); }
+                tx.update(mref, upd);
+            });
+        }
+
+        // Kapanmış maçın puanlamasını yeniden açar: MVP ve ortalamalar sıfırlanır, MVP sayacı düşürülür.
+        // İsteğe bağlı olarak tüm puanlar da silinir. (Aynı anda yalnızca bir maçın puanlaması açık olabilir.)
+        async function reopenMatchRating(matchId) {
+            const m = matches.find(x => x.id === matchId);
+            if (!m) { showToast("Maç bulunamadı."); return; }
+            if (m.finalized !== true) { showToast("Bu maçın puanlaması zaten açık."); return; }
+            const other = getOpenMatch();
+            if (other && other.id !== matchId) {
+                showToast(`Önce ${other.date} maçının puanlamasını kapatın; aynı anda yalnızca bir maç açık olabilir.`);
+                return;
+            }
+            const docs = matchRatings.filter(r => r.matchId === matchId);
+            if (!confirm(`${m.date} maçının puanlaması yeniden açılsın mı?\n\nMVP ve maç ortalamaları sıfırlanır (MVP sayacı düşürülür). Puanlama kapanınca yeniden hesaplanır.`)) return;
+            const wipe = docs.length > 0 && confirm(`Bu maça verilmiş ${docs.length} oyuncunun puanı var.\n\nTAMAM = tüm puanlar silinsin, herkes baştan puanlasın.\nİPTAL = puanlar kalsın (tek tek silebilirsiniz).`);
+
+            autoFinalizing.add(matchId); // puanlar tam olsa bile siz silmeden otomatik kapanmasın
+            try {
+                const fallback = (m.scorers && m.scorers[0] && m.scorers[0].name) || 'Belirtilmedi';
+                await db.runTransaction(async tx => {
+                    const mref = db.collection('matches').doc(matchId);
+                    const ms = await tx.get(mref);
+                    if (!ms.exists || ms.data().finalized !== true) return;
+                    const oldId = ms.data().mvpId || null;
+                    if (oldId && players.some(p => p.id === oldId)) {
+                        tx.update(db.collection('players').doc(oldId), { mvpCount: firebase.firestore.FieldValue.increment(-1) });
+                    }
+                    tx.update(mref, { finalized: false, playerScores: {}, mvp: fallback, mvpId: firebase.firestore.FieldValue.delete() });
+                });
+                if (wipe) {
+                    await commitChunked(docs.map(d => b => b.delete(db.collection('match_ratings').doc(d.id))));
+                    autoFinalizing.delete(matchId);
+                }
+                showToast(wipe ? "Puanlama yeniden açıldı, eski puanlar silindi." : "Puanlama yeniden açıldı. Puanları tek tek silebilirsiniz.");
+            } catch (err) {
+                autoFinalizing.delete(matchId);
+                showToast("Yeniden açılamadı: " + err.message);
+                reportErr('match.reopen', err);
+            }
+        }
+
+        async function deleteMatchVote(matchId, voterId) {
+            const m = matches.find(x => x.id === matchId);
+            const docs = matchRatings.filter(r => r.matchId === matchId && r.voterId === voterId);
+            if (!m || !docs.length) { showToast("Silinecek puan bulunamadı."); return; }
+            const closed = m.finalized === true;
+            const msg = `${pName(voterId)} oyuncusunun bu maça verdiği puanlar silinsin mi?\n\n` + (closed
+                ? "Bu maçın puanlaması kapanmış: ortalamalar ve MVP, kalan puanlara göre yeniden hesaplanacak. Oyuncu bu maç için tekrar puan veremez."
+                : "Puanlama hâlâ açık: oyuncu isterse maçı baştan puanlayabilir.") + "\n\nBu işlem geri alınamaz.";
+            if (!confirm(msg)) return;
+            try {
+                await commitChunked(docs.map(d => b => b.delete(db.collection('match_ratings').doc(d.id))));
+                if (closed) await recomputeClosedMatch(matchId); else autoFinalizing.delete(matchId);
+                showToast(`${pName(voterId)} oyuncusunun maç puanları silindi.`);
+            } catch (err) {
+                showToast("Silinemedi: " + err.message);
+                reportErr('match_ratings.delete', err);
+            }
+        }
+
+        async function deleteAllMatchVotes(matchId) {
+            const m = matches.find(x => x.id === matchId);
+            const docs = matchRatings.filter(r => r.matchId === matchId);
+            if (!m || !docs.length) { showToast("Silinecek puan bulunamadı."); return; }
+            const closed = m.finalized === true;
+            const msg = `${m.date} maçına verilen ${docs.length} oyuncunun tüm puanları silinsin mi?\n\n` + (closed
+                ? "Bu maçın puanlaması kapanmış: MVP ve ortalamalar sıfırlanır (MVP sayacı düşürülür). Oyuncular bu maç için tekrar puan veremez."
+                : "Puanlama açık kalır, oyuncular baştan puan verebilir.") + "\n\nBu işlem geri alınamaz.";
+            if (!confirm(msg)) return;
+            try {
+                await commitChunked(docs.map(d => b => b.delete(db.collection('match_ratings').doc(d.id))));
+                if (closed) await recomputeClosedMatch(matchId); else autoFinalizing.delete(matchId);
+                showToast("Bu maçın tüm puanları silindi.");
+            } catch (err) {
+                showToast("Silinemedi: " + err.message);
+                reportErr('match_ratings.deleteAll', err);
+            }
         }
 
         // -------------------------------------------------------------
@@ -2344,7 +2475,7 @@ function renderRatingSubmissions() {
                     ${panel('BEYAZ TAKIM', 'text-slate-300', 'border-slate-500/30', A, sA > sB)}
                     ${panel('KIRMIZI TAKIM', 'text-red-400', 'border-red-500/30', B, sB > sA)}
                 </div>
-                <p class="px-5 pb-4 text-center text-[10px] text-slate-500">Puanlar, maçta oynayan oyuncuların birbirine verdiği 1-10 arası puanların ortalamasıdır.</p>
+                <p class="px-5 pb-4 text-center text-[10px] text-slate-500">Puanlar, maçta oynayan oyuncuların birbirine verdiği 6-10 arası puanların ortalamasıdır.</p>
             </div>`;
         }
 

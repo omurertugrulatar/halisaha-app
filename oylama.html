@@ -236,7 +236,7 @@
                     <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
                         <i class="fa-solid fa-award text-orange-400"></i> Maç Puanı &amp; MVP
                     </h2>
-                    <p class="text-sm text-zinc-400 mt-1">Maç bittikten sonra her oyuncu, o maçta oynayan diğer oyunculara 1-10 arası puan verir. Ortalaması en yüksek oyuncu MVP olur; bu puanlar sonraki kadro dengesinde de kullanılır.</p>
+                    <p class="text-sm text-zinc-400 mt-1">Maç bittikten sonra her oyuncu, o maçta oynayan diğer oyunculara 6-10 arası puan verir. Ortalaması en yüksek oyuncu MVP olur; bu puanlar sonraki kadro dengesinde de kullanılır.</p>
                 </div>
 
                 <div id="mvp-locked-notice" class="hidden bg-orange-500/10 border border-orange-500/30 rounded-3xl p-6 text-center space-y-3">
@@ -280,7 +280,7 @@
                     </div>
 
                     <div class="space-y-3">
-                        <h3 class="text-xs font-bold text-zinc-300 uppercase tracking-wider">Maçtaki Diğer Oyuncuları Puanlayın (1-10)</h3>
+                        <h3 class="text-xs font-bold text-zinc-300 uppercase tracking-wider">Maçtaki Diğer Oyuncuları Puanlayın (6-10)</h3>
                         <div id="mvp-nominees-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1"></div>
                     </div>
 
@@ -771,7 +771,7 @@
                     ${panel('TAKIM A', 'text-rose-400', 'border-rose-500/30', A, sA > sB)}
                     ${panel('TAKIM B', 'text-sky-400', 'border-sky-500/30', B, sB > sA)}
                 </div>
-                <p class="px-5 pb-4 text-center text-[10px] text-zinc-500">Puanlar, maçta oynayan oyuncuların birbirine verdiği 1-10 arası puanların ortalamasıdır.</p>
+                <p class="px-5 pb-4 text-center text-[10px] text-zinc-500">Puanlar, maçta oynayan oyuncuların birbirine verdiği 6-10 arası puanların ortalamasıdır.</p>
             </div>`;
         }
 
@@ -843,8 +843,33 @@
                 return;
             }
 
+            // Şifre zorunlu: doğru şifre girilmeden puanlama alanı açılmaz
+            const voterPlayer = players.find(p => p.id === voterId);
+            const pinContainer = document.getElementById('mvp-pin-container');
+            if (voterPlayer && voterPlayer.pin) {
+                pinContainer.classList.remove('hidden');
+                const pinVal = document.getElementById('mvp-voter-pin').value;
+                if (pinVal !== voterPlayer.pin) {
+                    if (pinVal.length === 6) {
+                        status.className = 'text-xs font-semibold min-h-[1rem] text-rose-400';
+                        status.innerHTML = '<i class="fa-solid fa-xmark mr-1"></i>Şifre hatalı.';
+                    } else if (pinVal.length > 0) {
+                        status.className = 'text-xs font-semibold min-h-[1rem] text-orange-400';
+                        status.textContent = 'Şifre giriliyor... (' + pinVal.length + '/6)';
+                    } else {
+                        status.className = 'text-xs font-semibold min-h-[1rem] text-orange-400';
+                        status.textContent = 'Puan vermek için şifrenizi girin.';
+                    }
+                    grid.innerHTML = '';
+                    submitBtn.disabled = true;
+                    return;
+                }
+            } else {
+                pinContainer.classList.add('hidden');
+            }
+
             status.className = 'text-xs font-semibold min-h-[1rem] text-orange-400';
-            status.textContent = 'Diğer tüm oyuncuları 1-10 arası puanlayın (zorunlu). Gönderdikten sonra değiştirilemez.';
+            status.textContent = 'Diğer tüm oyuncuları 6-10 arası puanlayın (zorunlu). Gönderdikten sonra değiştirilemez.';
             submitBtn.disabled = false;
 
             grid.innerHTML = participants.filter(p => p.id !== voterId).map(p => `
@@ -856,7 +881,7 @@
                             <p class="text-[10px] text-zinc-400">${esc(p.position)}</p>
                         </div>
                     </div>
-                    <input type="number" min="1" max="10" step="0.5" placeholder="1-10" data-nominee-id="${p.id}" value="${mrDraft[p.id] ?? ''}"
+                    <input type="number" min="6" max="10" step="0.5" placeholder="6-10" data-nominee-id="${p.id}" value="${mrDraft[p.id] ?? ''}"
                         oninput="mrDraft['${p.id}'] = this.value"
                         class="match-score-input w-16 shrink-0 bg-white/5 border border-white/[0.08] text-orange-400 text-sm font-bold rounded-lg p-1.5 text-center focus:ring-2 focus:ring-orange-500 focus:outline-none">
                 </div>`).join('');
@@ -1000,13 +1025,19 @@
                 return;
             }
 
+            const voterPlayer = players.find(p => p.id === voterId);
+            if (voterPlayer && voterPlayer.pin && document.getElementById('mvp-voter-pin').value !== voterPlayer.pin) {
+                showToast("Şifre hatalı ya da girilmedi.");
+                return;
+            }
+
             const scores = {};
             let bad = 0;
             document.querySelectorAll('#mvp-nominees-grid .match-score-input').forEach(input => {
                 input.classList.remove('border-red-500');
                 const raw = String(input.value).trim();
                 const n = parseFloat(raw);
-                if (raw === '' || isNaN(n) || n < 1 || n > 10) {
+                if (raw === '' || isNaN(n) || n < 6 || n > 10) {
                     bad++;
                     input.classList.add('border-red-500');
                 } else {
@@ -1014,7 +1045,7 @@
                 }
             });
             if (bad > 0 || Object.keys(scores).length !== ids.length - 1) {
-                showToast("Lütfen maçtaki diğer tüm oyuncuları 1-10 arasında puanlayın.");
+                showToast("Lütfen maçtaki diğer tüm oyuncuları 6-10 arasında puanlayın.");
                 return;
             }
 
