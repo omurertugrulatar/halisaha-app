@@ -2228,7 +2228,7 @@ function renderRatingSubmissions() {
                             ? `<td class="px-1 py-1"><div class="rounded-md text-center text-xs font-black py-1 ${scoreCellClass(val)}">${Number.isInteger(val) ? val : val.toFixed(1)}</div></td>`
                             : '<td class="px-1.5 py-1.5 text-center text-slate-700 text-xs">·</td>';
                     }).join('')}
-                    <td class="px-2 py-1.5 text-right whitespace-nowrap">${sc ? `<button onclick="deleteMatchVote('${m.id}', '${v.id}')" class="text-[10px] font-bold px-2 py-1 rounded-lg border bg-red-500/15 text-red-300 border-red-500/40 hover:bg-red-500/25" title="Bu oyuncunun puanlarını sil"><i class="fa-solid fa-trash mr-1"></i>Sil</button>` : ''}</td>
+                    <td class="px-2 py-1.5 text-right whitespace-nowrap">${sc ? `<button onclick="deleteMatchVote('${m.id}', '${v.id}')" class="text-[10px] font-bold px-2 py-1 rounded-lg border bg-red-500/15 text-red-300 border-red-500/40 hover:bg-red-500/25" title="Bu oyuncunun puanlarını sil"><i class="fa-solid fa-trash mr-1"></i>Sil</button>` : (m.finalized === true ? `<button onclick="reopenForVoter('${m.id}', '${v.id}')" class="text-[10px] font-bold px-2 py-1 rounded-lg border bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25" title="Bu oyuncu için puanlamayı yeniden aç"><i class="fa-solid fa-lock-open mr-1"></i>Oy hakkı ver</button>` : '')}</td>
                 </tr>`;
             }).join('');
             const foot = `<tr class="border-t-2 border-emerald-500/30 bg-emerald-500/5">
@@ -2290,6 +2290,43 @@ function renderRatingSubmissions() {
             });
         }
 
+        // Kapanmış maçı yeniden açan ortak işlem: MVP ve ortalamalar sıfırlanır, eski MVP'nin sayacı düşürülür.
+        async function reopenClosedMatchTx(m) {
+            const fallback = (m.scorers && m.scorers[0] && m.scorers[0].name) || 'Belirtilmedi';
+            await db.runTransaction(async tx => {
+                const mref = db.collection('matches').doc(m.id);
+                const ms = await tx.get(mref);
+                if (!ms.exists || ms.data().finalized !== true) return;
+                const oldId = ms.data().mvpId || null;
+                if (oldId && players.some(p => p.id === oldId)) {
+                    tx.update(db.collection('players').doc(oldId), { mvpCount: firebase.firestore.FieldValue.increment(-1) });
+                }
+                tx.update(mref, { finalized: false, playerScores: {}, mvp: fallback, mvpId: firebase.firestore.FieldValue.delete() });
+            });
+        }
+
+        // Puanı silinmiş (ya da hiç vermemiş) oyuncu için kapanmış maçı yeniden açar; diğerlerinin puanları kalır.
+        // Oyuncu puanını verince (herkes tamamlanınca) maç otomatik kapanır, MVP yeniden hesaplanır.
+        async function reopenForVoter(matchId, voterId) {
+            const m = matches.find(x => x.id === matchId);
+            if (!m) { showToast("Maç bulunamadı."); return; }
+            if (m.finalized !== true) { showToast("Bu maçın puanlaması zaten açık; oyuncu puan verebilir."); return; }
+            if (matchRatings.some(r => r.matchId === matchId && r.voterId === voterId)) { showToast("Bu oyuncunun puanı zaten kayıtlı."); return; }
+            const other = getOpenMatch();
+            if (other && other.id !== matchId) {
+                showToast(`Önce ${other.date} maçının puanlamasını kapatın; aynı anda yalnızca bir maç açık olabilir.`);
+                return;
+            }
+            if (!confirm(`${pName(voterId)} için ${m.date} maçının puanlaması yeniden açılsın mı?\n\nMaç açık duruma döner, MVP ve ortalamalar geçici olarak sıfırlanır. Diğer oyuncuların puanları kalır; ${pName(voterId)} puanını verince (herkes tamamlanınca) MVP yeniden hesaplanır.`)) return;
+            try {
+                await reopenClosedMatchTx(m);
+                showToast(`${pName(voterId)} artık bu maça tekrar puan verebilir.`);
+            } catch (err) {
+                showToast("Yeniden açılamadı: " + err.message);
+                reportErr('match.reopenForVoter', err);
+            }
+        }
+
         // Kapanmış maçın puanlamasını yeniden açar: MVP ve ortalamalar sıfırlanır, MVP sayacı düşürülür.
         // İsteğe bağlı olarak tüm puanlar da silinir. (Aynı anda yalnızca bir maçın puanlaması açık olabilir.)
         async function reopenMatchRating(matchId) {
@@ -2307,17 +2344,7 @@ function renderRatingSubmissions() {
 
             autoFinalizing.add(matchId); // puanlar tam olsa bile siz silmeden otomatik kapanmasın
             try {
-                const fallback = (m.scorers && m.scorers[0] && m.scorers[0].name) || 'Belirtilmedi';
-                await db.runTransaction(async tx => {
-                    const mref = db.collection('matches').doc(matchId);
-                    const ms = await tx.get(mref);
-                    if (!ms.exists || ms.data().finalized !== true) return;
-                    const oldId = ms.data().mvpId || null;
-                    if (oldId && players.some(p => p.id === oldId)) {
-                        tx.update(db.collection('players').doc(oldId), { mvpCount: firebase.firestore.FieldValue.increment(-1) });
-                    }
-                    tx.update(mref, { finalized: false, playerScores: {}, mvp: fallback, mvpId: firebase.firestore.FieldValue.delete() });
-                });
+                await reopenClosedMatchTx(m);
                 if (wipe) {
                     await commitChunked(docs.map(d => b => b.delete(db.collection('match_ratings').doc(d.id))));
                     autoFinalizing.delete(matchId);
@@ -2335,14 +2362,19 @@ function renderRatingSubmissions() {
             const docs = matchRatings.filter(r => r.matchId === matchId && r.voterId === voterId);
             if (!m || !docs.length) { showToast("Silinecek puan bulunamadı."); return; }
             const closed = m.finalized === true;
+            const other = getOpenMatch();
+            if (closed && other && other.id !== matchId) {
+                showToast(`Önce ${other.date} maçının puanlamasını kapatın; kapanmış maç, oyuncu tekrar puan verebilsin diye yeniden açılacak.`);
+                return;
+            }
             const msg = `${pName(voterId)} oyuncusunun bu maça verdiği puanlar silinsin mi?\n\n` + (closed
-                ? "Bu maçın puanlaması kapanmış: ortalamalar ve MVP, kalan puanlara göre yeniden hesaplanacak. Oyuncu bu maç için tekrar puan veremez."
+                ? "Bu maçın puanlaması kapanmış: puanlar silinince maç yeniden açılır ve bu oyuncu tekrar puan verebilir. MVP ve ortalamalar, oyuncu puanını verince (herkes tamamlanınca) yeniden hesaplanır."
                 : "Puanlama hâlâ açık: oyuncu isterse maçı baştan puanlayabilir.") + "\n\nBu işlem geri alınamaz.";
             if (!confirm(msg)) return;
             try {
                 await commitChunked(docs.map(d => b => b.delete(db.collection('match_ratings').doc(d.id))));
-                if (closed) await recomputeClosedMatch(matchId); else autoFinalizing.delete(matchId);
-                showToast(`${pName(voterId)} oyuncusunun maç puanları silindi.`);
+                if (closed) await reopenClosedMatchTx(m); else autoFinalizing.delete(matchId);
+                showToast(closed ? `${pName(voterId)} oyuncusunun puanları silindi; tekrar puan verebilir.` : `${pName(voterId)} oyuncusunun maç puanları silindi.`);
             } catch (err) {
                 showToast("Silinemedi: " + err.message);
                 reportErr('match_ratings.delete', err);
