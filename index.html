@@ -730,7 +730,7 @@
                         <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI Dengeli Kadro Kurucu
                         </h2>
-                        <p class="text-xs text-slate-400">Rating ve mevki dengesini esas alarak birbirinden farklı 5 kadro önerir; içlerinden birini siz seçersiniz (her takıma 1 kaleci). Bir mevkide oyuncu azsa ikincil pozisyonu girilmiş oyuncular o mevkide oynatılarak takımlar dengelenir. Form ve galibiyet sayısı kadro kurulurken ayrıca hesaba katılmaz.</p>
+                        <p class="text-xs text-slate-400">Rating ve mevki dengesini esas alarak birbirinden farklı 5 kadro önerir; içlerinden birini siz seçersiniz (her takıma 1 kaleci). Her mevkinin (özellikle defans) iki takımdaki ortalama ratingi de birbirine yaklaştırılır. İkincil pozisyon yalnızca mevki sayılarını eşitlemek için gerçekten gerekirse kullanılır. Form ve galibiyet sayısı kadro kurulurken ayrıca hesaba katılmaz.</p>
                     </div>
 
                     <div class="flex items-center gap-3">
@@ -2904,8 +2904,11 @@ function renderGeneratorControls() {
             posCount: 1000,    // bir mevkideki oyuncu sayısı farkı (tek sayıda kaçınılmaz fark hariç). Çok yüksek: mevki sayıları fiilen zorunlu olarak eşitlenir, rating ancak eşit dağılımlar arasında dengelenir
             posOdd: 3,         // bir mevkide toplam oyuncu tek sayıysa takımlar 1 farkla ayrılır; ikincil mevki varsa bu fark da kapatılmaya çalışılır
             posMissing: 4,     // bir takımda hiç oyuncu yokken diğerinde olan mevki (ikincil pozisyonla kapatılmaya çalışılır)
-            secondaryUse: 0.5, // bir oyuncuyu ikincil mevkisinde oynatmanın küçük bedeli (eşit durumda asıl mevki tercih edilir)
-            posRating: 1       // aynı mevkideki oyuncuların ortalama rating farkı
+            secondaryUse: 15,  // bir oyuncuyu ikincil mevkisinde oynatmanın bedeli: posOdd/posMissing kazancından çok büyük, posCount'tan çok küçük. Yani ikincil mevki yalnızca mevki sayılarını eşitlemek için gerçekten gerekliyse kullanılır
+            posRating: 2,      // aynı mevkideki oyuncuların ortalama rating farkı (her saha mevkisi için ayrı ayrı toplanır: defans, orta saha, forvet)
+            posDefenseBoost: 2, // defans ortalama rating farkı diğer mevkilerden bu kat daha önemlidir
+            posRatingSoftCap: 3, // bir mevkideki ortalama rating farkı bunu aşarsa ek ceza uygulanır
+            posRatingOver: 4   // soft cap üstündeki her puan için ek ceza
         };
         // Not: Form zaten Gerçek Rating'in içinde olduğu için ayrıca hesaba katılmaz; galibiyet sayıları da eşitlenmez.
         const BRUTE_FORCE_MAX = 16; // hareketli oyuncu sayısı (kaleciler hariç) bu değere kadar tüm bölünmeler denenir
@@ -3040,11 +3043,16 @@ function renderGeneratorControls() {
                 const rGap = Math.abs(ra / A.length - rb / B.length);
                 let c = BAL.rating * rGap;
                 if (rGap > BAL.ratingSoftCap) c += (rGap - BAL.ratingSoftCap) * 10;
-                let prSum = 0, prN = 0;
+                // Mevki içi rating dengesi: her saha mevkisinde (defans, orta saha, forvet) iki takımın ortalama rating farkı ayrı ayrı cezalandırılır
+                let pr = 0;
                 for (let i = 0; i < nPos; i++) {
-                    if (asg.ca[i] && asg.cb[i]) { prSum += Math.abs(asg.sa[i] / asg.ca[i] - asg.sb[i] / asg.cb[i]); prN++; }
+                    if (posList[i] === 'Kaleci') continue; // kaleciler sabit, ayrıca dengelenemez
+                    if (asg.ca[i] && asg.cb[i]) {
+                        const g = Math.abs(asg.sa[i] / asg.ca[i] - asg.sb[i] / asg.cb[i]);
+                        pr += (posList[i] === 'Defans' ? BAL.posDefenseBoost : 1) * BAL.posRating * g + (g > BAL.posRatingSoftCap ? (g - BAL.posRatingSoftCap) * BAL.posRatingOver : 0);
+                    }
                 }
-                return c + asg.pen + (prN ? BAL.posRating * prSum / prN : 0);
+                return c + asg.pen + pr;
             };
 
             const movable = everyone.filter(p => !lockedIds.has(p.id));
@@ -3242,6 +3250,10 @@ function renderGeneratorControls() {
                 const sel = chosenA !== null && key(o.A) === chosenA && key(o.B) === chosenB;
                 if (sel) selectedIdx = i;
                 const aAvg = avg(o.A), bAvg = avg(o.B);
+                const posGaps = ['Defans', 'Orta Saha', 'Forvet'].map(pos => {
+                    const ta = o.A.filter(p => (asg.get(p.id) || { pos: p.position }).pos === pos), tb = o.B.filter(p => (asg.get(p.id) || { pos: p.position }).pos === pos);
+                    return ta.length && tb.length ? `${pos} ${Math.abs(avg(ta) - avg(tb)).toFixed(1)}` : null;
+                }).filter(Boolean);
                 const list = (team, cls) => [...team].sort((x, y) => calculateTrueRating(y).trueRating - calculateTrueRating(x).trueRating)
                     .map(p => `<li class="flex justify-between gap-2"><span class="truncate">${esc(p.name)}<span class="text-slate-500"> ${esc(((asg.get(p.id) || { pos: p.position }).pos) === 'Kaleci' ? 'GK' : (asg.get(p.id) || { pos: p.position }).pos.charAt(0))}${(asg.get(p.id) || {}).secondary ? '*' : ''}</span></span><span class="font-bold ${cls}">${calculateTrueRating(p).trueRating}</span></li>`).join('');
                 return `
@@ -3260,6 +3272,7 @@ function renderGeneratorControls() {
                             <ul class="space-y-0.5 text-slate-300">${list(o.B, 'text-red-400')}</ul>
                         </div>
                     </div>
+                    ${posGaps.length ? `<p class="text-[10px] text-slate-400">Mevki rating farkı: ${posGaps.join(' • ')}</p>` : ''}
                     ${[...o.A, ...o.B].some(p => (asg.get(p.id) || {}).secondary) ? `<p class="text-[10px] text-amber-300">* ikincil mevkisinde oynayan: ${[...o.A, ...o.B].filter(p => (asg.get(p.id) || {}).secondary).map(p => esc(p.name) + ' (' + esc(asg.get(p.id).pos) + ')').join(', ')}</p>` : ''}
                     <button onclick="chooseSquadOption(${i})" class="w-full text-xs font-extrabold py-2 rounded-xl border transition-all ${sel ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 hover:bg-emerald-600 hover:text-white text-emerald-300 border-slate-700'}">
                         ${sel ? '<i class="fa-solid fa-check mr-1"></i>Seçildi' : 'Bu Kadroyu Seç'}
@@ -3416,7 +3429,7 @@ function renderGeneratorControls() {
             document.getElementById('pitch-match-balance').textContent = `Güç Dengesi: %${pctA} vs %${pctB}`;
 
             
-        let verdict = `Ortalama rating farkı ${Math.abs(parseFloat(avgA) - parseFloat(avgB)).toFixed(1)} puan. Seçilen kadro, rating dengesi esas alınarak önerildi; mevki dağılımı dengelenirken ikincil pozisyonlar da kullanıldı.`;
+        let verdict = `Ortalama rating farkı ${Math.abs(parseFloat(avgA) - parseFloat(avgB)).toFixed(1)} puan. Seçilen kadro, rating dengesi esas alınarak önerildi; mevkilerin kendi içindeki rating ortalamaları da dengelendi; ikincil pozisyonlar yalnızca gerektiğinde kullanıldı.`;
         document.getElementById('ai-verdict-desc').textContent = verdict;
 
             renderBalanceTable();
@@ -3448,6 +3461,14 @@ function renderGeneratorControls() {
                 const diff = Math.abs(a - b);
                 const cls = diff <= ((a + b) % 2) ? 'text-emerald-300' : 'text-amber-300';
                 rows.push(`<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${esc(pos)} sayısı</td><td class="py-1 px-2 text-center text-slate-300 font-bold">${a}</td><td class="py-1 px-2 text-center text-red-400 font-bold">${b}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff}</td></tr>`);
+            });
+            positions.filter(pos => pos !== 'Kaleci').forEach(pos => {
+                const ta = A.filter(p => posOf(p) === pos), tb = B.filter(p => posOf(p) === pos);
+                if (!ta.length || !tb.length) return;
+                const ra = avg(ta, p => calculateTrueRating(p).trueRating), rb = avg(tb, p => calculateTrueRating(p).trueRating);
+                const diff = Math.abs(ra - rb);
+                const cls = diff <= 2 ? 'text-emerald-300' : 'text-amber-300';
+                rows.push(`<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${esc(pos)} ort. rating</td><td class="py-1 px-2 text-center text-slate-300 font-bold">${ra.toFixed(1)}</td><td class="py-1 px-2 text-center text-red-400 font-bold">${rb.toFixed(1)}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff.toFixed(1)}</td></tr>`);
             });
             el.innerHTML = `<table class="w-full text-[11px]"><thead><tr class="text-slate-500"><th class="text-left font-semibold pb-1">Ölçüt</th><th class="font-semibold pb-1 text-slate-300">Beyaz</th><th class="font-semibold pb-1 text-red-400">Kırmızı</th><th class="font-semibold pb-1">Fark</th></tr></thead><tbody>${rows.join('')}</tbody></table>`
                 + ([...A, ...B].some(p => (asg.get(p.id) || {}).secondary) ? `<p class="text-[10px] text-amber-300 mt-2">İkincil mevkisinde oynayan: ${[...A, ...B].filter(p => (asg.get(p.id) || {}).secondary).map(p => esc(p.name) + ' (' + esc(p.position) + ' → ' + esc(asg.get(p.id).pos) + ')').join(', ')}</p>` : '');
