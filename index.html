@@ -2908,7 +2908,9 @@ function renderGeneratorControls() {
             posRating: 2,      // aynı mevkideki oyuncuların ortalama rating farkı (her saha mevkisi için ayrı ayrı toplanır: defans, orta saha, forvet)
             posDefenseBoost: 2, // defans ortalama rating farkı diğer mevkilerden bu kat daha önemlidir
             posRatingSoftCap: 3, // bir mevkideki ortalama rating farkı bunu aşarsa ek ceza uygulanır
-            posRatingOver: 4   // soft cap üstündeki her puan için ek ceza
+            posRatingOver: 4,  // soft cap üstündeki her puan için ek ceza
+            attack: 1,         // saha oyuncularının ortalama ATAK (şut, dripling, hız) niteliği farkı (nitelik puanı başına)
+            defense: 1.2       // saha oyuncularının ortalama DEFANS (defans, fizik) niteliği farkı (nitelik puanı başına)
         };
         // Not: Form zaten Gerçek Rating'in içinde olduğu için ayrıca hesaba katılmaz; galibiyet sayıları da eşitlenmez.
         const BRUTE_FORCE_MAX = 16; // hareketli oyuncu sayısı (kaleciler hariç) bu değere kadar tüm bölünmeler denenir
@@ -2918,13 +2920,22 @@ function renderGeneratorControls() {
         let squadOptions = [];                // [{A:[oyuncu], B:[oyuncu]}] - önerilen kadrolar
         let chosenSquad = (function () { try { return JSON.parse(localStorage.getItem(CHOICE_KEY)) || null; } catch (e) { return null; } })();
 
+        // Rating oylamasından gelen niteliklerden atak ve defans gücü (oy yoksa varsayılan 70).
+        // Atak = şut, dripling, hız ortalaması; Defans = defans, fizik ortalaması. Kaleci nitelikleri farklı anlam taşıdığı için kaleciler dışarıda tutulur.
+        function getAttackDefense(player) {
+            const a = (getVoteStats(player).attrs) || {};
+            const v = k => (typeof a[k] === 'number' ? a[k] : 70);
+            return { atk: (v('shooting') + v('dribbling') + v('pace')) / 3, def: (v('defending') + v('physical')) / 2 };
+        }
+
         // Oyuncu özellikleri: rating, asıl mevki ve (varsa) ikincil mevki indeksi. Kaleciler ikincil mevkide oynatılmaz.
         function buildPosFeat(list) {
             const valid = ['Defans', 'Orta Saha', 'Forvet'];
             const posList = [...new Set(list.flatMap(p => [p.position, (p.position !== 'Kaleci' && valid.includes(p.secondaryPosition) && p.secondaryPosition !== p.position) ? p.secondaryPosition : null]).filter(Boolean))];
             const feat = new Map(list.map(p => {
                 const sec = (p.position !== 'Kaleci' && valid.includes(p.secondaryPosition) && p.secondaryPosition !== p.position) ? p.secondaryPosition : null;
-                return [p.id, { r: calculateTrueRating(p).trueRating, pos: posList.indexOf(p.position), pos2: sec ? posList.indexOf(sec) : -1 }];
+                const ad = getAttackDefense(p);
+                return [p.id, { r: calculateTrueRating(p).trueRating, pos: posList.indexOf(p.position), pos2: sec ? posList.indexOf(sec) : -1, gk: p.position === 'Kaleci', atk: ad.atk, def: ad.def }];
             }));
             return { posList, feat };
         }
@@ -3027,7 +3038,7 @@ function renderGeneratorControls() {
 
             const sig = JSON.stringify([
                 fixedA.map(p => p.id).sort(), fixedB.map(p => p.id).sort(), BAL, SQUAD_OPTION_COUNT,
-                everyone.map(p => { const x = feat.get(p.id); return [p.id, x.r, x.pos, x.pos2]; }).sort((a, b) => a[0] < b[0] ? -1 : 1)
+                everyone.map(p => { const x = feat.get(p.id); return [p.id, x.r, x.pos, x.pos2, Math.round(x.atk * 10), Math.round(x.def * 10)]; }).sort((a, b) => a[0] < b[0] ? -1 : 1)
             ]);
             const byId = new Map(everyone.map(p => [p.id, p]));
             if (sig === optCache.sig) return optCache.opts.map(o => asOption(o.A.map(id => byId.get(id)), o.B.map(id => byId.get(id))));
@@ -3052,7 +3063,13 @@ function renderGeneratorControls() {
                         pr += (posList[i] === 'Defans' ? BAL.posDefenseBoost : 1) * BAL.posRating * g + (g > BAL.posRatingSoftCap ? (g - BAL.posRatingSoftCap) * BAL.posRatingOver : 0);
                     }
                 }
-                return c + asg.pen + pr;
+                // Atak / defans dengesi: iki takımın saha oyuncularının ortalama atak ve defans nitelikleri birbirine yaklaştırılır
+                let atkA = 0, atkB = 0, defA = 0, defB = 0, nA = 0, nB = 0;
+                for (const p of A) { const x = feat.get(p.id); if (!x.gk) { atkA += x.atk; defA += x.def; nA++; } }
+                for (const p of B) { const x = feat.get(p.id); if (!x.gk) { atkB += x.atk; defB += x.def; nB++; } }
+                let ad = 0;
+                if (nA && nB) ad = BAL.attack * Math.abs(atkA / nA - atkB / nB) + BAL.defense * Math.abs(defA / nA - defB / nB);
+                return c + asg.pen + pr + ad;
             };
 
             const movable = everyone.filter(p => !lockedIds.has(p.id));
@@ -3443,7 +3460,9 @@ function renderGeneratorControls() {
             if (!A.length || !B.length) { el.innerHTML = '<p class="text-[11px] text-slate-500 italic">Bir kadro seçeneği seçince görünür.</p>'; return; }
             const avg = (team, f) => { const v = team.map(f).filter(n => n !== null && n !== undefined && !isNaN(n)); return v.length ? v.reduce((s, n) => s + n, 0) / v.length : null; };
             const metrics = [
-                { label: 'Ort. rating', f: p => calculateTrueRating(p).trueRating, d: 1, ok: 1.5 }
+                { label: 'Ort. rating', f: p => calculateTrueRating(p).trueRating, d: 1, ok: 1.5 },
+                { label: 'Ort. atak (şut/drip/hız)', f: p => p.position === 'Kaleci' ? null : getAttackDefense(p).atk, d: 1, ok: 2 },
+                { label: 'Ort. defans (def/fizik)', f: p => p.position === 'Kaleci' ? null : getAttackDefense(p).def, d: 1, ok: 2 }
             ];
             const rows = metrics.map(mt => {
                 const a = avg(A, mt.f), b = avg(B, mt.f);
