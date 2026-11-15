@@ -730,7 +730,7 @@
                         <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI Dengeli Kadro Kurucu
                         </h2>
-                        <p class="text-xs text-slate-400">Rating ve mevki dengesini esas alarak birbirinden farklı 3 kadro önerir; içlerinden birini siz seçersiniz (her takıma 1 kaleci). Bir mevkide oyuncu azsa ikincil pozisyonu girilmiş oyuncular o mevkide oynatılarak takımlar dengelenir. Form ve galibiyet sayısı kadro kurulurken ayrıca hesaba katılmaz.</p>
+                        <p class="text-xs text-slate-400">Rating ve mevki dengesini esas alarak birbirinden farklı 5 kadro önerir; içlerinden birini siz seçersiniz (her takıma 1 kaleci). Bir mevkide oyuncu azsa ikincil pozisyonu girilmiş oyuncular o mevkide oynatılarak takımlar dengelenir. Form ve galibiyet sayısı kadro kurulurken ayrıca hesaba katılmaz.</p>
                     </div>
 
                     <div class="flex items-center gap-3">
@@ -2908,7 +2908,7 @@ function renderGeneratorControls() {
         };
         // Not: Form zaten Gerçek Rating'in içinde olduğu için ayrıca hesaba katılmaz; galibiyet sayıları da eşitlenmez.
         const BRUTE_FORCE_MAX = 16; // hareketli oyuncu sayısı (kaleciler hariç) bu değere kadar tüm bölünmeler denenir
-        const SQUAD_OPTION_COUNT = 3;
+        const SQUAD_OPTION_COUNT = 5;
         const CHOICE_KEY = 'halisaha_squad_choice_v1';
         let optCache = { sig: '', opts: [] }; // aynı veriyle tekrar tekrar hesaplamamak için
         let squadOptions = [];                // [{A:[oyuncu], B:[oyuncu]}] - önerilen kadrolar
@@ -3009,7 +3009,7 @@ function renderGeneratorControls() {
             }, err => reportErr('squad_choice', err));
         }
 
-        // Rating dengesi en iyi, birbirinden yeterince farklı en fazla 3 bölünmeyi döndürür
+        // Rating dengesi en iyi, birbirinden yeterince farklı en fazla 5 bölünmeyi döndürür
         function computeSquadOptions(teamA, teamB, lockedIds) {
             const everyone = [...teamA, ...teamB];
             const asOption = (A, B) => ({ A, B });
@@ -3020,7 +3020,7 @@ function renderGeneratorControls() {
             const fixedB = teamB.filter(p => lockedIds.has(p.id));
 
             const sig = JSON.stringify([
-                fixedA.map(p => p.id).sort(), fixedB.map(p => p.id).sort(), BAL,
+                fixedA.map(p => p.id).sort(), fixedB.map(p => p.id).sort(), BAL, SQUAD_OPTION_COUNT,
                 everyone.map(p => { const x = feat.get(p.id); return [p.id, x.r, x.pos, x.pos2]; }).sort((a, b) => a[0] < b[0] ? -1 : 1)
             ]);
             const byId = new Map(everyone.map(p => [p.id, p]));
@@ -3172,7 +3172,7 @@ function renderGeneratorControls() {
                 else teamB.push(p);
             });
 
-            // 3) Kaleciler sabit kalır; rating dengesi esas alınarak birbirinden farklı 3 kadro önerilir, seçimi yönetici yapar
+            // 3) Kaleciler sabit kalır; rating dengesi esas alınarak birbirinden farklı 5 kadro önerilir, seçimi yönetici yapar
             squadOptions = computeSquadOptions(teamA, teamB, new Set(primaryGKs.map(p => p.id)));
 
             // Daha önce seçilmiş kadro hâlâ bu oyuncu kümesiyle uyumluysa onu kullan; değilse seçim yapılmamış sayılır
@@ -3386,7 +3386,7 @@ function renderGeneratorControls() {
                 document.getElementById('team-a-score-bar').style.width = '50%';
                 document.getElementById('team-b-score-bar').style.width = '50%';
                 document.getElementById('pitch-match-balance').textContent = 'Kadro seçilmedi';
-                document.getElementById('ai-verdict-desc').textContent = 'Henüz kadro seçilmedi. Yukarıdaki 3 seçenekten birini seçin.';
+                document.getElementById('ai-verdict-desc').textContent = 'Henüz kadro seçilmedi. Yukarıdaki 5 seçenekten birini seçin.';
                 renderBalanceTable();
                 return;
             }
@@ -3550,7 +3550,7 @@ function renderGeneratorControls() {
             container.querySelectorAll('.admin-goal-input').forEach(i => { kept[i.dataset.playerId] = i.value; });
 
             if (currentTeamA.length === 0 || currentTeamB.length === 0) {
-                container.innerHTML = `<p class="text-xs text-amber-400 text-center py-4">Önce <strong>AI Kadro</strong> sekmesinde 3 kadro seçeneğinden birini seçin. Galibiyet / beraberlik / mağlubiyet takımlara göre işlenir.</p>`;
+                container.innerHTML = `<p class="text-xs text-amber-400 text-center py-4">Önce <strong>AI Kadro</strong> sekmesinde 5 kadro seçeneğinden birini seçin. Galibiyet / beraberlik / mağlubiyet takımlara göre işlenir.</p>`;
                 saveBtn.disabled = true;
                 return;
             }
