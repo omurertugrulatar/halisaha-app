@@ -2899,7 +2899,11 @@ function renderGeneratorControls() {
         // -------------------------------------------------------------
         // Ağırlıklar: "1 birim fark" ne kadar önemli (rating farkı = 1 puan baz alınır). Büyütürseniz o ölçüt daha çok gözetilir.
         const BAL = {
-            rating: 3,         // takımların ortalama rating farkı (puan) - ana ölçüt
+            rating: 25,        // takımların ortalama rating farkı (kaleci dahil) - ana ölçüt
+            ratingSq: 20,       // farkın karesi: küçük farklar tolere edilir, büyük farklar hızla pahalılaşır
+            rank: 2.5,          // aynı sıradaki saha oyuncularının (1.-1., 2.-2. ...) rating farkı ortalaması: yıldızlar tek takımda toplanmasın
+            top: 3,           // en güçlü 3 saha oyuncusunun ortalama farkı
+            bottom: 3,        // en zayıf 3 saha oyuncusunun ortalama farkı
             ratingSoftCap: 3,  // bu farkın üstü ağır cezalandırılır
             posCount: 1000,    // bir mevkideki oyuncu sayısı farkı (tek sayıda kaçınılmaz fark hariç). Çok yüksek: mevki sayıları fiilen zorunlu olarak eşitlenir, rating ancak eşit dağılımlar arasında dengelenir
             posOdd: 3,         // bir mevkide toplam oyuncu tek sayıysa takımlar 1 farkla ayrılır; ikincil mevki varsa bu fark da kapatılmaya çalışılır
@@ -2909,8 +2913,8 @@ function renderGeneratorControls() {
             posDefenseBoost: 2, // defans ortalama rating farkı diğer mevkilerden bu kat daha önemlidir
             posRatingSoftCap: 3, // bir mevkideki ortalama rating farkı bunu aşarsa ek ceza uygulanır
             posRatingOver: 4,  // soft cap üstündeki her puan için ek ceza
-            attack: 1,         // saha oyuncularının ortalama ATAK (şut, dripling, hız) niteliği farkı (nitelik puanı başına)
-            defense: 1.2       // saha oyuncularının ortalama DEFANS (defans, fizik) niteliği farkı (nitelik puanı başına)
+            attack: 2,         // saha oyuncularının ortalama ATAK (şut, dripling, hız) niteliği farkı (nitelik puanı başına)
+            defense: 2.4       // saha oyuncularının ortalama DEFANS (defans, fizik) niteliği farkı (nitelik puanı başına)
         };
         // Not: Form zaten Gerçek Rating'in içinde olduğu için ayrıca hesaba katılmaz; galibiyet sayıları da eşitlenmez.
         const BRUTE_FORCE_MAX = 16; // hareketli oyuncu sayısı (kaleciler hariç) bu değere kadar tüm bölünmeler denenir
@@ -3052,8 +3056,19 @@ function renderGeneratorControls() {
                 for (const p of A) ra += feat.get(p.id).r;
                 for (const p of B) rb += feat.get(p.id).r;
                 const rGap = Math.abs(ra / A.length - rb / B.length);
-                let c = BAL.rating * rGap;
+                let c = BAL.rating * rGap + BAL.ratingSq * rGap * rGap;
                 if (rGap > BAL.ratingSoftCap) c += (rGap - BAL.ratingSoftCap) * 10;
+                // Dağılım dengesi: saha oyuncuları güç sırasına dizilir; aynı sıradakiler, en güçlü 3 ve en zayıf 3 karşılaştırılır
+                const oa = A.filter(p => !feat.get(p.id).gk).map(p => feat.get(p.id).r).sort((x, y) => y - x);
+                const ob = B.filter(p => !feat.get(p.id).gk).map(p => feat.get(p.id).r).sort((x, y) => y - x);
+                const kk = Math.min(oa.length, ob.length);
+                if (kk > 0) {
+                    let rk = 0; for (let i = 0; i < kk; i++) rk += Math.abs(oa[i] - ob[i]);
+                    const tn = Math.min(3, kk);
+                    let ta = 0, tb = 0, ba = 0, bb = 0;
+                    for (let i = 0; i < tn; i++) { ta += oa[i]; tb += ob[i]; ba += oa[oa.length - 1 - i]; bb += ob[ob.length - 1 - i]; }
+                    c += BAL.rank * (rk / kk) + BAL.top * Math.abs(ta - tb) / tn + BAL.bottom * Math.abs(ba - bb) / tn;
+                }
                 // Mevki içi rating dengesi: her saha mevkisinde (defans, orta saha, forvet) iki takımın ortalama rating farkı ayrı ayrı cezalandırılır
                 let pr = 0;
                 for (let i = 0; i < nPos; i++) {
@@ -3146,10 +3161,11 @@ function renderGeneratorControls() {
                 }
                 return null;
             };
-            let picked = pickDiverse(3) || pickDiverse(8) || pickDiverse(Infinity);
+            let picked = pickDiverse(4) || pickDiverse(8) || pickDiverse(16);
             if (!picked) {
+                // Yeterince farklı 5 adil bölünme yoksa, yalnızca en iyiye yakın olanları (adil sınır içindekileri) göster
                 picked = [cands[0]];
-                for (const c of cands) { if (picked.length >= SQUAD_OPTION_COUNT) break; if (picked.every(o => diff(o, c) >= 1)) picked.push(c); }
+                for (const c of cands) { if (picked.length >= SQUAD_OPTION_COUNT) break; if (c.cost > cands[0].cost + 16) break; if (picked.every(o => diff(o, c) >= 1)) picked.push(c); }
             }
 
             const opts = picked.map(c => { const [A, B] = build(c.inA); return asOption(A, B); });
