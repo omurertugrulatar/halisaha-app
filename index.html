@@ -2906,7 +2906,7 @@ function renderGeneratorControls() {
             bottom: 3,        // en zayıf 3 saha oyuncusunun ortalama farkı
             ratingSoftCap: 3,  // bu farkın üstü ağır cezalandırılır
             posCount: 1000,    // bir mevkideki oyuncu sayısı farkı (tek sayıda kaçınılmaz fark hariç). Çok yüksek: mevki sayıları fiilen zorunlu olarak eşitlenir, rating ancak eşit dağılımlar arasında dengelenir
-            posOdd: 3,         // bir mevkide toplam oyuncu tek sayıysa takımlar 1 farkla ayrılır; ikincil mevki varsa bu fark da kapatılmaya çalışılır
+            posOdd: 0,         // (kullanılmıyor) mevki sayıları artık tam eşitlenmeye çalışılır
             posMissing: 4,     // bir takımda hiç oyuncu yokken diğerinde olan mevki (ikincil pozisyonla kapatılmaya çalışılır)
             secondaryUse: 15,  // bir oyuncuyu ikincil mevkisinde oynatmanın bedeli: posOdd/posMissing kazancından çok büyük, posCount'tan çok küçük. Yani ikincil mevki yalnızca mevki sayılarını eşitlemek için gerçekten gerekliyse kullanılır
             posRating: 2,      // aynı mevkideki oyuncuların ortalama rating farkı (her saha mevkisi için ayrı ayrı toplanır: defans, orta saha, forvet)
@@ -2952,32 +2952,52 @@ function renderGeneratorControls() {
             A.forEach((p, i) => { const x = feat.get(p.id); ca[asA[i]]++; sa[asA[i]] += x.r; });
             B.forEach((p, i) => { const x = feat.get(p.id); cb[asB[i]]++; sb[asB[i]] += x.r; });
             let used = 0;
+            // Mevki sayıları İKİ TAKIMDA TAM EŞİT olmalı (fark = 0); toplamı tek olan mevkide ikincil pozisyonlar devreye girer.
+            const imbOf = () => { let t = 0; for (let i = 0; i < nPos; i++) t += Math.abs(ca[i] - cb[i]); return t; };
             const penalty = () => {
-                let imb = 0, miss = 0, odd = 0;
-                for (let i = 0; i < nPos; i++) {
-                    imb += Math.max(0, Math.abs(ca[i] - cb[i]) - ((ca[i] + cb[i]) % 2));
-                    odd += (ca[i] + cb[i]) % 2;
-                    if ((ca[i] === 0) !== (cb[i] === 0)) miss++;
-                }
-                return BAL.posCount * imb + BAL.posMissing * miss + BAL.posOdd * odd + BAL.secondaryUse * used;
+                let miss = 0;
+                for (let i = 0; i < nPos; i++) if ((ca[i] === 0) !== (cb[i] === 0)) miss++;
+                return BAL.posCount * imbOf() + BAL.posMissing * miss + BAL.secondaryUse * used;
             };
             let cur = penalty();
-            const imbOf = () => { let t = 0; for (let i = 0; i < nPos; i++) t += Math.max(0, Math.abs(ca[i] - cb[i]) - ((ca[i] + cb[i]) % 2)); return t; };
-            for (let pass = 0; pass < 4; pass++) {
-                let improved = false;
-                for (const side of [0, 1]) {
-                    const team = side === 0 ? A : B, as = side === 0 ? asA : asB, c = side === 0 ? ca : cb, sm = side === 0 ? sa : sb;
-                    for (let i = 0; i < team.length; i++) {
-                        const x = feat.get(team[i].id);
-                        if (x.pos2 < 0) continue;
-                        const from = as[i], to = from === x.pos ? x.pos2 : x.pos;
-                        c[from]--; c[to]++; sm[from] -= x.r; sm[to] += x.r; used += (to === x.pos2 ? 1 : -1);
-                        const np = penalty();
-                        if (np < cur - 1e-9) { cur = np; as[i] = to; improved = true; }
-                        else { c[from]++; c[to]--; sm[from] += x.r; sm[to] -= x.r; used -= (to === x.pos2 ? 1 : -1); }
+            // Bir oyuncuyu asıl <-> ikincil mevki arasında geçirir (tekrar çağrılırsa geri alır)
+            const toggle = (side, i) => {
+                const team = side === 0 ? A : B, as = side === 0 ? asA : asB, c = side === 0 ? ca : cb, sm = side === 0 ? sa : sb;
+                const x = feat.get(team[i].id);
+                const from = as[i], to = from === x.pos ? x.pos2 : x.pos;
+                c[from]--; c[to]++; sm[from] -= x.r; sm[to] += x.r; used += (to === x.pos2 ? 1 : -1);
+                as[i] = to;
+            };
+            const flexible = [[], []];
+            A.forEach((p, i) => { if (feat.get(p.id).pos2 >= 0) flexible[0].push(i); });
+            B.forEach((p, i) => { if (feat.get(p.id).pos2 >= 0) flexible[1].push(i); });
+            if (flexible[0].length + flexible[1].length) {
+                for (let pass = 0; pass < 6 && imbOf() > 0; pass++) {
+                    let improved = false;
+                    // 1) tek oyuncu geçişi
+                    for (const side of [0, 1]) {
+                        for (const i of flexible[side]) {
+                            toggle(side, i);
+                            const np = penalty();
+                            if (np < cur - 1e-9) { cur = np; improved = true; } else toggle(side, i);
+                        }
                     }
+                    // 2) iki oyuncu birlikte (örn. defans→orta saha + orta saha→forvet zinciri): aynı takımda ya da farklı takımlarda
+                    if (!improved) {
+                        const all = [];
+                        flexible[0].forEach(i => all.push([0, i]));
+                        flexible[1].forEach(i => all.push([1, i]));
+                        outer: for (let u = 0; u < all.length; u++) {
+                            for (let v = u + 1; v < all.length; v++) {
+                                toggle(all[u][0], all[u][1]); toggle(all[v][0], all[v][1]);
+                                const np = penalty();
+                                if (np < cur - 1e-9) { cur = np; improved = true; break outer; }
+                                toggle(all[v][0], all[v][1]); toggle(all[u][0], all[u][1]);
+                            }
+                        }
+                    }
+                    if (!improved) break;
                 }
-                if (!improved) break;
             }
             return { asA, asB, ca, cb, sa, sb, pen: cur, imb: imbOf() };
         }
@@ -3494,7 +3514,7 @@ function renderGeneratorControls() {
             positions.forEach(pos => {
                 const a = A.filter(p => posOf(p) === pos).length, b = B.filter(p => posOf(p) === pos).length;
                 const diff = Math.abs(a - b);
-                const cls = diff <= ((a + b) % 2) ? 'text-emerald-300' : 'text-amber-300';
+                const cls = diff === 0 ? 'text-emerald-300' : 'text-amber-300';
                 rows.push(`<tr class="border-t border-slate-800"><td class="py-1 pr-2 text-slate-300">${esc(pos)} sayısı</td><td class="py-1 px-2 text-center text-slate-300 font-bold">${a}</td><td class="py-1 px-2 text-center text-red-400 font-bold">${b}</td><td class="py-1 pl-2 text-center font-black ${cls}">${diff}</td></tr>`);
             });
             positions.filter(pos => pos !== 'Kaleci').forEach(pos => {
