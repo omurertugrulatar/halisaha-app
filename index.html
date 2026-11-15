@@ -2901,7 +2901,8 @@ function renderGeneratorControls() {
         const BAL = {
             rating: 3,         // takımların ortalama rating farkı (puan) - ana ölçüt
             ratingSoftCap: 3,  // bu farkın üstü ağır cezalandırılır
-            posCount: 6,       // bir mevkideki oyuncu sayısı farkı (tek sayıda kaçınılmaz fark hariç)
+            posCount: 1000,    // bir mevkideki oyuncu sayısı farkı (tek sayıda kaçınılmaz fark hariç). Çok yüksek: mevki sayıları fiilen zorunlu olarak eşitlenir, rating ancak eşit dağılımlar arasında dengelenir
+            posOdd: 3,         // bir mevkide toplam oyuncu tek sayıysa takımlar 1 farkla ayrılır; ikincil mevki varsa bu fark da kapatılmaya çalışılır
             posMissing: 4,     // bir takımda hiç oyuncu yokken diğerinde olan mevki (ikincil pozisyonla kapatılmaya çalışılır)
             secondaryUse: 0.5, // bir oyuncuyu ikincil mevkisinde oynatmanın küçük bedeli (eşit durumda asıl mevki tercih edilir)
             posRating: 1       // aynı mevkideki oyuncuların ortalama rating farkı
@@ -2934,14 +2935,16 @@ function renderGeneratorControls() {
             B.forEach((p, i) => { const x = feat.get(p.id); cb[asB[i]]++; sb[asB[i]] += x.r; });
             let used = 0;
             const penalty = () => {
-                let imb = 0, miss = 0;
+                let imb = 0, miss = 0, odd = 0;
                 for (let i = 0; i < nPos; i++) {
                     imb += Math.max(0, Math.abs(ca[i] - cb[i]) - ((ca[i] + cb[i]) % 2));
+                    odd += (ca[i] + cb[i]) % 2;
                     if ((ca[i] === 0) !== (cb[i] === 0)) miss++;
                 }
-                return BAL.posCount * imb + BAL.posMissing * miss + BAL.secondaryUse * used;
+                return BAL.posCount * imb + BAL.posMissing * miss + BAL.posOdd * odd + BAL.secondaryUse * used;
             };
             let cur = penalty();
+            const imbOf = () => { let t = 0; for (let i = 0; i < nPos; i++) t += Math.max(0, Math.abs(ca[i] - cb[i]) - ((ca[i] + cb[i]) % 2)); return t; };
             for (let pass = 0; pass < 4; pass++) {
                 let improved = false;
                 for (const side of [0, 1]) {
@@ -2958,7 +2961,7 @@ function renderGeneratorControls() {
                 }
                 if (!improved) break;
             }
-            return { asA, asB, ca, cb, sa, sb, pen: cur };
+            return { asA, asB, ca, cb, sa, sb, pen: cur, imb: imbOf() };
         }
 
         // Görüntüleme için: oyuncu kimliği -> { pos: oynadığı mevki, secondary: ikincil mevkide mi }
@@ -3027,8 +3030,10 @@ function renderGeneratorControls() {
             if (sig === optCache.sig) return optCache.opts.map(o => asOption(o.A.map(id => byId.get(id)), o.B.map(id => byId.get(id))));
 
             const nPos = posList.length;
+            let lastImb = 0; // son hesaplanan bölünmenin mevki sayısı dengesizliği (0 = mevkiler eşit)
             const cost = (A, B) => {
                 const asg = assignCore(A, B, feat, nPos);
+                lastImb = asg.imb;
                 let ra = 0, rb = 0;
                 for (const p of A) ra += feat.get(p.id).r;
                 for (const p of B) rb += feat.get(p.id).r;
@@ -3047,7 +3052,7 @@ function renderGeneratorControls() {
             const N = everyone.length;
             const sizesA = N % 2 === 0 ? [N / 2] : [(N - 1) / 2, (N + 1) / 2];
             const build = inA => { const A = [...fixedA], B = [...fixedB]; movable.forEach((p, i) => (inA[i] ? A : B).push(p)); return [A, B]; };
-            const cands = [];
+            let cands = [];
 
             if (m <= BRUTE_FORCE_MAX) {
                 // Tüm olası bölünmeleri dene
@@ -3056,7 +3061,7 @@ function renderGeneratorControls() {
                     if (k < 0 || k > m) continue;
                     const inA = new Array(m).fill(false);
                     const walk = (start, left) => {
-                        if (left === 0) { const [A, B] = build(inA); cands.push({ cost: cost(A, B), inA: inA.slice() }); return; }
+                        if (left === 0) { const [A, B] = build(inA); const cc = cost(A, B); cands.push({ cost: cc, imb: lastImb, inA: inA.slice() }); return; }
                         for (let i = start; i <= m - left; i++) { inA[i] = true; walk(i + 1, left - 1); inA[i] = false; }
                     };
                     walk(0, k);
@@ -3084,7 +3089,8 @@ function renderGeneratorControls() {
                         inA[bi] = false; inA[bj] = true; cur = bc;
                     }
                     const key = inA.map(v => v ? 1 : 0).join('');
-                    if (!seen.has(key)) { seen.add(key); cands.push({ cost: cur, inA: inA.slice() }); }
+                    [A, B] = build(inA); cost(A, B); // lastImb'i son kadro için güncelle
+                    if (!seen.has(key)) { seen.add(key); cands.push({ cost: cur, imb: lastImb, inA: inA.slice() }); }
                 };
                 const k0 = Math.min(m, Math.max(0, sizesA[0] - fixedA.length));
                 for (let t = 0; t < 40; t++) {
@@ -3096,6 +3102,8 @@ function renderGeneratorControls() {
             }
 
             cands.sort((a, b) => a.cost - b.cost);
+            // Mevki sayıları en eşit olan bölünmeler dışındakiler elenir (kaleci, defans, orta saha, forvet sayıları eşitlenir)
+            if (cands.length) { const minImb = Math.min(...cands.map(c => c.imb)); cands = cands.filter(c => c.imb === minImb); }
             if (!cands.length) return [asOption([...teamA], [...teamB])];
 
             // İki bölünme arasındaki fark: farklı takımda olan oyuncu sayısı (kaleci sabitlenmemişse aynalı bölünme aynı sayılır)
