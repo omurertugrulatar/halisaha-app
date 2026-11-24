@@ -104,6 +104,9 @@
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
         
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { scrollbar-width: none; }
+
         /* Smooth transitions */
         * { transition: border-color 0.2s ease, background-color 0.2s ease; }
     </style>
@@ -142,12 +145,16 @@
                         <span class="text-[10px] block text-zinc-400 font-semibold tracking-wider uppercase">Oylama</span>
                     </div>
                 </div>
-                <nav class="flex items-center space-x-1">
-                    <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-violet-400 bg-white/5"><i class="fa-solid fa-user-pen"></i> <span>Rating Oylaması</span></button>
-                    <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-award"></i> <span>Maç Puanı</span></button>
-                    <button onclick="switchTab('comments')" id="nav-comments" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-tv"></i> <span>Kulis</span></button>
-                </nav>
             </div>
+            <nav class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-2">
+                <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-violet-400 bg-white/5"><i class="fa-solid fa-user-pen"></i> <span>Rating Oylaması</span></button>
+                <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-award"></i> <span>Maç Puanı</span></button>
+                <button onclick="switchTab('announcement')" id="nav-announcement" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-bullhorn"></i> <span>Kadro</span> <span id="ann-dot" class="hidden w-2 h-2 rounded-full bg-rose-500"></span></button>
+                <button onclick="switchTab('form')" id="nav-form" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-chart-line"></i> <span>Form</span></button>
+                <button onclick="switchTab('standings')" id="nav-standings" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-ranking-star"></i> <span>Puan Durumu</span></button>
+                <button onclick="switchTab('scorers')" id="nav-scorers" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-futbol"></i> <span>Gol Krallığı</span></button>
+                <button onclick="switchTab('comments')" id="nav-comments" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-tv"></i> <span>Kulis</span></button>
+            </nav>
         </div>
     </header>
 
@@ -319,6 +326,71 @@
             </div>
         </section>
 
+        <!-- TAB: KADRO DUYURUSU -->
+        <section id="tab-announcement" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-3xl border border-white/[0.08]">
+                <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                    <i class="fa-solid fa-bullhorn text-violet-400"></i> Haftanın Kadrosu
+                </h2>
+                <p class="text-xs text-zinc-400 mt-1">Yönetici kadroyu duyurduğunda bu hafta oynayacak oyuncular burada yayınlanır. Bir oyuncunun adına dokunarak kartını açabilirsiniz.</p>
+                <div id="ann-body" class="mt-5 space-y-4"></div>
+            </div>
+        </section>
+
+        <!-- TAB: FORM DURUMU -->
+        <section id="tab-form" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-3xl border border-white/[0.08]">
+                <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-violet-400"></i> Form Durumu
+                        </h2>
+                        <p class="text-xs text-zinc-400 mt-1 max-w-xl">Her maçta arkadaşlarından aldığı ortalama puan (10 üzerinden) ve sonucu: <span class="text-emerald-400 font-bold">G</span> galibiyet, <span class="text-zinc-300 font-bold">B</span> beraberlik, <span class="text-rose-400 font-bold">M</span> mağlubiyet. "Form", son maçlara daha çok ağırlık veren ortalamadır. En yeni maç solda.</p>
+                    </div>
+                    <select id="form-count" onchange="setFormCount(this.value)" class="bg-[#0a0a0a] border border-white/[0.08] rounded-3xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                        <option value="5">Son 5 maç</option>
+                        <option value="8" selected>Son 8 maç</option>
+                        <option value="12">Son 12 maç</option>
+                        <option value="0">Tüm maçlar</option>
+                    </select>
+                </div>
+                <div id="form-table" class="overflow-x-auto rounded-2xl border border-white/[0.08]"></div>
+                <p class="text-[10px] text-zinc-500 mt-3">Puanlaması henüz kapanmamış maçlar, sonuçlar belli olunca eklenir.</p>
+            </div>
+        </section>
+
+        <!-- TAB: PUAN DURUMU -->
+        <section id="tab-standings" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-3xl border border-white/[0.08]">
+                <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                    <i class="fa-solid fa-ranking-star text-violet-400"></i> Puan Durumu
+                </h2>
+                <p class="text-xs text-zinc-400 mt-1">Galibiyet <strong class="text-emerald-400">3</strong>, beraberlik <strong class="text-zinc-200">1</strong>, mağlubiyet <strong class="text-rose-400">0</strong> puan. Sezon sonunda en çok puanı toplayan oyuncu birinci olur. Puanlar eşitse sırayla galibiyet ve gol sayısına bakılır.</p>
+                <div id="standings-leader" class="mt-4"></div>
+                <div id="standings-table" class="mt-4 overflow-x-auto rounded-2xl border border-white/[0.08]"></div>
+            </div>
+        </section>
+
+        <!-- TAB: GOL KRALLIĞI -->
+        <section id="tab-scorers" class="tab-content hidden space-y-6">
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-3xl border border-white/[0.08]">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                            <i class="fa-solid fa-futbol text-violet-400"></i> Gol Krallığı
+                        </h2>
+                        <p id="scorers-summary" class="text-xs text-zinc-400 mt-1"></p>
+                    </div>
+                    <div class="flex gap-1.5">
+                        <button id="scsort-total" onclick="setScorerSort('total')" class="px-3 py-1.5 rounded-lg text-xs font-bold border"></button>
+                        <button id="scsort-avg" onclick="setScorerSort('avg')" class="px-3 py-1.5 rounded-lg text-xs font-bold border"></button>
+                    </div>
+                </div>
+                <div id="scorers-podium" class="mt-5"></div>
+                <div id="scorers-table" class="mt-4 overflow-x-auto rounded-2xl border border-white/[0.08]"></div>
+            </div>
+        </section>
+
     </main>
 
     <footer class="fixed bottom-0 left-0 right-0 z-50 bg-[#050505]/95 border-t border-violet-500/30 py-2.5 px-3 backdrop-blur-md">
@@ -336,6 +408,17 @@
     </footer>
 
     <!-- Notification Toast -->
+    <!-- Oyuncu kartı -->
+    <div id="player-card-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closePlayerCard()"></div>
+        <div class="relative glass-panel w-full max-w-md rounded-3xl border border-white/[0.08] p-6 max-h-[90vh] overflow-y-auto">
+            <button onclick="closePlayerCard()" class="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors" aria-label="Kapat">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div id="player-card-body"></div>
+        </div>
+    </div>
+
     <div id="toast-msg" class="fixed bottom-16 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-white/5 border border-violet-500 text-white px-5 py-3 rounded-3xl shadow-2xl flex items-center gap-3 z-50">
         <i class="fa-solid fa-circle-check text-violet-400 text-xl"></i>
         <span id="toast-text" class="text-sm font-medium">İşlem yapıldı.</span>
@@ -616,7 +699,7 @@
                                 ${esc(peer.name.charAt(0))}
                             </div>
                             <div>
-                                <p class="text-xs font-bold text-white">${esc(peer.name)}</p>
+                                <p class="text-xs">${nameBtn(peer.id, peer.name, 'text-white')}</p>
                                 <p class="text-[10px] text-zinc-400">${esc(peer.position)}${peer.position === 'Kaleci' ? ' • Kaleci nitelikleri' : ''}</p>
                             </div>
                         </div>
@@ -715,7 +798,7 @@
                         <div class="w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/[0.08] flex items-center justify-center text-xs font-bold text-violet-400">${esc(r.p.name.charAt(0))}</div>
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-1.5 min-w-0">
-                                <span class="text-xs font-bold text-white truncate">${esc(r.p.name)}</span>
+                                <span class="text-xs truncate">${nameBtn(r.p.id, r.p.name, 'text-white truncate')}</span>
                                 ${isMvp ? '<i class="fa-solid fa-crown text-orange-300 text-[11px]" title="Maçın adamı"></i>' : ''}
                                 ${r.goals > 0 ? `<span class="text-[10px] font-bold text-zinc-200 shrink-0" title="Gol">⚽${r.goals > 1 ? ' x' + r.goals : ''}</span>` : ''}
                             </div>
@@ -877,7 +960,7 @@
                     <div class="flex items-center space-x-3 min-w-0">
                         <div class="w-8 h-8 shrink-0 rounded-full bg-white/5 text-orange-400 font-bold flex items-center justify-center text-xs border border-white/[0.08]">${esc(p.name.charAt(0))}</div>
                         <div class="min-w-0">
-                            <p class="text-xs font-bold text-white truncate">${esc(p.name)}</p>
+                            <p class="text-xs truncate">${nameBtn(p.id, p.name, 'text-white truncate')}</p>
                             <p class="text-[10px] text-zinc-400">${esc(p.position)}</p>
                         </div>
                     </div>
@@ -1090,12 +1173,23 @@
                 evalLogIds = new Set(snap.docs.map(d => d.id));
                 checkVoterEvalStatus();
             }, err => reportErr('eval_log', err));
+
+            db.collection('settings').doc('announcement').onSnapshot(doc => {
+                announcement = doc.exists ? doc.data() : null;
+                renderCurrentTab();
+            }, err => reportErr('announcement', err));
         }
 
         function renderCurrentTab() {
             if (currentTabId === 'evaluation') populateUserDropdown();
             else if (currentTabId === 'mvp-vote') renderMVPVoteTab();
             else if (currentTabId === 'comments') renderCommentsTab();
+            else if (currentTabId === 'announcement') renderAnnouncementTab();
+            else if (currentTabId === 'form') renderFormTab();
+            else if (currentTabId === 'standings') renderStandingsTab();
+            else if (currentTabId === 'scorers') renderScorersTab();
+            if (cardPlayerId) renderPlayerCard();
+            updateAnnDot();
             updateCommentatorTicker();
         }
 
@@ -1111,6 +1205,9 @@
             if (activeBtn) {
                 activeBtn.classList.add('text-violet-400', 'bg-white/5');
                 activeBtn.classList.remove('text-zinc-300');
+            }
+            if (tabId === 'announcement' && announcement && announcement.published) {
+                try { localStorage.setItem(ANN_SEEN_KEY, String(announcement.publishedAt || 0)); } catch (e) {}
             }
             renderCurrentTab();
         }
@@ -1558,6 +1655,304 @@
             }
         }
     
+        // -------------------------------------------------------------
+        // KADRO DUYURUSU, OYUNCU KARTI, FORM, PUAN DURUMU, GOL KRALLIĞI
+        // -------------------------------------------------------------
+        let announcement = null;   // yönetici duyurusu (Firestore: settings/announcement)
+        let formCount = 8;
+        let scorerSort = 'total';
+        let cardPlayerId = null;
+        const POS_ORDER = ['Kaleci', 'Defans', 'Orta Saha', 'Forvet'];
+        const ANN_SEEN_KEY = 'halisaha_ann_seen';
+
+        // Oyuncu adına dokununca kartı açan düğme
+        const nameBtn = (id, name, extra = '') => `<button type="button" onclick="openPlayerCard('${esc(id)}')" class="text-left font-bold hover:underline decoration-violet-400 underline-offset-2 ${extra}">${esc(name)}</button>`;
+
+        const scoreTone = v => v >= 8 ? 'bg-emerald-500/25 text-emerald-200' : v >= 6.5 ? 'bg-lime-500/20 text-lime-200' : v >= 5 ? 'bg-amber-500/20 text-amber-200' : 'bg-rose-500/20 text-rose-200';
+        const resChip = r => r ? `<span class="text-[9px] font-black ${r === 'G' ? 'text-emerald-400' : (r === 'M' ? 'text-rose-400' : 'text-zinc-400')}">${r}</span>` : '';
+        const emptyBox = t => `<p class="p-6 text-center text-xs text-zinc-500 italic">${t}</p>`;
+        const fmtDay = ts => ts ? new Date(ts).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '';
+
+        function closedMatches() {
+            return matches.filter(m => m.finalized === true && m.playerScores && Object.keys(m.playerScores).length > 0); // yeniden eskiye
+        }
+
+        // Oyuncunun o maçtaki sonucu: G / B / M (kadro bilgisi yoksa null)
+        function resultFor(m, pid) {
+            const inA = (m.teamAIds || []).includes(pid), inB = (m.teamBIds || []).includes(pid);
+            if (!inA && !inB) return null;
+            const a = m.teamAScore || 0, b = m.teamBScore || 0;
+            if (a === b) return 'B';
+            return ((a > b) === inA) ? 'G' : 'M';
+        }
+
+        // Form: maç puanlarının üstel hareketli ortalaması (yönetici panelindeki formla aynı hesap), 10 üzerinden
+        function formOf(pid) {
+            const cl = closedMatches();
+            let ema = null, n = 0;
+            for (let i = cl.length - 1; i >= 0; i--) {
+                const s = cl[i].playerScores[pid];
+                if (s && typeof s.avg === 'number') { ema = ema === null ? s.avg : 0.4 * s.avg + 0.6 * ema; n++; }
+            }
+            return { form: ema, n };
+        }
+
+        const ptsOf = p => (p.wins || 0) * 3 + (p.draws || 0);
+
+        function rankList(list, keyFn) {
+            let prev = null, rank = 0;
+            list.forEach((r, i) => { const k = keyFn(r); if (k !== prev) { rank = i + 1; prev = k; } r.rank = rank; });
+            return list;
+        }
+
+        function standingsList() {
+            const list = players.map(p => ({ p, pts: ptsOf(p), w: p.wins || 0, d: p.draws || 0, l: p.losses || 0, mp: p.matches || 0, g: p.goals || 0 }));
+            list.sort((a, b) => b.pts - a.pts || b.w - a.w || b.g - a.g || a.mp - b.mp || a.p.name.localeCompare(b.p.name, 'tr'));
+            return rankList(list, r => r.pts + '|' + r.w + '|' + r.g);
+        }
+
+        function scorersList(by) {
+            const list = players.map(p => { const mp = p.matches || 0, g = p.goals || 0; return { p, g, mp, avg: mp > 0 ? g / mp : null }; });
+            const av = r => r.avg === null ? -1 : r.avg;
+            if (by === 'avg') list.sort((a, b) => av(b) - av(a) || b.g - a.g || a.p.name.localeCompare(b.p.name, 'tr'));
+            else list.sort((a, b) => b.g - a.g || av(b) - av(a) || a.mp - b.mp || a.p.name.localeCompare(b.p.name, 'tr'));
+            return rankList(list, r => by === 'avg' ? (r.avg === null ? 'x' : r.avg.toFixed(3)) : String(r.g));
+        }
+
+        const medal = rank => rank === 1 ? 'text-amber-300' : rank === 2 ? 'text-zinc-300' : rank === 3 ? 'text-orange-400' : 'text-zinc-500';
+
+        // ---- Kadro duyurusu ----
+        function renderAnnouncementTab() {
+            const box = document.getElementById('ann-body');
+            if (!box) return;
+            if (!announcement || !announcement.published) {
+                box.innerHTML = `<div class="p-6 text-center border border-white/[0.08] rounded-3xl"><i class="fa-solid fa-hourglass-half text-violet-400 text-2xl mb-2"></i><p class="text-sm text-zinc-300 font-semibold">Bu hafta için kadro henüz açıklanmadı.</p><p class="text-xs text-zinc-500 mt-1">Yönetici duyuru yaptığında kadro burada görünür.</p></div>`;
+                return;
+            }
+            const when = announcement.publishedAt ? new Date(announcement.publishedAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+            const sortByPos = (a, b) => POS_ORDER.indexOf(a.position) - POS_ORDER.indexOf(b.position) || a.name.localeCompare(b.name, 'tr');
+            const row = x => `<div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                    ${nameBtn(x.id, x.name, 'text-xs text-white truncate')}
+                    <span class="shrink-0 text-[10px] text-zinc-400">${esc(x.position)}${x.secondary ? ' <span class="text-amber-400" title="İkincil mevkisinde oynayacak">(ikincil)</span>' : ''}</span>
+                </div>`;
+            const panel = (title, color, border, list) => `<div class="rounded-2xl border ${border} bg-black/30 p-3 space-y-1.5">
+                    <div class="flex items-center justify-between px-1 pb-1"><span class="font-bold text-sm ${color}">${title}</span><span class="text-[11px] text-zinc-400">${list.length} oyuncu</span></div>
+                    ${[...list].sort(sortByPos).map(row).join('')}
+                </div>`;
+
+            let html = `<div class="rounded-2xl border border-violet-500/30 bg-violet-500/10 p-4">
+                    <p class="text-[10px] font-bold tracking-widest text-violet-300 uppercase">Yönetici duyurusu${when ? ' • ' + esc(when) : ''}</p>
+                    <p class="text-sm text-zinc-100 mt-1 whitespace-pre-line">${esc(announcement.message || 'Bu haftanın kadrosu açıklandı!')}</p>
+                </div>`;
+            if (announcement.teams && (announcement.teams.white || []).length && (announcement.teams.red || []).length) {
+                html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    ${panel('BEYAZ TAKIM', 'text-zinc-100', 'border-white/20', announcement.teams.white)}
+                    ${panel('KIRMIZI TAKIM', 'text-rose-400', 'border-rose-500/30', announcement.teams.red)}
+                </div>`;
+            } else {
+                const squad = announcement.squad || [];
+                html += POS_ORDER.map(pos => {
+                    const g = squad.filter(x => x.position === pos);
+                    return g.length ? `<div class="space-y-1.5"><h3 class="text-xs font-bold text-zinc-300 uppercase tracking-wider">${pos} (${g.length})</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${g.sort(sortByPos).map(row).join('')}</div></div>` : '';
+                }).join('');
+                html += `<p class="text-[11px] text-zinc-500">Takımlar henüz açıklanmadı.</p>`;
+            }
+            box.innerHTML = html;
+        }
+
+        function updateAnnDot() {
+            const dot = document.getElementById('ann-dot');
+            if (!dot) return;
+            let seen = 0;
+            try { seen = Number(localStorage.getItem(ANN_SEEN_KEY)) || 0; } catch (e) {}
+            const fresh = announcement && announcement.published && (announcement.publishedAt || 0) > seen && currentTabId !== 'announcement';
+            dot.classList.toggle('hidden', !fresh);
+        }
+
+        // ---- Form durumu ----
+        function setFormCount(v) { formCount = parseInt(v, 10) || 0; renderFormTab(); }
+
+        function renderFormTab() {
+            const box = document.getElementById('form-table');
+            if (!box) return;
+            const cl = closedMatches();
+            if (!cl.length) { box.innerHTML = emptyBox('Puanlaması kapanmış maç yok. Maçlar puanlanıp kapandıkça form tablosu dolar.'); return; }
+            const shown = formCount > 0 ? cl.slice(0, formCount) : cl;
+            const rows = players.map(p => ({ p, f: formOf(p.id) }))
+                .sort((a, b) => (b.f.form === null ? -1 : b.f.form) - (a.f.form === null ? -1 : a.f.form) || a.p.name.localeCompare(b.p.name, 'tr'));
+            const head = shown.map(m => `<th class="px-1.5 py-2 text-center text-[10px] font-bold text-zinc-300 whitespace-nowrap">${esc(fmtDay(matchTime(m)) || m.date)}<div class="text-[9px] font-normal text-zinc-500">${m.teamAScore}-${m.teamBScore}</div></th>`).join('');
+            const body = rows.map(r => {
+                const cells = shown.map(m => {
+                    const sc = m.playerScores[r.p.id];
+                    if (!sc || typeof sc.avg !== 'number') return '<td class="px-1 py-1.5 text-center text-zinc-700 text-xs">·</td>';
+                    return `<td class="px-1 py-1"><div class="rounded-md text-center text-xs font-black py-1 min-w-[40px] ${scoreTone(sc.avg)}">${sc.avg.toFixed(1)}</div><div class="text-center leading-none mt-0.5">${resChip(resultFor(m, r.p.id))}</div></td>`;
+                }).join('');
+                const fv = r.f.form === null ? '<span class="text-zinc-600">—</span>' : `<span class="px-1.5 py-0.5 rounded-md text-xs font-black ${scoreTone(r.f.form)}">${r.f.form.toFixed(1)}</span>`;
+                return `<tr class="border-t border-white/[0.06] ${r.f.n ? '' : 'opacity-50'}">
+                    <td class="sticky left-0 z-10 bg-[#0a0a0a] px-2 py-1.5 whitespace-nowrap">${nameBtn(r.p.id, r.p.name, 'text-xs text-white')}<div class="text-[9px] text-zinc-500">${esc(r.p.position)}</div></td>
+                    <td class="px-2 py-1.5 text-center">${fv}</td>
+                    ${cells}
+                </tr>`;
+            }).join('');
+            box.innerHTML = `<table class="w-full text-left"><thead><tr class="bg-white/[0.03]"><th class="sticky left-0 z-10 bg-[#0f0f0f] px-2 py-2 text-[10px] text-zinc-400 font-bold">Oyuncu</th><th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold">Form</th>${head}</tr></thead><tbody>${body}</tbody></table>`;
+        }
+
+        // ---- Puan durumu ----
+        function renderStandingsTab() {
+            const box = document.getElementById('standings-table');
+            const lead = document.getElementById('standings-leader');
+            if (!box) return;
+            const list = standingsList();
+            if (!list.length) { lead.innerHTML = ''; box.innerHTML = emptyBox('Kayıtlı oyuncu yok.'); return; }
+            const top = list.filter(r => r.rank === 1 && r.mp > 0);
+            lead.innerHTML = top.length ? `<div class="rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/15 via-yellow-400/10 to-amber-500/15 p-3 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-crown text-amber-300 text-2xl"></i>
+                    <div class="text-center"><p class="text-[10px] text-amber-300 font-bold tracking-[0.25em] uppercase">${top.length > 1 ? 'Zirvede eşitlik' : 'Şu anki lider'}</p>
+                    <p class="text-sm font-bold text-white">${top.map(r => nameBtn(r.p.id, r.p.name, 'text-white')).join(', ')} <span class="text-amber-300">${top[0].pts} puan</span></p></div>
+                </div>` : '';
+            const body = list.map(r => `<tr class="border-t border-white/[0.06] ${r.mp ? '' : 'opacity-50'}">
+                    <td class="px-2 py-2 text-xs font-black ${medal(r.rank)}">${r.rank}</td>
+                    <td class="px-2 py-2 whitespace-nowrap">${nameBtn(r.p.id, r.p.name, 'text-xs text-white')}<div class="text-[9px] text-zinc-500">${esc(r.p.position)}</div></td>
+                    <td class="px-2 py-2 text-center text-xs text-zinc-300">${r.mp}</td>
+                    <td class="px-2 py-2 text-center text-xs font-bold text-emerald-400">${r.w}</td>
+                    <td class="px-2 py-2 text-center text-xs font-bold text-zinc-300">${r.d}</td>
+                    <td class="px-2 py-2 text-center text-xs font-bold text-rose-400">${r.l}</td>
+                    <td class="px-2 py-2 text-center text-xs text-zinc-400 hidden sm:table-cell">${r.mp ? (r.pts / r.mp).toFixed(2) : '—'}</td>
+                    <td class="px-2 py-2 text-center text-sm font-black text-white">${r.pts}</td>
+                </tr>`).join('');
+            box.innerHTML = `<table class="w-full text-left"><thead><tr class="bg-white/[0.03]">
+                    <th class="px-2 py-2 text-[10px] text-zinc-400 font-bold">#</th>
+                    <th class="px-2 py-2 text-[10px] text-zinc-400 font-bold">Oyuncu</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold" title="Oynanan maç">O</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold" title="Galibiyet">G</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold" title="Beraberlik">B</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold" title="Mağlubiyet">M</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold hidden sm:table-cell" title="Maç başı puan">P/M</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold">Puan</th>
+                </tr></thead><tbody>${body}</tbody></table>`;
+        }
+
+        // ---- Gol krallığı ----
+        function setScorerSort(by) { scorerSort = by; renderScorersTab(); }
+
+        function renderScorersTab() {
+            const box = document.getElementById('scorers-table');
+            if (!box) return;
+            const on = 'bg-violet-500/20 text-violet-300 border-violet-500/50', off = 'bg-white/5 text-zinc-300 border-white/[0.08] hover:bg-white/10';
+            const bt = document.getElementById('scsort-total'), ba = document.getElementById('scsort-avg');
+            bt.className = 'px-3 py-1.5 rounded-lg text-xs font-bold border ' + (scorerSort === 'total' ? on : off);
+            ba.className = 'px-3 py-1.5 rounded-lg text-xs font-bold border ' + (scorerSort === 'avg' ? on : off);
+            bt.textContent = 'Toplam gol';
+            ba.textContent = 'Maç başı ortalama';
+
+            const list = scorersList(scorerSort);
+            const totalGoals = players.reduce((s, p) => s + (p.goals || 0), 0);
+            const nMatches = matches.length;
+            document.getElementById('scorers-summary').textContent = nMatches
+                ? `Sezonda ${nMatches} maçta ${totalGoals} gol atıldı (maç başı ${(totalGoals / nMatches).toFixed(1)}).`
+                : 'Henüz oynanmış maç yok.';
+
+            const val = r => scorerSort === 'avg' ? (r.avg === null ? 0 : r.avg) : r.g;
+            const podium = list.filter(r => r.rank <= 3 && val(r) > 0).slice(0, 3);
+            document.getElementById('scorers-podium').innerHTML = podium.length ? `<div class="grid grid-cols-3 gap-2">${podium.map(r => `
+                <div class="rounded-2xl border ${r.rank === 1 ? 'border-amber-400/50 bg-amber-500/10' : 'border-white/[0.08] bg-white/[0.03]'} p-3 text-center">
+                    <i class="fa-solid fa-trophy ${medal(r.rank)} text-lg"></i>
+                    <div class="mt-1 text-xs truncate">${nameBtn(r.p.id, r.p.name, 'text-white')}</div>
+                    <div class="text-xl font-black text-white leading-tight">${scorerSort === 'avg' ? r.avg.toFixed(2) : r.g}</div>
+                    <div class="text-[10px] text-zinc-400">${scorerSort === 'avg' ? r.g + ' gol / ' + r.mp + ' maç' : (r.avg === null ? '—' : r.avg.toFixed(2) + ' gol/maç')}</div>
+                </div>`).join('')}</div>` : '';
+
+            const body = list.map(r => `<tr class="border-t border-white/[0.06] ${r.g ? '' : 'opacity-50'}">
+                    <td class="px-2 py-2 text-xs font-black ${medal(r.rank)}">${r.rank}</td>
+                    <td class="px-2 py-2 whitespace-nowrap">${nameBtn(r.p.id, r.p.name, 'text-xs text-white')}<div class="text-[9px] text-zinc-500">${esc(r.p.position)}</div></td>
+                    <td class="px-2 py-2 text-center text-sm ${scorerSort === 'total' ? 'font-black text-white' : 'font-bold text-zinc-300'}">${r.g}</td>
+                    <td class="px-2 py-2 text-center text-xs text-zinc-400">${r.mp}</td>
+                    <td class="px-2 py-2 text-center text-sm ${scorerSort === 'avg' ? 'font-black text-white' : 'font-bold text-zinc-300'}">${r.avg === null ? '—' : r.avg.toFixed(2)}</td>
+                </tr>`).join('');
+            box.innerHTML = list.length ? `<table class="w-full text-left"><thead><tr class="bg-white/[0.03]">
+                    <th class="px-2 py-2 text-[10px] text-zinc-400 font-bold">#</th>
+                    <th class="px-2 py-2 text-[10px] text-zinc-400 font-bold">Oyuncu</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold">Gol</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold">Maç</th>
+                    <th class="px-2 py-2 text-center text-[10px] text-zinc-400 font-bold">Maç başı</th>
+                </tr></thead><tbody>${body}</tbody></table>` : emptyBox('Kayıtlı oyuncu yok.');
+        }
+
+        // ---- Oyuncu kartı ----
+        function openPlayerCard(id) {
+            cardPlayerId = id;
+            renderPlayerCard();
+            document.getElementById('player-card-modal').classList.remove('hidden');
+        }
+        function closePlayerCard() {
+            cardPlayerId = null;
+            document.getElementById('player-card-modal').classList.add('hidden');
+        }
+
+        function renderPlayerCard() {
+            const p = players.find(x => x.id === cardPlayerId);
+            if (!p) { closePlayerCard(); return; }
+            const st = standingsList().find(r => r.p.id === p.id);
+            const sc = scorersList('total').find(r => r.p.id === p.id);
+            const f = formOf(p.id);
+            const mp = p.matches || 0, g = p.goals || 0;
+            const log = closedMatches().map(m => ({ m, sc: m.playerScores[p.id] || null, res: resultFor(m, p.id) })).filter(x => x.sc || x.res);
+            const stat = (label, value, cls = 'text-white') => `<div class="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-2 text-center"><p class="text-[10px] text-zinc-400">${label}</p><p class="text-base font-black ${cls}">${value}</p></div>`;
+            const chip = x => x.sc
+                ? `<div class="text-center"><div class="rounded-md px-1.5 py-1 text-xs font-black min-w-[40px] ${scoreTone(x.sc.avg)}">${x.sc.avg.toFixed(1)}</div><div class="leading-none mt-0.5">${resChip(x.res)}</div></div>`
+                : '';
+            const last5 = log.filter(x => x.sc).slice(0, 5);
+            const pos2 = p.secondaryPosition && p.secondaryPosition !== p.position && p.position !== 'Kaleci' ? ' / ' + esc(p.secondaryPosition) : '';
+
+            document.getElementById('player-card-body').innerHTML = `
+                <div class="flex items-center gap-4 mb-4 pr-6">
+                    <div class="w-14 h-14 shrink-0 rounded-full bg-gradient-to-tr from-violet-600 to-fuchsia-500 text-white font-black flex items-center justify-center text-xl shadow">${esc(p.name.charAt(0))}</div>
+                    <div class="min-w-0">
+                        <h3 class="text-lg font-bold text-white truncate">${esc(p.name)}</h3>
+                        <p class="text-xs text-violet-300 font-semibold">${esc(p.position)}${pos2}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''}</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-1.5 mb-4">
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-violet-500/15 text-violet-300 border-violet-500/40">Puan durumu: ${st ? '#' + st.rank : '—'}</span>
+                    ${g > 0 && sc ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/15 text-amber-300 border-amber-500/40">Gol krallığı: #${sc.rank}</span>` : ''}
+                    ${(p.mvpCount || 0) > 0 ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/15 text-amber-300 border-amber-500/40"><i class="fa-solid fa-crown mr-1"></i>${p.mvpCount} kez maçın adamı</span>` : ''}
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-2">
+                    ${stat('Maç', mp)}
+                    ${stat('Puan', ptsOf(p), 'text-violet-300')}
+                    ${stat('Maç başı puan', mp ? (ptsOf(p) / mp).toFixed(2) : '—')}
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-2">
+                    ${stat('Galibiyet', p.wins || 0, 'text-emerald-400')}
+                    ${stat('Beraberlik', p.draws || 0, 'text-zinc-300')}
+                    ${stat('Mağlubiyet', p.losses || 0, 'text-rose-400')}
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-5">
+                    ${stat('Gol', g, 'text-amber-400')}
+                    ${stat('Maç başı gol', mp ? (g / mp).toFixed(2) : '—', 'text-amber-300')}
+                    ${stat('MVP', p.mvpCount || 0, 'text-fuchsia-300')}
+                </div>
+                <div class="rounded-2xl border border-white/[0.08] p-3 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-bold text-zinc-300 uppercase tracking-wider">Form</p>
+                        ${f.form === null ? '<span class="text-xs text-zinc-500">Henüz puanlanmış maç yok</span>' : `<span class="px-2 py-0.5 rounded-md text-sm font-black ${scoreTone(f.form)}">${f.form.toFixed(1)}<span class="text-[10px] font-normal opacity-70">/10</span></span>`}
+                    </div>
+                    ${last5.length ? `<div class="flex flex-wrap gap-2">${last5.map(chip).join('')}</div><p class="text-[10px] text-zinc-500 mt-2">Son ${last5.length} maç, en yeni solda.</p>` : ''}
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">Maç maç</p>
+                    ${log.length ? `<div class="space-y-1.5">${log.slice(0, 15).map(x => `
+                        <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs">
+                            <span class="text-zinc-300">${esc(fmtDay(matchTime(x.m)) || x.m.date)}</span>
+                            <span class="font-bold text-white">${x.m.teamAScore} - ${x.m.teamBScore}</span>
+                            <span class="w-4 text-center">${resChip(x.res)}</span>
+                            <span class="w-14 text-right">${x.sc ? `<span class="px-1.5 py-0.5 rounded-md font-black ${scoreTone(x.sc.avg)}">${x.sc.avg.toFixed(1)}</span>` : '<span class="text-zinc-600">—</span>'}</span>
+                        </div>`).join('')}</div>` : '<p class="text-xs text-zinc-500 italic">Henüz kapanmış maçı yok.</p>'}
+                </div>`;
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && cardPlayerId) closePlayerCard(); });
+
         window.onload = function() {
             switchTab('evaluation');
             initFirestoreListeners();
