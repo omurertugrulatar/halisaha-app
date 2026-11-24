@@ -3268,6 +3268,7 @@ function renderGeneratorControls() {
             }
 
             cands.sort((a, b) => a.cost - b.cost);
+            const allCands = cands.slice(); // mevki filtresinden önceki liste (5 seçeneği doldurmak için yedek)
             // Mevki sayıları en eşit olan bölünmeler dışındakiler elenir (kaleci, defans, orta saha, forvet sayıları eşitlenir)
             if (cands.length) { const minImb = Math.min(...cands.map(c => c.imb)); cands = cands.filter(c => c.imb === minImb); }
             if (!cands.length) return [asOption([...teamA], [...teamB])];
@@ -3289,9 +3290,11 @@ function renderGeneratorControls() {
             };
             let picked = pickDiverse(4) || pickDiverse(8) || pickDiverse(16);
             if (!picked) {
-                // Yeterince farklı 5 adil bölünme yoksa, yalnızca en iyiye yakın olanları (adil sınır içindekileri) göster
+                // Yeterince yakın 5 bölünme yoksa en iyiden başlayarak maliyet sırasıyla doldur: her zaman 5 seçenek sunulur (en adil olan 1. sıradadır)
                 picked = [cands[0]];
-                for (const c of cands) { if (picked.length >= SQUAD_OPTION_COUNT) break; if (c.cost > cands[0].cost + 16) break; if (picked.every(o => diff(o, c) >= 1)) picked.push(c); }
+                const fill = list => { for (const c of list) { if (picked.length >= SQUAD_OPTION_COUNT) break; if (!picked.includes(c) && picked.every(o => diff(o, c) >= 1)) picked.push(c); } };
+                fill(cands);     // önce mevki sayıları eşit olanlar
+                fill(allCands);  // yetmezse mevki farkı olanlar (yine maliyet sırasıyla)
             }
 
             const opts = picked.map(c => { const [A, B] = build(c.inA); return asOption(A, B); });
