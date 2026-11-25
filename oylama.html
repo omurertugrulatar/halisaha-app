@@ -1174,6 +1174,12 @@
                 checkVoterEvalStatus();
             }, err => reportErr('eval_log', err));
 
+            // Yöneticinin ortalamadan çıkardığı oylar (okunamazsa sessizce yok sayılır)
+            db.collection('settings').doc('vote_filters').onSnapshot(doc => {
+                excludedVotes = new Set(doc.exists ? (doc.data().excluded || []) : []);
+                if (cardPlayerId) renderPlayerCard();
+            }, () => {});
+
             db.collection('settings').doc('announcement').onSnapshot(doc => {
                 announcement = doc.exists ? doc.data() : null;
                 renderCurrentTab();
@@ -1889,48 +1895,179 @@
             document.getElementById('player-card-modal').classList.add('hidden');
         }
 
+        // ---- Gerçek Rating hesabı (yönetici panelindeki hesapla birebir aynı) ----
+        const ROUND_DECAY = 0.6;
+        const TRIM_MIN_VOTES = 3;
+        const FORM_ALPHA = 0.4;
+        const FORM_WEIGHT_PER_MATCH = 0.15;
+        const FORM_MAX_WEIGHT = 0.5;
+        let excludedVotes = new Set();   // yöneticinin ortalamadan çıkardığı oy verenler (settings/vote_filters)
+        const voteKey = (period, voterId) => `${period || 0}|${voterId}`;
+
+        // Oylar iki biçimde saklanabilir: puanlanan oyuncunun belgesinde {voterId,...} ya da oy verenin belgesinde {targetId,...}
+        let _rvCache = { src: null, list: [] };
+        function allRatingVotes() {
+            if (_rvCache.src === players) return _rvCache.list;
+            const seen = new Set();
+            const list = [];
+            players.forEach(doc => (doc.peerAttributeVotes || []).forEach(v => {
+                if (!v) return;
+                const targetId = v.targetId || doc.id;
+                const voterId = v.targetId ? doc.id : v.voterId;
+                if (!voterId || voterId === targetId) return;
+                const key = [targetId, voterId, v.period || 0].join('|');
+                if (seen.has(key)) return;
+                seen.add(key);
+                list.push({ ...v, targetId, voterId });
+            }));
+            _rvCache = { src: players, list };
+            return list;
+        }
+
+        function getVoteStats(player) {
+            const votes = allRatingVotes().filter(v => v.targetId === player.id && ATTR_KEYS.some(k => typeof v[k] === 'number') && !excludedVotes.has(voteKey(v.period, v.voterId)));
+            if (votes.length === 0) {
+                const legacy = (player.peerRatings || []).filter(n => typeof n === 'number');
+                if (legacy.length) {
+                    const avg = Math.round(legacy.reduce((a, b) => a + b, 0) / legacy.length);
+                    const attrs = {};
+                    ATTR_KEYS.forEach(k => { attrs[k] = avg; });
+                    return { count: legacy.length, overall: avg, attrs, rounds: 0, scope: 'legacy', trimmed: false };
+                }
+                return { count: 0, overall: null, attrs: null, rounds: 0, scope: 'none', trimmed: false };
+            }
+            const rounds = [...new Set(votes.map(v => v.period || 0))].sort((a, b) => b - a);
+            let trimmedAny = false;
+            const attrs = {};
+            ATTR_KEYS.forEach(k => {
+                let sum = 0, wsum = 0;
+                rounds.forEach((r, rank) => {
+                    let vals = votes.filter(v => (v.period || 0) === r && typeof v[k] === 'number').map(v => v[k]).sort((a, b) => a - b);
+                    if (vals.length === 0) return;
+                    const n = vals.length;
+                    if (n >= TRIM_MIN_VOTES) { vals = vals.slice(1, -1); trimmedAny = true; }
+                    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                    const w = Math.pow(ROUND_DECAY, rank) * Math.min(1, n / TRIM_MIN_VOTES);
+                    sum += mean * w;
+                    wsum += w;
+                });
+                attrs[k] = wsum ? Math.round(sum / wsum) : 70;
+            });
+            const overall = Math.round(ATTR_KEYS.reduce((s, k) => s + attrs[k], 0) / ATTR_KEYS.length);
+            return { count: votes.length, overall, attrs, rounds: rounds.length, scope: 'rounds', trimmed: trimmedAny };
+        }
+
+        function getFormInfo(playerId) {
+            let ema = null, n = 0;
+            for (let i = matches.length - 1; i >= 0; i--) { // eskiden yeniye
+                const s = matches[i].playerScores && matches[i].playerScores[playerId];
+                if (s && typeof s.avg === 'number') {
+                    const v = s.avg * 10;
+                    ema = ema === null ? v : FORM_ALPHA * v + (1 - FORM_ALPHA) * ema;
+                    n++;
+                }
+            }
+            return { form: ema === null ? null : Math.round(ema), n };
+        }
+
+        function calculateTrueRating(player) {
+            const vs = getVoteStats(player);
+            const voteAvg = vs.overall !== null ? vs.overall : 70;
+            const fi = getFormInfo(player.id);
+            const formWeight = fi.form === null ? 0 : Math.min(FORM_MAX_WEIGHT, fi.n * FORM_WEIGHT_PER_MATCH);
+            const base = voteAvg * (1 - formWeight) + (fi.form === null ? 0 : fi.form * formWeight);
+            const goalBonus = Math.min((player.goals || 0) * 0.5, 5);
+            const winBonus = Math.min((player.wins || 0) * 0.4, 4);
+            const mvpBonus = (player.mvpCount || 0) * 1.5;
+            const adj = Number.isFinite(player.ratingAdjust) ? player.ratingAdjust : 0;
+            const finalRating = Math.max(1, Math.min(Math.round(base + goalBonus + winBonus + mvpBonus + adj), 99));
+            return { trueRating: finalRating, voteAvg, form: fi.form, formMatches: fi.n, voteCount: vs.count };
+        }
+
+        // Radar grafiği (sayfa temasına uygun mor tonlarda)
+        function buildRadarSVG(attrs, attrMeta) {
+            const meta = attrMeta || getAttrMeta('default');
+            const size = 280, center = size / 2, maxRadius = 90, labelRadius = 115;
+            const levels = [20, 40, 60, 80, 100];
+            const angleStep = (Math.PI * 2) / meta.length;
+            const pointAt = (index, value, radius) => {
+                const angle = -Math.PI / 2 + index * angleStep;
+                const r = (value / 100) * radius;
+                return { x: center + r * Math.cos(angle), y: center + r * Math.sin(angle) };
+            };
+            let gridSVG = '';
+            levels.forEach(lvl => {
+                const pts = meta.map((_, i) => { const pt = pointAt(i, lvl, maxRadius); return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`; }).join(' ');
+                gridSVG += `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+            });
+            let axisSVG = '', labelSVG = '';
+            meta.forEach((a, i) => {
+                const outer = pointAt(i, 100, maxRadius);
+                axisSVG += `<line x1="${center}" y1="${center}" x2="${outer.x.toFixed(1)}" y2="${outer.y.toFixed(1)}" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>`;
+                const lp = pointAt(i, 100, labelRadius);
+                let anchor = 'middle';
+                if (lp.x < center - 8) anchor = 'end'; else if (lp.x > center + 8) anchor = 'start';
+                labelSVG += `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-size="11" font-weight="700" fill="#a1a1aa">${a.label}</text>`;
+            });
+            const dataPts = meta.map((a, i) => pointAt(i, Math.max(1, Math.min(99, attrs[a.key] ?? 70)), maxRadius));
+            const poly = dataPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+            const dots = dataPts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#a78bfa" stroke="#0a0a0a" stroke-width="1.5"/>`).join('');
+            return `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:300px">${gridSVG}${axisSVG}<polygon points="${poly}" fill="rgba(139,92,246,0.35)" stroke="#8b5cf6" stroke-width="2"/>${dots}${labelSVG}</svg>`;
+        }
+
         function renderPlayerCard() {
             const p = players.find(x => x.id === cardPlayerId);
             if (!p) { closePlayerCard(); return; }
             const st = standingsList().find(r => r.p.id === p.id);
             const sc = scorersList('total').find(r => r.p.id === p.id);
+            const tr = calculateTrueRating(p);
+            const vs = getVoteStats(p);
+            const attrs = vs.attrs || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
+            const meta = getAttrMeta(p.position);
             const f = formOf(p.id);
             const mp = p.matches || 0, g = p.goals || 0;
             const log = closedMatches().map(m => ({ m, sc: m.playerScores[p.id] || null, res: resultFor(m, p.id) })).filter(x => x.sc || x.res);
-            const stat = (label, value, cls = 'text-white') => `<div class="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-2 text-center"><p class="text-[10px] text-zinc-400">${label}</p><p class="text-base font-black ${cls}">${value}</p></div>`;
+            const stat = (label, value, cls = 'text-white', box = 'bg-white/[0.04] border-white/[0.06]', lbl = 'text-zinc-400') => `<div class="rounded-2xl border ${box} p-2 text-center"><p class="text-[10px] ${lbl}">${label}</p><p class="text-base font-black ${cls}">${value}</p></div>`;
             const chip = x => x.sc
                 ? `<div class="text-center"><div class="rounded-md px-1.5 py-1 text-xs font-black min-w-[40px] ${scoreTone(x.sc.avg)}">${x.sc.avg.toFixed(1)}</div><div class="leading-none mt-0.5">${resChip(x.res)}</div></div>`
                 : '';
             const last5 = log.filter(x => x.sc).slice(0, 5);
             const pos2 = p.secondaryPosition && p.secondaryPosition !== p.position && p.position !== 'Kaleci' ? ' / ' + esc(p.secondaryPosition) : '';
+            const note = vs.count > 0
+                ? `${vs.count} oyun ağırlıklı ortalaması` + (vs.rounds > 1 ? ` (${vs.rounds} tur)` : '') + (vs.trimmed ? ' • uç oylar çıkarıldı' : '') + (tr.form !== null ? ` • Maç formu: ${(tr.form / 10).toFixed(1)}/10 (${tr.formMatches} maç)` : '')
+                : 'Henüz oylama yok — varsayılan değerler gösteriliyor';
 
             document.getElementById('player-card-body').innerHTML = `
-                <div class="flex items-center gap-4 mb-4 pr-6">
+                <div class="flex items-center space-x-4 mb-5 pr-6">
                     <div class="w-14 h-14 shrink-0 rounded-full bg-gradient-to-tr from-violet-600 to-fuchsia-500 text-white font-black flex items-center justify-center text-xl shadow">${esc(p.name.charAt(0))}</div>
                     <div class="min-w-0">
                         <h3 class="text-lg font-bold text-white truncate">${esc(p.name)}</h3>
                         <p class="text-xs text-violet-300 font-semibold">${esc(p.position)}${pos2}${Number.isFinite(p.age) ? ' • ' + p.age + ' yaş' : ''}</p>
                     </div>
+                    <div class="ml-auto text-right shrink-0">
+                        <p class="text-[10px] text-zinc-400 uppercase tracking-wider">Gerçek Rating</p>
+                        <p class="text-2xl font-black text-violet-300">${tr.trueRating}</p>
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-1.5 mb-4">
-                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-violet-500/15 text-violet-300 border-violet-500/40">Puan durumu: ${st ? '#' + st.rank : '—'}</span>
-                    ${g > 0 && sc ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/15 text-amber-300 border-amber-500/40">Gol krallığı: #${sc.rank}</span>` : ''}
-                    ${(p.mvpCount || 0) > 0 ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/15 text-amber-300 border-amber-500/40"><i class="fa-solid fa-crown mr-1"></i>${p.mvpCount} kez maçın adamı</span>` : ''}
-                </div>
-                <div class="grid grid-cols-3 gap-2 mb-2">
+                <div class="grid grid-cols-3 gap-2 mb-2.5">
                     ${stat('Maç', mp)}
-                    ${stat('Puan', ptsOf(p), 'text-violet-300')}
-                    ${stat('Maç başı puan', mp ? (ptsOf(p) / mp).toFixed(2) : '—')}
-                </div>
-                <div class="grid grid-cols-3 gap-2 mb-2">
-                    ${stat('Galibiyet', p.wins || 0, 'text-emerald-400')}
-                    ${stat('Beraberlik', p.draws || 0, 'text-zinc-300')}
-                    ${stat('Mağlubiyet', p.losses || 0, 'text-rose-400')}
+                    ${stat('Gol', g, 'text-amber-400')}
+                    ${stat('MVP', p.mvpCount || 0, 'text-fuchsia-300')}
                 </div>
                 <div class="grid grid-cols-3 gap-2 mb-5">
-                    ${stat('Gol', g, 'text-amber-400')}
-                    ${stat('Maç başı gol', mp ? (g / mp).toFixed(2) : '—', 'text-amber-300')}
-                    ${stat('MVP', p.mvpCount || 0, 'text-fuchsia-300')}
+                    ${stat('Galibiyet', p.wins || 0, 'text-emerald-400', 'bg-emerald-500/10 border-emerald-500/30', 'text-emerald-300')}
+                    ${stat('Beraberlik', p.draws || 0, 'text-zinc-300', 'bg-zinc-500/10 border-zinc-500/30', 'text-zinc-300')}
+                    ${stat('Mağlubiyet', p.losses || 0, 'text-rose-400', 'bg-rose-500/10 border-rose-500/30', 'text-rose-300')}
+                </div>
+                <div class="flex justify-center py-1">${buildRadarSVG(attrs, meta)}</div>
+                <p class="text-center text-[10px] text-zinc-500 -mt-1 mb-2">${note}</p>
+                <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-2 mb-5">
+                    ${meta.map(a => `<div class="flex items-center justify-between bg-white/[0.03] rounded-lg px-2.5 py-1.5 border border-white/[0.06] text-xs"><span class="text-zinc-400 font-semibold">${a.fullLabel}</span><span class="text-violet-300 font-bold">${attrs[a.key] ?? '-'}</span></div>`).join('')}
+                </div>
+                <div class="flex flex-wrap gap-1.5 mb-3">
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-violet-500/15 text-violet-300 border-violet-500/40">Puan durumu: ${st ? '#' + st.rank : '—'} • ${ptsOf(p)} puan</span>
+                    ${g > 0 && sc ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/15 text-amber-300 border-amber-500/40">Gol krallığı: #${sc.rank} • ${mp ? (g / mp).toFixed(2) : '—'} gol/maç</span>` : ''}
+                    ${mp ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-white/5 text-zinc-300 border-white/[0.08]">Maç başı ${(ptsOf(p) / mp).toFixed(2)} puan</span>` : ''}
                 </div>
                 <div class="rounded-2xl border border-white/[0.08] p-3 mb-4">
                     <div class="flex items-center justify-between mb-2">
