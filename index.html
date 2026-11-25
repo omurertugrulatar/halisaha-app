@@ -784,10 +784,10 @@
             <div class="glass-panel p-6 rounded-2xl border border-emerald-500/30 space-y-4">
                 <div>
                     <h3 class="text-base font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-layer-group text-emerald-400"></i> Kadro Seçenekleri</h3>
-                    <p class="text-xs text-slate-400 mt-1">Aynı oyunculardan kurulan 3 farklı dengeli dağılım. Birini seçince aşağıdaki sahada görünür ve maç kaydında kullanılır. Maç kaydedilince seçim sıfırlanır.</p>
+                    <p class="text-xs text-slate-400 mt-1">Aynı oyunculardan kurulan 5 farklı dengeli dağılım (1. seçenek en dengeli olandır). Birini seçince aşağıdaki sahada görünür ve maç kaydında kullanılır. Maç kaydedilince seçim sıfırlanır.</p>
                 </div>
                 <p id="squad-choice-status" class="text-xs font-semibold min-h-[1rem]"></p>
-                <div id="squad-options" class="grid grid-cols-1 xl:grid-cols-3 gap-4"></div>
+                <div id="squad-options" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
             </div>
 
             <!-- Pitch Visualizer -->
@@ -3234,10 +3234,12 @@ function renderGeneratorControls() {
                 }
             } else {
                 // Çok kalabalık kadro: farklı başlangıçlardan en iyi takas (tepe tırmanma)
-                const seen = new Set();
+                const visited = new Map(); // gezilen tüm bölünmeler: anahtar -> {cost, imb}
+                const keyOf = inA => inA.map(v => v ? '1' : '0').join('');
                 const climb = (inA) => {
                     let [A, B] = build(inA);
                     let cur = cost(A, B);
+                    visited.set(keyOf(inA), { cost: cur, imb: lastImb });
                     for (let pass = 0; pass < 60; pass++) {
                         let bi = -1, bj = -1, bc = cur - 1e-9;
                         for (let i = 0; i < m; i++) {
@@ -3248,15 +3250,16 @@ function renderGeneratorControls() {
                                 const [A2, B2] = build(inA);
                                 const c = cost(A2, B2);
                                 inA[i] = true; inA[j] = false;
+                                inA[i] = false; inA[j] = true; const kk2 = keyOf(inA); inA[i] = true; inA[j] = false;
+                                if (!visited.has(kk2)) visited.set(kk2, { cost: c, imb: lastImb });
                                 if (c < bc) { bc = c; bi = i; bj = j; }
                             }
                         }
                         if (bi < 0) break;
                         inA[bi] = false; inA[bj] = true; cur = bc;
                     }
-                    const key = inA.map(v => v ? 1 : 0).join('');
                     [A, B] = build(inA); cost(A, B); // lastImb'i son kadro için güncelle
-                    if (!seen.has(key)) { seen.add(key); cands.push({ cost: cur, imb: lastImb, inA: inA.slice() }); }
+                    visited.set(keyOf(inA), { cost: cur, imb: lastImb });
                 };
                 const k0 = Math.min(m, Math.max(0, sizesA[0] - fixedA.length));
                 for (let t = 0; t < 40; t++) {
@@ -3265,6 +3268,8 @@ function renderGeneratorControls() {
                     order.slice(0, k0).forEach(i => { inA[i] = true; });
                     climb(inA);
                 }
+                cands = [...visited.entries()].sort((a, b) => a[1].cost - b[1].cost).slice(0, 600)
+                    .map(([key, v]) => ({ cost: v.cost, imb: v.imb, inA: key.split('').map(ch => ch === '1') }));
             }
 
             cands.sort((a, b) => a.cost - b.cost);
@@ -3406,8 +3411,12 @@ function renderGeneratorControls() {
             const chosenB = currentTeamB.length ? key(currentTeamB) : null;
             const avg = t => t.length ? t.reduce((s, p) => s + calculateTrueRating(p).trueRating, 0) / t.length : 0;
             let selectedIdx = -1;
+            const nSel = players.filter(p => p.selected).length;
+            const countNote = squadOptions.length >= SQUAD_OPTION_COUNT
+                ? `<p class="text-[11px] text-slate-500 col-span-full">${squadOptions.length} seçenek gösteriliyor (seçili oyuncu: ${nSel}).</p>`
+                : `<p class="text-[11px] text-amber-400 col-span-full">Yalnızca ${squadOptions.length} seçenek üretilebildi (seçili oyuncu: ${nSel}). Haftalık Kadro'da 2 kaleci + 12 saha oyuncusu seçili olmalı.</p>`;
 
-            el.innerHTML = squadOptions.map((o, i) => {
+            el.innerHTML = countNote + squadOptions.map((o, i) => {
                 const asg = getAssignedPositions(o.A, o.B);
                 const sel = chosenA !== null && key(o.A) === chosenA && key(o.B) === chosenB;
                 if (sel) selectedIdx = i;
