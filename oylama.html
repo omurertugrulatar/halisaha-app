@@ -107,6 +107,13 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { scrollbar-width: none; }
 
+        .pitch-bg { background: linear-gradient(to bottom, #065f46, #047857); position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.6); }
+        .pitch-lines { position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 2px solid rgba(255, 255, 255, 0.5); margin: 10px; pointer-events: none; }
+        .pitch-center-circle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90px; height: 90px; border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%; }
+        .pitch-center-line { position: absolute; top: 50%; left: 10px; right: 10px; height: 2px; background-color: rgba(255, 255, 255, 0.5); }
+        .pitch-box-top { position: absolute; top: 10px; left: 25%; right: 25%; height: 55px; border: 2px solid rgba(255, 255, 255, 0.5); border-top: none; }
+        .pitch-box-bottom { position: absolute; bottom: 10px; left: 25%; right: 25%; height: 55px; border: 2px solid rgba(255, 255, 255, 0.5); border-bottom: none; }
+
         /* Smooth transitions */
         * { transition: border-color 0.2s ease, background-color 0.2s ease; }
     </style>
@@ -1728,6 +1735,57 @@
         const medal = rank => rank === 1 ? 'text-amber-300' : rank === 2 ? 'text-zinc-300' : rank === 3 ? 'text-orange-400' : 'text-zinc-500';
 
         // ---- Kadro duyurusu ----
+        // Admin panelindeki oyuncu kartı (FUT tarzı); mevki olarak yalnızca oyuncunun asıl mevkisi yazılır
+        function futCard(x, team) {
+            const p = players.find(q => q.id === x.id);
+            const name = p ? p.name : x.name;
+            const position = p ? p.position : x.position;
+            const tr = p ? calculateTrueRating(p).trueRating : 70;
+            const vs = p ? getVoteStats(p) : { attrs: null };
+            const eff = vs.attrs || {};
+            const baseAvg = Math.round(((eff.pace ?? 70) + (eff.shooting ?? 70) + (eff.passing ?? 70) + (eff.dribbling ?? 70) + (eff.defending ?? 70) + (eff.physical ?? 70)) / 6);
+            const statBoost = tr - baseAvg;
+            const getStat = val => Math.max(1, Math.min(99, (val ?? 70) + statBoost));
+            const isWhite = team !== 'red';
+            const baseColors = isWhite ? 'from-slate-200 via-slate-400 to-slate-800 border-slate-300' : 'from-red-600 via-red-800 to-slate-900 border-red-500';
+            const attrText = isWhite ? 'text-slate-400' : 'text-red-200';
+            const posStr = esc(position === 'Kaleci' ? 'KAL' : String(position || '').substring(0, 3).toUpperCase());
+            const face = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=0f172a`;
+            return `
+            <div class="relative mx-auto w-[85px] sm:w-[100px] aspect-[2/3.1] bg-gradient-to-br ${baseColors} rounded-t-xl rounded-b-[2rem] p-[2px] shadow-xl transition-transform hover:scale-110 cursor-pointer border-b-4 border-t-2" onclick="openPlayerCard('${esc(x.id)}')">
+                <div class="w-full h-full bg-slate-900 rounded-t-xl rounded-b-[1.9rem] flex flex-col relative overflow-hidden bg-cover bg-center" style="background-image: radial-gradient(circle at top, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.6) 80%);">
+                    <div class="flex-1 flex pt-1 px-1">
+                        <div class="flex flex-col items-center justify-start w-1/3">
+                            <span class="text-[16px] sm:text-[20px] font-black text-white leading-none drop-shadow-md">${tr}</span>
+                            <span class="text-[8px] sm:text-[10px] font-extrabold ${attrText} leading-none mt-0.5">${posStr}</span>
+                            <img src="https://flagcdn.com/w20/tr.png" class="w-3.5 sm:w-4 mt-1 shadow-[0_1px_2px_rgba(0,0,0,0.5)] rounded-[1px]" alt="TR">
+                        </div>
+                        <div class="w-2/3 flex items-start justify-center pt-1">
+                            <img src="${face}" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 ${isWhite ? 'border-slate-300' : 'border-red-400'} object-cover shadow-inner" alt="${esc(name)}">
+                        </div>
+                    </div>
+                    <div class="w-[90%] mx-auto h-[1px] ${isWhite ? 'bg-slate-400/50' : 'bg-red-500/50'}"></div>
+                    <div class="text-center pt-0.5 pb-0.5">
+                        <span class="text-[9px] sm:text-[11px] font-extrabold text-white truncate w-[95%] inline-block uppercase tracking-tight">${esc(name)}</span>
+                    </div>
+                    <div class="w-[90%] mx-auto h-[1px] ${isWhite ? 'bg-slate-400/50' : 'bg-red-500/50'}"></div>
+                    <div class="flex justify-between px-1.5 py-1 text-[7px] sm:text-[8px] font-bold">
+                        <div class="flex flex-col gap-[1px]">
+                            <div class="flex gap-1"><span class="text-white w-3 text-right">${getStat(eff.pace)}</span><span class="${attrText}">HIZ</span></div>
+                            <div class="flex gap-1"><span class="text-white w-3 text-right">${getStat(eff.shooting)}</span><span class="${attrText}">ŞUT</span></div>
+                            <div class="flex gap-1"><span class="text-white w-3 text-right">${getStat(eff.passing)}</span><span class="${attrText}">PAS</span></div>
+                        </div>
+                        <div class="w-[1px] ${isWhite ? 'bg-slate-400/30' : 'bg-red-500/30'}"></div>
+                        <div class="flex flex-col gap-[1px]">
+                            <div class="flex gap-1"><span class="text-white w-3 text-right">${getStat(eff.dribbling)}</span><span class="${attrText}">DRI</span></div>
+                            <div class="flex gap-1"><span class="text-white w-3 text-right">${getStat(eff.defending)}</span><span class="${attrText}">DEF</span></div>
+                            <div class="flex gap-1"><span class="text-white w-3 text-right">${getStat(eff.physical)}</span><span class="${attrText}">FİZ</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
         function renderAnnouncementTab() {
             const box = document.getElementById('ann-body');
             if (!box) return;
@@ -1736,32 +1794,36 @@
                 return;
             }
             const when = announcement.publishedAt ? new Date(announcement.publishedAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
-            const sortByPos = (a, b) => POS_ORDER.indexOf(a.position) - POS_ORDER.indexOf(b.position) || a.name.localeCompare(b.name, 'tr');
-            const row = x => `<div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                    ${nameBtn(x.id, x.name, 'text-xs text-white truncate')}
-                    <span class="shrink-0 text-[10px] text-zinc-400">${esc(x.position)}${x.secondary ? ' <span class="text-amber-400" title="İkincil mevkisinde oynayacak">(ikincil)</span>' : ''}</span>
-                </div>`;
-            const panel = (title, color, border, list) => `<div class="rounded-2xl border ${border} bg-black/30 p-3 space-y-1.5">
-                    <div class="flex items-center justify-between px-1 pb-1"><span class="font-bold text-sm ${color}">${title}</span><span class="text-[11px] text-zinc-400">${list.length} oyuncu</span></div>
-                    ${[...list].sort(sortByPos).map(row).join('')}
-                </div>`;
+            const posRank = x => { const p = players.find(q => q.id === x.id); return POS_ORDER.indexOf(p ? p.position : x.position); };
+            const sortCards = list => [...list].sort((a, b) => posRank(a) - posRank(b) || a.name.localeCompare(b.name, 'tr'));
 
             let html = `<div class="rounded-2xl border border-violet-500/30 bg-violet-500/10 p-4">
                     <p class="text-[10px] font-bold tracking-widest text-violet-300 uppercase">Yönetici duyurusu${when ? ' • ' + esc(when) : ''}</p>
                     <p class="text-sm text-zinc-100 mt-1 whitespace-pre-line">${esc(announcement.message || 'Bu haftanın kadrosu açıklandı!')}</p>
                 </div>`;
+
             if (announcement.teams && (announcement.teams.white || []).length && (announcement.teams.red || []).length) {
-                html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    ${panel('BEYAZ TAKIM', 'text-zinc-100', 'border-white/20', announcement.teams.white)}
-                    ${panel('KIRMIZI TAKIM', 'text-rose-400', 'border-rose-500/30', announcement.teams.red)}
-                </div>`;
+                html += `<div class="flex items-center justify-between px-1">
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-200"></span><h3 class="font-bold text-sm text-slate-200">BEYAZ TAKIM</h3><span class="text-[11px] text-zinc-500">${announcement.teams.white.length} oyuncu</span></div>
+                        <div class="flex items-center gap-2"><span class="text-[11px] text-zinc-500">${announcement.teams.red.length} oyuncu</span><h3 class="font-bold text-sm text-red-400">KIRMIZI TAKIM</h3><span class="w-3 h-3 rounded-full bg-red-500"></span></div>
+                    </div>
+                    <div class="pitch-bg rounded-xl border-2 border-emerald-600/50 min-h-[440px] p-4 flex flex-col justify-between relative overflow-hidden">
+                        <div class="pitch-lines"></div>
+                        <div class="pitch-center-circle"></div>
+                        <div class="pitch-center-line"></div>
+                        <div class="pitch-box-top"></div>
+                        <div class="pitch-box-bottom"></div>
+                        <div class="relative z-10 grid grid-cols-3 sm:grid-cols-4 gap-2 text-center my-2">${sortCards(announcement.teams.white).map(x => futCard(x, 'white')).join('')}</div>
+                        <div class="relative z-10 text-center my-1">
+                            <span class="bg-slate-900/80 text-emerald-400 text-[10px] uppercase tracking-widest px-3 py-0.5 rounded-full border border-emerald-500/30 font-bold">SANTRAL ÇİZGİSİ</span>
+                        </div>
+                        <div class="relative z-10 grid grid-cols-3 sm:grid-cols-4 gap-2 text-center my-2">${sortCards(announcement.teams.red).map(x => futCard(x, 'red')).join('')}</div>
+                    </div>
+                    <p class="text-[10px] text-zinc-500 text-center">Bir karta dokunarak oyuncunun profilini açabilirsiniz.</p>`;
             } else {
                 const squad = announcement.squad || [];
-                html += POS_ORDER.map(pos => {
-                    const g = squad.filter(x => x.position === pos);
-                    return g.length ? `<div class="space-y-1.5"><h3 class="text-xs font-bold text-zinc-300 uppercase tracking-wider">${pos} (${g.length})</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${g.sort(sortByPos).map(row).join('')}</div></div>` : '';
-                }).join('');
-                html += `<p class="text-[11px] text-zinc-500">Takımlar henüz açıklanmadı.</p>`;
+                html += `<div class="grid grid-cols-3 sm:grid-cols-4 gap-3">${sortCards(squad).map(x => futCard(x, 'white')).join('')}</div>
+                    <p class="text-[11px] text-zinc-500">Takımlar henüz açıklanmadı. Bir karta dokunarak oyuncunun profilini açabilirsiniz.</p>`;
             }
             box.innerHTML = html;
         }
