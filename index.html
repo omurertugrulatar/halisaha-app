@@ -961,6 +961,36 @@
     </footer>
 
     <!-- Player Detail Modal (Radar Chart) -->
+    <!-- Maç düzenleme (skor ve goller) -->
+    <div id="match-edit-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closeMatchEdit()"></div>
+        <div class="relative glass-panel w-full max-w-lg rounded-2xl border border-slate-700 p-6 max-h-[90vh] overflow-y-auto">
+            <button onclick="closeMatchEdit()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-black text-white flex items-center gap-2 pr-6"><i class="fa-solid fa-pen text-amber-400"></i> Maçı Düzenle</h3>
+            <p id="me-date" class="text-xs text-slate-400 mt-1"></p>
+            <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 my-4">
+                <div class="flex items-center justify-center space-x-6">
+                    <div class="text-center">
+                        <span class="block text-xs font-bold text-slate-300 mb-2">Beyaz</span>
+                        <input type="number" id="me-score-a" min="0" value="0" oninput="updateMatchEditNote()" class="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                    <span class="text-2xl font-black text-slate-600">-</span>
+                    <div class="text-center">
+                        <span class="block text-xs font-bold text-red-400 mb-2">Kırmızı</span>
+                        <input type="number" id="me-score-b" min="0" value="0" oninput="updateMatchEditNote()" class="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl text-2xl font-black text-white py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+                    </div>
+                </div>
+            </div>
+            <div id="me-rows" class="space-y-3"></div>
+            <p id="me-note" class="text-[11px] mt-3 min-h-[1rem]"></p>
+            <p class="text-[10px] text-slate-500 mt-1">Kaydedince oyuncuların galibiyet / beraberlik / mağlubiyet ve gol sayıları farka göre otomatik düzeltilir. Maç puanları ve MVP etkilenmez.</p>
+            <div class="pt-4 flex justify-end gap-2">
+                <button onclick="closeMatchEdit()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2.5 rounded-xl text-xs">Vazgeç</button>
+                <button id="me-save-btn" onclick="saveMatchEdit()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 disabled:opacity-40"><i class="fa-solid fa-floppy-disk"></i> Değişiklikleri Kaydet</button>
+            </div>
+        </div>
+    </div>
+
     <div id="player-detail-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closePlayerDetail()"></div>
         <div class="relative glass-panel w-full max-w-lg rounded-2xl border border-slate-700 p-6 max-h-[90vh] overflow-y-auto">
@@ -1851,6 +1881,9 @@ function getVoteStats(player) {
                                 <span class="text-[10px] text-amber-400 font-bold block">MVP</span>
                                 <span class="font-bold text-slate-200">${m.finalized === false ? '<span class="text-slate-400 italic font-semibold">Puanlama sürüyor…</span>' : esc(m.mvp)}</span>
                             </div>
+                            <button onclick="openMatchEdit('${m.id}')" class="p-2 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors" title="Skoru ve golleri düzenle">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
                             <button onclick="deleteMatch('${m.id}')" class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Maç kaydını sil">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
@@ -2815,6 +2848,146 @@ function renderRatingSubmissions() {
         // -------------------------------------------------------------
         // MAÇ KAYDI SİLME (yalnızca yönetici): oyuncu istatistiklerini geri alır ve maç puanlarını siler
         // -------------------------------------------------------------
+        // -------------------------------------------------------------
+        // MAÇ DÜZENLEME (skor ve goller): oyuncu istatistikleri farka göre düzeltilir
+        // -------------------------------------------------------------
+        let editingMatchId = null;
+        let editOldGoals = {};
+        let savingEdit = false;
+
+        // Maçın oyuncu bazında gol kaydı: yeni kayıtlarda kimlikle, eski kayıtlarda (adı tekilse) isimle
+        function matchGoalsMap(m, parts) {
+            const out = {};
+            const names = new Map();
+            parts.forEach(p => names.set(p.name, (names.get(p.name) || 0) + 1));
+            parts.forEach(p => {
+                if (m.goalsById) out[p.id] = m.goalsById[p.id] || 0;
+                else if (names.get(p.name) === 1) out[p.id] = (m.scorers || []).filter(s => s.name === p.name).reduce((t, x) => t + (x.goals || 0), 0);
+                else out[p.id] = 0;
+            });
+            return out;
+        }
+
+        function openMatchEdit(id) {
+            const m = matches.find(x => x.id === id);
+            if (!m) { showToast("Maç bulunamadı."); return; }
+            const ids = getMatchParticipantIds(m);
+            if (!ids.length) { showToast("Bu eski maçın kadro bilgisi kayıtlı değil; oyuncu istatistikleri güncellenemeyeceği için düzenlenemez."); return; }
+            editingMatchId = id;
+            const sideA = new Set(m.teamAIds || []);
+            const parts = players.filter(p => ids.includes(p.id));
+            editOldGoals = matchGoalsMap(m, parts);
+            const missing = ids.length - parts.length;
+
+            document.getElementById('me-date').textContent = `${m.date} • kayıtlı skor: Beyaz ${m.teamAScore} - ${m.teamBScore} Kırmızı`;
+            document.getElementById('me-score-a').value = m.teamAScore || 0;
+            document.getElementById('me-score-b').value = m.teamBScore || 0;
+            const section = (title, color, list) => `
+                <div class="space-y-2">
+                    <h4 class="text-xs font-black ${color} uppercase tracking-wider">${title}</h4>
+                    ${list.map(p => `
+                        <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                            <span class="font-bold text-white">${esc(p.name)} <span class="text-slate-400 font-normal">(${esc(p.position)})</span></span>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-slate-400 text-[10px]">Gol:</span>
+                                <input type="number" min="0" value="${editOldGoals[p.id] || 0}" data-player-id="${p.id}" oninput="updateMatchEditNote()" class="me-goal-input w-12 bg-slate-800 border border-slate-700 rounded-lg p-1 text-center font-bold text-amber-400">
+                            </div>
+                        </div>`).join('') || '<p class="text-xs text-slate-500 italic">Oyuncu bulunamadı.</p>'}
+                </div>`;
+            document.getElementById('me-rows').innerHTML =
+                section('Beyaz Takım', 'text-slate-300', parts.filter(p => sideA.has(p.id))) +
+                section('Kırmızı Takım', 'text-red-400', parts.filter(p => !sideA.has(p.id))) +
+                (missing > 0 ? `<p class="text-[11px] text-amber-400">${missing} oyuncu sonradan silinmiş; onların kayıtları düzenlenemez.</p>` : '');
+            updateMatchEditNote();
+            document.getElementById('match-edit-modal').classList.remove('hidden');
+        }
+
+        function closeMatchEdit() {
+            editingMatchId = null;
+            document.getElementById('match-edit-modal').classList.add('hidden');
+        }
+
+        function updateMatchEditNote() {
+            const a = parseInt(document.getElementById('me-score-a').value) || 0;
+            const b = parseInt(document.getElementById('me-score-b').value) || 0;
+            let ga = 0, gb = 0;
+            const m = matches.find(x => x.id === editingMatchId);
+            const sideA = new Set(m ? (m.teamAIds || []) : []);
+            document.querySelectorAll('.me-goal-input').forEach(i => {
+                const g = Math.max(0, parseInt(i.value) || 0);
+                if (sideA.has(i.dataset.playerId)) ga += g; else gb += g;
+            });
+            const el = document.getElementById('me-note');
+            if (ga === a && gb === b) {
+                el.className = 'text-[11px] mt-3 min-h-[1rem] text-emerald-400';
+                el.textContent = `Girilen goller skorla uyumlu (Beyaz ${ga}, Kırmızı ${gb}).`;
+            } else {
+                el.className = 'text-[11px] mt-3 min-h-[1rem] text-amber-400';
+                el.textContent = `Girilen goller: Beyaz ${ga}, Kırmızı ${gb}; skor ${a}-${b}. (Kendi kalesine atılan gol gibi durumlarda fark olabilir; yine de kaydedebilirsiniz.)`;
+            }
+        }
+
+        async function saveMatchEdit() {
+            if (savingEdit) return;
+            const m = matches.find(x => x.id === editingMatchId);
+            if (!m) { showToast("Maç bulunamadı."); return; }
+            const scoreA = Math.max(0, parseInt(document.getElementById('me-score-a').value) || 0);
+            const scoreB = Math.max(0, parseInt(document.getElementById('me-score-b').value) || 0);
+            const newResult = scoreA > scoreB ? 'A' : (scoreB > scoreA ? 'B' : 'DRAW');
+            const oldResult = m.result || (m.teamAScore > m.teamBScore ? 'A' : (m.teamBScore > m.teamAScore ? 'B' : 'DRAW'));
+
+            const newGoals = {};
+            document.querySelectorAll('.me-goal-input').forEach(i => { newGoals[i.dataset.playerId] = Math.max(0, parseInt(i.value) || 0); });
+
+            const inc = firebase.firestore.FieldValue.increment;
+            const sideA = new Set(m.teamAIds || []);
+            const outcomeOf = (res, side) => res === 'DRAW' ? 'draws' : (res === side ? 'wins' : 'losses');
+            const ops = [];
+            let changed = 0;
+
+            Object.keys(newGoals).forEach(pid => {
+                const p = players.find(x => x.id === pid);
+                if (!p) return;
+                const side = sideA.has(pid) ? 'A' : 'B';
+                const upd = {};
+                const oo = outcomeOf(oldResult, side), no = outcomeOf(newResult, side);
+                if (oo !== no) { upd[oo] = inc(-1); upd[no] = inc(1); }
+                const dg = (newGoals[pid] || 0) - (editOldGoals[pid] || 0);
+                if (dg !== 0) upd.goals = inc(dg);
+                if (Object.keys(upd).length) { ops.push(b => b.update(db.collection('players').doc(pid), upd)); changed++; }
+            });
+
+            // Kaydın gol listesi: düzenlenen oyuncular güncellenir, düzenlenemeyen (silinmiş) oyuncuların eski kaydı korunur
+            const parts = players.filter(pl => Object.prototype.hasOwnProperty.call(newGoals, pl.id));
+            const keptGoals = {};
+            if (m.goalsById) Object.keys(m.goalsById).forEach(pid => { if (!(pid in newGoals) && m.goalsById[pid] > 0) keptGoals[pid] = m.goalsById[pid]; });
+            const goalsById = { ...keptGoals };
+            parts.forEach(pl => { if (newGoals[pl.id] > 0) goalsById[pl.id] = newGoals[pl.id]; });
+            const partNames = new Set(parts.map(pl => pl.name));
+            const keptScorers = (m.scorers || []).filter(sx => !partNames.has(sx.name));
+            const scorers = [...keptScorers, ...parts.filter(pl => newGoals[pl.id] > 0).map(pl => ({ name: pl.name, goals: newGoals[pl.id] }))]
+                .sort((a, b) => b.goals - a.goals);
+
+            const matchUpd = { teamAScore: scoreA, teamBScore: scoreB, result: newResult, goalsById, scorers };
+            if (!m.mvpId) matchUpd.mvp = scorers.length ? scorers[0].name : 'Belirtilmedi'; // MVP henüz belirlenmediyse en çok gol atan yazılır
+            ops.push(b => b.update(db.collection('matches').doc(m.id), matchUpd));
+
+            savingEdit = true;
+            const btn = document.getElementById('me-save-btn');
+            btn.disabled = true;
+            try {
+                await commitChunked(ops);
+                closeMatchEdit();
+                showToast(`Maç güncellendi (${changed} oyuncunun istatistiği düzeltildi).`);
+            } catch (err) {
+                showToast("Maç güncellenemedi: " + err.message);
+                reportErr('match.edit', err);
+            } finally {
+                savingEdit = false;
+                btn.disabled = false;
+            }
+        }
+
         async function deleteMatch(matchId) {
             const m = matches.find(x => x.id === matchId);
             if (!m) { showToast("Maç bulunamadı."); return; }
