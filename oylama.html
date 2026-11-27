@@ -154,20 +154,20 @@
                 </div>
             </div>
             <nav class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-2">
-                <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-violet-400 bg-white/5"><i class="fa-solid fa-user-pen"></i> <span>Rating Oylaması</span></button>
-                <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-award"></i> <span>Maç Puanı</span></button>
-                <button onclick="switchTab('announcement')" id="nav-announcement" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-bullhorn"></i> <span>Kadro</span> <span id="ann-dot" class="hidden w-2 h-2 rounded-full bg-rose-500"></span></button>
-                <button onclick="switchTab('form')" id="nav-form" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-chart-line"></i> <span>Form</span></button>
+                <button onclick="switchTab('mvp-vote')" id="nav-mvp-vote" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-violet-400 bg-white/5"><i class="fa-solid fa-award"></i> <span>Maç Puanı</span></button>
                 <button onclick="switchTab('standings')" id="nav-standings" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-ranking-star"></i> <span>Puan Durumu</span></button>
                 <button onclick="switchTab('scorers')" id="nav-scorers" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-futbol"></i> <span>Gol Krallığı</span></button>
+                <button onclick="switchTab('announcement')" id="nav-announcement" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-bullhorn"></i> <span>Kadro</span> <span id="ann-dot" class="hidden w-2 h-2 rounded-full bg-rose-500"></span></button>
+                <button onclick="switchTab('form')" id="nav-form" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-chart-line"></i> <span>Form</span></button>
                 <button onclick="switchTab('comments')" id="nav-comments" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-tv"></i> <span>Kulis</span></button>
+                <button onclick="switchTab('evaluation')" id="nav-evaluation" class="nav-btn shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-zinc-300 hover:bg-white/5"><i class="fa-solid fa-user-pen"></i> <span>Rating Oylaması</span></button>
             </nav>
         </div>
     </header>
 
     <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-6">
         <!-- TAB 3: SELF AND PEER EVALUATION -->
-        <section id="tab-evaluation" class="tab-content space-y-6">
+        <section id="tab-evaluation" class="tab-content hidden space-y-6">
             <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-3xl border border-white/[0.08]">
                 <div class="mb-6">
                     <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -244,7 +244,7 @@
         </section>
 
         <!-- TAB 5: MVP VOTING -->
-        <section id="tab-mvp-vote" class="tab-content hidden space-y-6">
+        <section id="tab-mvp-vote" class="tab-content space-y-6">
             <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-8 rounded-3xl border border-white/[0.08]">
                 <div class="mb-6">
                     <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -455,7 +455,7 @@
         let matchRatings = [];
         let ratingRound = { open: false, roundId: 0 };   // yönetici rating turunu açar/kapatır
         let evalLogIds = new Set();                       // oy kullananlar
-        let currentTabId = 'evaluation';
+        let currentTabId = 'mvp-vote';
         let evalSubmitting = false;
         let mrDraft = {};
         let mrSubmitting = false;
@@ -1202,6 +1202,7 @@
             else if (currentTabId === 'standings') renderStandingsTab();
             else if (currentTabId === 'scorers') renderScorersTab();
             if (cardPlayerId) renderPlayerCard();
+            applyNavOrder();
             updateAnnDot();
             updateCommentatorTicker();
         }
@@ -1835,12 +1836,33 @@
             box.innerHTML = html;
         }
 
+        // Duyuru "güncel" sayılır: yayında olmalı ve duyurudan sonra yeni bir maç sonucu girilmemiş olmalı
+        function annIsCurrent() {
+            if (!announcement || !announcement.published) return false;
+            const lastMatch = matches.reduce((mx, m) => Math.max(mx, matchTime(m)), 0);
+            return (announcement.publishedAt || 0) > lastMatch;
+        }
+
+        // Güncel kadro duyurusu varken "Kadro" sekmesi 1. sıraya alınır; maç sonucu girilince ya da duyuru kaldırılınca eski yerine döner (başa MVP oylaması geçer)
+        function applyNavOrder() {
+            const btn = document.getElementById('nav-announcement');
+            if (!btn || !btn.parentElement) return;
+            const nav = btn.parentElement;
+            const live = annIsCurrent();
+            if (live) {
+                if (nav.firstElementChild !== btn) nav.insertBefore(btn, nav.firstElementChild);
+            } else {
+                const anchor = document.getElementById('nav-scorers');
+                if (anchor && anchor.nextElementSibling !== btn) anchor.after(btn);
+            }
+        }
+
         function updateAnnDot() {
             const dot = document.getElementById('ann-dot');
             if (!dot) return;
             let seen = 0;
             try { seen = Number(localStorage.getItem(ANN_SEEN_KEY)) || 0; } catch (e) {}
-            const fresh = announcement && announcement.published && (announcement.publishedAt || 0) > seen && currentTabId !== 'announcement';
+            const fresh = annIsCurrent() && (announcement.publishedAt || 0) > seen && currentTabId !== 'announcement';
             dot.classList.toggle('hidden', !fresh);
         }
 
@@ -2160,7 +2182,7 @@
         document.addEventListener('keydown', e => { if (e.key === 'Escape' && cardPlayerId) closePlayerCard(); });
 
         window.onload = function() {
-            switchTab('evaluation');
+            switchTab('mvp-vote');
             initFirestoreListeners();
         };
     </script>
